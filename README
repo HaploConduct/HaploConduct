@@ -1,0 +1,54 @@
+SAVAGE is a computational tool for reconstructing individual 
+haplotypes of intra-host virus strains (a viral quasispecies) without 
+the need for a high quality reference genome. SAVAGE makes use of 
+either FM-index based data structures or ad-hoc consensus reference 
+sequence for constructing overlap graphs from patient sample data. 
+In this overlap graph, nodes represent reads and/or contigs, while 
+edges reflect that two reads/contigs, based on sound statistical 
+considerations, represent identical haplotypic sequence.  
+Following an iterative scheme, a new overlap assembly algorithm that 
+is based on the enumeration of statistically well-calibrated groups 
+of reads/contigs then efficiently reconstructs the individual 
+haplotypes from this overlap graph.
+  
+*****************************
+REQUIREMENTS and INSTALLATION:
+*****************************
+
+The SAVAGE program is a combination of C++ code (which has to be compiled) 
+and Python scripts (version 2.6 or later, but not Python 3.x). The C++ part
+requires several boost libraries (boost::timer, boost::system, and 
+boost::program_options) and it needs OpenMP.
+
+For maximal clique enumeration, SAVAGE depends on the quick-cliques package 
+(https://github.com/darrenstrash/quick-cliques) which is included. 
+
+Stages b and c of the algorithm also require BLAST from the ncbi C++ 
+Toolkit.
+
+Complete installation instructions can be found in the INSTALL file.
+
+************
+SAVAGE MODES:
+************
+
+SAVAGE offers two modes:
+
+1. SAVAGE-ref
+
+2. SAVAGE-de-novo
+
+*******
+Example:
+*******
+
+
+***************
+General remarks:
+***************
+
+SAVAGE expects as input single- and/or paired-end reads. For the paired-end 
+reads, it assumes they are stored both on the same strand (hence resulting 
+in F-F alignments) as output by PEAR (Paired-End reAd mergeR; 
+http://sco.h-its.org/exelixis/web/software/pear/).
+

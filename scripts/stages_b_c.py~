@@ -1,0 +1,416 @@
+#!/usr/bin/env python
+from __future__ import division
+from argparse import ArgumentParser
+import os
+import sys
+import random
+import subprocess
+from time import clock
+
+
+__author__ = "Jasmijn Baaijens"
+
+usage = """%prog [options]
+
+Pipeline for de novo viralquasispecies assembly. 
+
+"""
+# fixed settings
+THREADS = 1
+#viralquasispecies = "/export/scratch1/home/baaijens/git_repos/viralquasispecies/Code/src/ViralQuasispecies"
+#viralquasispecies = "/ufs/baaijens/Git-Repository/ViralQuasispecies/Code/src/ViralQuasispecies"
+viralquasispecies = "/home/jasmijn/git_repos/viralquasispecies/Code/src/ViralQuasispecies"
+
+def get_original_readcount(fastq):
+    count = 0;
+    with open(fastq, 'r') as f1:
+        for line in f1:
+            count += 1
+    return int(count/4)
+     
+
+# GLOBALS
+ORIGINAL_READCOUNT = 0
+max_read_lengths = []
+max_coverages = []
+comp_times = [] 
+overlap_counts = []
+iteration = 0
+outputdir = "."
+min_qual = 0
+transitive_edges = 0
+
+
+def main():
+    parser = ArgumentParser(description=usage)
+    parser.add_argument('--cliques', dest='cliques', action='store_true')
+    parser.add_argument('--min_overlap_perc', dest='min_overlap_perc', type=int, default=0)
+    parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=150)
+    parser.add_argument('--edge_threshold', dest='edge_threshold', type=float, default=0.99)
+    parser.add_argument('--min_qual', dest='min_qual', type=float, default=0)
+    parser.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0)
+    parser.add_argument('--fastq', dest='fastq', type=str)
+    parser.add_argument('--overlaps', dest='overlaps', type=str)
+    parser.add_argument('--transitive_edges', dest='transitive_edges', type=int, default=0)
+    parser.add_argument('--use_subreads', dest='use_subreads', action='store_true')
+    args = parser.parse_args()
+        
+    if not (args.transitive_edges in [0, 1, 2, 3]):
+        print "Transitive edges needs to be 0 (default, keep all edges), 1 (remove transitive edges), 2 (remove double transitive edges), or 3 (remove triple transitive edges)."
+        parser.print_help()
+    
+    global iteration, max_read_lengths, max_coverages_comp_times, overlap_counts, ORIGINAL_READCOUNT, read_counts, outputdir, min_qual, transitive_edges
+    ORIGINAL_READCOUNT = get_original_readcount(args.fastq)
+    read_counts = [ORIGINAL_READCOUNT]
+    original_overlaps = analyze_overlaps(args.overlaps)
+    overlap_counts = [original_overlaps]
+    min_qual = args.min_qual
+    transitive_edges = args.transitive_edges
+    first_it = "false" if args.use_subreads else "true"
+
+    # create a global log file; after every iteration the log file is appended to this global log file
+    subprocess.call(["rm", "pipeline.log"])
+    subprocess.call(["touch", "pipeline.log"])
+    # remove existing stats file
+    subprocess.call(["rm", "stats.txt"])
+    subprocess.call(["touch", "stats.txt"])
+
+#    min_overlap_lengths = [1000, 500, 150, 50]
+    min_overlap_lengths = [500, 150, 50]
+#    min_overlap_lengths = [100]
+
+    if args.cliques:  
+        # pre-merging      
+        i = 0
+        min_overlap_len = min_overlap_lengths[i]
+        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, 100, 0, args.merge_contigs, first_it)
+        while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+            run_merging_it(args.edge_threshold, 100, 0, args.merge_contigs)
+        # first iteration    
+#        run_first_it_cliques(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, args.merge_contigs)    
+        run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
+        i += 1
+        # remaining iterations (until nothing left to be done)
+        while i < len(min_overlap_lengths):   
+            min_overlap_len = min_overlap_lengths[i]   
+            run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
+            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+                # merge inclusions
+                while transitive_edges != 1 and overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+    #            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+                    run_merging_it(args.edge_threshold, 100, 0, args.merge_contigs) 
+                # clique iteration
+                run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)  
+            i += 1
+    else: # merging only
+        print "WARNING: merging only, no cliques!!"
+        # first iteration    
+        i = 0
+        min_overlap_len = min_overlap_lengths[i]
+        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)  
+#        i += 1     
+        # remaining iterations (until nothing left to be done)
+        while i < len(min_overlap_lengths):
+            min_overlap_len = min_overlap_lengths[i]
+            run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
+            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+                run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
+            i += 1   
+
+    print "Algorithm done; in total %d iterations" %iteration
+    print "Maximum read length per iteration: \t", max_read_lengths
+    print "Maximum # subreads per iteration: \t", max_coverages
+    print "Number of input reads per iteration: \t", read_counts
+    print "Number of overlaps found per iteration: \t", overlap_counts
+
+
+def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it):
+    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
+    iteration += 1    
+    print "\n**************************************"
+    print "**** Iteration %d = first_it_merge ****" %iteration
+    print "**************************************"
+    min_clique_size = 2
+    subprocess.check_call([viralquasispecies, 
+        "--singles=%s" %fastq,
+        "--overlaps=%s" %overlaps,
+        "--threads=%d" %THREADS, 
+        "--edge_threshold=%f" %edge_threshold, 
+        "--first_it=%s" %first_it, 
+        "--min_clique_size=%d" %min_clique_size, 
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=1",
+        "--original_readcount=%d" %ORIGINAL_READCOUNT,
+        "--error_correction=false",
+        "--min_qual=%f" % min_qual,
+        "--remove_trans=%d" %transitive_edges,
+        "--optimize=false"
+    ])
+#    copy_files(iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount) 
+    overlap_counts.append(n_overlaps)
+    print "***"
+
+
+def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate):
+    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
+    iteration += 1
+    print "\n*******************************"
+    print "**** Iteration %d = merging ****" %iteration
+    print "*******************************"
+    min_clique_size = 2
+    subprocess.check_call([viralquasispecies, 
+        "--singles=%s" %"singles.fastq",
+        "--overlaps=%s" %"overlaps.txt", 
+        "--threads=%d" %THREADS, 
+        "--edge_threshold=%f" %edge_threshold, 
+        "--first_it=false", 
+        "--min_clique_size=%d" %min_clique_size, 
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=1",
+        "--original_readcount=%d" %ORIGINAL_READCOUNT,
+        "--error_correction=false",
+        "--min_qual=%f" % min_qual,
+        "--remove_trans=%d" %transitive_edges,
+        "--optimize=false"
+    ])
+#    copy_files(iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount) 
+    overlap_counts.append(n_overlaps)
+    print "***"
+
+
+def run_first_it_cliques(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate):
+    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
+    iteration += 1    
+    print "\n****************************************"
+    print "**** Iteration %d = first_it_cliques ****" %iteration
+    print "****************************************"
+    min_clique_size = 2
+    subprocess.check_call([viralquasispecies, 
+        "--singles=%s" %fastq,
+        "--overlaps=%s" %overlaps,
+        "--threads=%d" %THREADS, 
+        "--edge_threshold=%f" %edge_threshold, 
+        "--first_it=true", 
+        "--cliques=true",
+        "--min_clique_size=%d" %min_clique_size, 
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=1",
+        "--original_readcount=%d" %ORIGINAL_READCOUNT,
+        "--error_correction=false",
+        "--min_qual=%f" % min_qual,
+        "--remove_trans=%d" %transitive_edges,
+        "--optimize=false"
+    ])
+    copy_files(iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount) 
+    overlap_counts.append(n_overlaps)
+    print "***"
+
+
+def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate):
+    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
+    iteration += 1
+    print "\n*******************************"
+    print "**** Iteration %d = cliques ****" %iteration
+    print "*******************************"
+    min_clique_size = 2
+    subprocess.check_call([viralquasispecies, 
+        "--singles=%s" %"singles.fastq",
+        "--overlaps=%s" %"overlaps.txt", 
+        "--threads=%d" %THREADS, 
+        "--edge_threshold=%f" %edge_threshold, 
+        "--first_it=false", 
+        "--cliques=true",
+        "--min_clique_size=%d" %min_clique_size, 
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=1",
+        "--original_readcount=%d" %ORIGINAL_READCOUNT,
+        "--error_correction=false",
+        "--min_qual=%f" % min_qual,
+        "--remove_trans=%d" %transitive_edges,
+        "--optimize=false"
+    ])
+#    copy_files(iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount) 
+    overlap_counts.append(n_overlaps)
+    print "***"
+    
+    
+def copy_files(it):
+    subprocess.call(["cp", "singles.fastq", "it%d_singles.fastq" %it])
+    subprocess.call(["cp", "paired1.fastq", "it%d_paired1.fastq" %it])
+    subprocess.call(["cp", "paired2.fastq", "it%d_paired2.fastq" %it])
+    subprocess.call(["cp", "overlaps.txt", "it%d_overlaps.txt" %it])
+    subprocess.call(["cp", "subreads.txt", "it%d_subreads.txt" %it])
+    subprocess.call(["cp", "graph.gfa", "it%d_graph.gfa" %it])
+
+def copy_log():
+    subprocess.call("cat viralquasispecies.log >> pipeline.log", shell=True)
+
+
+def analyze_results(cliques=False):
+    max_cov = analyze_coverage()
+    max_coverages.append(max_cov)
+    [readcount, max_len] = analyze_fastq()
+    max_read_lengths.append(max_len)
+    if cliques:
+        analyze_cliques()
+    n_overlaps = analyze_overlaps('overlaps.txt')  
+    return [readcount, n_overlaps]
+    
+
+def analyze_coverage():
+    cov_counts = [0 for i in xrange(10000)]
+    max_cov = 0
+          
+    infile = "subreads.txt"
+    with open(infile, 'r') as f:
+        for line in f:
+            reads = line.split()
+            cov = len(reads)-1
+            cov_counts[cov-1] += 1
+            if cov > max_cov:
+                max_cov = cov
+                
+    print "cov\tcount (top 5)"
+    for i in range(max_cov-5, max_cov):
+        if cov_counts[i] != 0:
+            print "%d\t%d" % (i+1, cov_counts[i])
+    print "\n"    
+    return max_cov
+    
+
+def analyze_fastq():
+    len_counts = [0 for i in xrange(100000)]
+    max_len = 0
+          
+    infile = "singles.fastq"
+    with open(infile, 'r') as f:
+        c = 0
+        for line in f:
+            c += 1
+            if c%4 != 2:
+                continue
+            seq = line.strip()
+            l = len(seq)
+            len_counts[l-1] += 1
+            
+            if l > max_len:
+                max_len = l
+    print "longest read: ", max_len
+    print "\n"    
+    return [int(c/4), max_len]
+    
+
+def analyze_cliques():
+    clique_size_counts = [0 for i in xrange(10000)]
+    max_size = 0
+          
+    infile = "cliques.txt"
+    with open(infile, 'r') as f:
+        for line in f:
+            clique = line.split()
+            s = len(clique)
+            clique_size_counts[s-1] += 1
+            if s > max_size:
+                max_size = s
+    print "clique size top 5:"           
+    print "size\tcount"
+    for i in range(max_size-5, max_size):
+        if clique_size_counts[i] != 0:
+            print "%d\t%d" % (i+1, clique_size_counts[i])
+    print "\n"    
+    return clique_size_counts
+    
+
+def analyze_overlaps(filename):   
+    pp_count = [0 for i in xrange(4)]
+    ps_count = [0 for i in xrange(4)]
+    sp_count = [0 for i in xrange(4)]
+    ss_count = [0 for i in xrange(4)]
+    c = 0
+    with open(filename) as f:
+        for line in f:
+            c += 1
+            line = line.strip().split('\t')
+            if line[11] == 'p' and line[12] == 'p':
+                if line[5] == '-' and line[6] == '+':
+                    pp_count[0] += 1
+                elif line[5] == '+' and line[6] == '-':
+                    pp_count[1] += 1
+                elif line[5] == '+' and line[6] == '+':
+                    pp_count[2] += 1
+                elif line[5] == '-' and line[6] == '-':
+                    pp_count[3] += 1
+                else:
+                    print 'orientation not found...'
+            elif line[11] == 'p' and line[12] == 's':
+                if line[5] == '-' and line[6] == '+':
+                    ps_count[0] += 1
+                elif line[5] == '+' and line[6] == '-':
+                    ps_count[1] += 1
+                elif line[5] == '+' and line[6] == '+':
+                    ps_count[2] += 1
+                elif line[5] == '-' and line[6] == '-':
+                    ps_count[3] += 1
+                else:
+                    print 'orientation not found...'
+            elif line[11] == 's' and line[12] == 'p':
+                if line[5] == '-' and line[6] == '+':
+                    sp_count[0] += 1
+                elif line[5] == '+' and line[6] == '-':
+                    sp_count[1] += 1
+                elif line[5] == '+' and line[6] == '+':
+                    sp_count[2] += 1
+                elif line[5] == '-' and line[6] == '-':
+                    sp_count[3] += 1
+                else:
+                    print 'orientation not found...'
+            elif line[11] == 's' and line[12] == 's':
+                if line[5] == '-' and line[6] == '+':
+                    ss_count[0] += 1
+                elif line[5] == '+' and line[6] == '-':
+                    ss_count[1] += 1
+                elif line[5] == '+' and line[6] == '+':
+                    ss_count[2] += 1
+                elif line[5] == '-' and line[6] == '-':
+                    ss_count[3] += 1
+                else:
+                    print 'orientation not found...'
+            else:
+                print 'read types not recognized...'
+    
+    print "Overlaps:"                
+    print "[-+, +-, ++, --]"
+    print "p-p: ", pp_count
+    print "p-s: ", ps_count
+    print "s-p: ", sp_count
+    print "s-s: ", ss_count
+
+    total = sum(pp_count) + sum(ps_count) + sum(sp_count) + sum(ss_count)
+    print total
+    print "# lines: ", c
+    print "\n"
+    return total
+
+
+if __name__ == '__main__':
+    sys.exit(main())

@@ -1,0 +1,37 @@
+************
+REQUIREMENTS:
+************
+
+The SAVAGE program is a combination of C++ code (which has to be compiled) 
+and Python scripts (version 2.6 or later, but not Python 3.x). The C++ part
+requires several boost libraries (boost::timer, boost::system, and 
+boost::program_options) and it needs OpenMP.
+
+SAVAGE uses the quick-cliques package 
+(https://github.com/darrenstrash/quick-cliques) for maximal clique 
+enumeration. It needs the cliques to be output one-by-one, as is the case in 
+the included quick-cliques release.
+
+Finally, SAVAGE requires 'makeblastdb' and 'blastn' from the ncbi toolkit. 
+Follow the installation instructions on 
+http://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/
+
+
+************
+INSTALLATION:
+************
+
+Download the git repository and change to the extracted directory. Then:
+
+1. Compile the quick-cliques package:
+
+cd quick-cliques-1.0
+make
+cd ..
+
+2. Compile the SAVAGE source code:
+
+mkdir bin
+cd src
+g++ -Wall -fopenmp -std=c++11 -g -O0 ViralQuasispecies.cpp FastqStorage.cpp EdgeCalculator.cpp OverlapGraph.cpp GraphAlgos.cpp SRBuilder.cpp FindNextOverlaps.cpp FindNextOverlaps2.cpp FindNextOverlaps3.cpp -o ../bin/ViralQuasispecies -l boost_timer -l boost_system -l boost_program_options
+src ..

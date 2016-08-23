@@ -1,0 +1,117 @@
+//============================================================================
+// Name        : OverlapGraph.h
+// Author      : Jasmijn Baaijens
+// Version     : 0.01 Beta
+// License     : GNU GPL v3.0
+// Project     : ViralQuasispecies
+// Description : Construct an overlap graph for viral quasispecies assembly
+//============================================================================
+
+#ifndef OVERLAPGRAPH_H_
+#define OVERLAPGRAPH_H_
+
+#include <list>
+#include <stack>
+#include <vector>
+#include <set>
+#include <boost/dynamic_bitset.hpp>
+#include <iostream>
+
+#include "Overlap.h"
+#include "Types.h"
+#include "Edge.h"
+#include "FastqStorage.h"
+//#include "SRBuilder.h"
+
+class SRBuilder; // forward definition to enable friend class
+ 
+// Class to represent an overlap graph and the algorithms necessary to make it cycle-free.
+// The maximal number of vertices must be specified at initialization to reserve the memory required.
+class OverlapGraph
+{
+friend class SRBuilder;
+private:
+    unsigned int vertex_count;
+    unsigned int edge_count;
+    unsigned int backedge_count;
+    unsigned int twocycle_count;
+    unsigned int threecycle_count;
+    unsigned int graph_depth;
+    std::vector< std::list< Edge > > adj_out;
+    std::vector< std::list< node_id_t > > adj_in;
+    std::list< node_id_t > top_ordering;
+    std::string PATH;
+    std::shared_ptr<FastqStorage> fastq_storage;
+    ProgramSettings program_settings;
+ 
+public:
+    OverlapGraph(unsigned int V, std::shared_ptr<FastqStorage> fastq, ProgramSettings ps) {
+        vertex_count = 0;
+        edge_count = 0;
+        backedge_count = 0;
+        twocycle_count = 0;
+        threecycle_count = 0;
+        graph_depth = 0;
+        PATH = ps.output_dir;
+        fastq_storage = fastq;
+        program_settings = ps;
+        
+        std::cout << "OverlapGraph of size " << V << " is being created.\n";
+        std::list< Edge > empty_list = {};
+        std::list< node_id_t > empty_list2 = {};
+        adj_out = std::vector< std::list< Edge > > (V, empty_list);
+        adj_in = std::vector< std::list< node_id_t > > (V, empty_list2);
+        inclusions = boost::dynamic_bitset<>(V);
+    }
+ 
+    ~OverlapGraph() {
+        std::cout << "OverlapGraph is being deleted.\n";
+    }
+
+    std::vector<read_id_t> vertex_to_read; // get read id from vertex id
+    boost::dynamic_bitset<> vertex_orientations; // 1 if forward, 0 if reverse
+    boost::dynamic_bitset<> inclusions; // 1 if involved in inclusion
+    
+    // OverlapGraph.cpp: graph functions
+	unsigned int addVertex(read_id_t read_ID);	 
+    void addEdge(Edge edge);
+    void removeEdge(node_id_t v, node_id_t w);  
+    double checkEdge(node_id_t v, node_id_t w, bool reverse_allowed=true);
+    Edge* getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed=true);
+    unsigned int getEdgeCount();
+    unsigned int getBackEdgeCount();
+    unsigned int getVertexCount();    
+    void writeGraphToFile();
+    void writeDiGraphToFile();
+    void write2FASTG();
+    void write2GFA();
+    void writeGraphToFile(std::vector< std::list< node_id_t >> &tmp_adj_out);   
+    void reportCycle(node_id_t u, node_id_t v, bool remove);
+    void printAdjacencyLists();
+    void getGraphStats();
+    void checkDuplicateEdges();
+    void addEquivalentEdges();
+    bool getOrientation(node_id_t v);
+    void sortEdges();
+    
+    // GraphAlgos.cpp: algorithms  
+    std::vector< node_id_t > sortVerticesByIndegree();
+    void labelVertices(std::list< Edge > & edges_to_be_moved, std::list< Edge > & edges_to_be_deleted, boost::dynamic_bitset<> & orientations);
+    void vertexLabellingHeuristic(unsigned int & conflict_count);
+    void postprocessEdges();
+    void removeCycles();
+    void findCycles();
+    void dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_bitset<> &marked, boost::dynamic_bitset<> &visited, std::vector< node_id_t >& path, bool remove, bool threecycles, std::vector< std::vector< node_id_t > > &twocycle_table, std::set< std::vector< node_id_t > > &threecycle_set);
+    void findInduced3Cycles();
+    std::vector< std::vector< node_id_t > > getEdgesForMerging();
+    void findBranches();
+    void findBranchfreeGraph(std::vector< std::list< node_id_t > > & cur_adj_in, std::vector< std::list< node_id_t > > & cur_adj_out, std::set< node_id_t > & remove_in, std::set< node_id_t > & remove_out);
+    void findTransEdges(std::vector< std::list< node_id_t > > & cur_adj_in, std::vector< std::list< node_id_t > > & cur_adj_out, std::vector< std::list< node_id_t > > & new_adj_in, std::vector< std::list< node_id_t > > & new_adj_out, bool removeTrans);
+    bool nonemptyIntersect(std::list< node_id_t > & list1, std::list< node_id_t > & list2);
+    std::vector< std::list< node_id_t > > sortAdjLists(std::vector< std::list< node_id_t > > input_lists);
+    std::vector< std::list< node_id_t > > sortAdjOut();
+    void removeBranches();
+    void removeTransitiveEdges();
+};
+
+#endif /* OVERLAPGRAPH_H_ */
