@@ -19,7 +19,7 @@ EXECS = $(addprefix $(BIN_DIR)/, $(EXEC_NAMES))
 #DEFINE += -DDEBUG       #for debugging
 #DEFINE += -DMEMORY_DEBUG #for memory debugging.
 #DEFINE += -DRETURN_CLIQUES_ONE_BY_ONE 
-DEFINE += -DPRINT_CLIQUES_ONE_BY_ONE 
+DEFINE += -DPRINT_CLIQUES_ONE_BY_ONE
 
 #DEFINE += -DPRINT_CLIQUES_TOMITA_STYLE # used by Eppstein and Strash (2011)
 
