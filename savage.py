@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from __future__ import division
 from argparse import ArgumentParser
+from argparse import RawTextHelpFormatter
 import os
 import sys
 import random
@@ -11,30 +12,31 @@ from sets import Set
 
 __author__ = "Jasmijn Baaijens"
 
-usage = """%prog [options]
+usage = """
 
 SAVAGE: Strain Aware VirAl GEnome assembly
 
-# REQUIRED DIRECTORY STRUCTURE:
-# pear_reads directory in current path, containing singles.fastq, paired1.fastq, paired2.fastq 
-# 
-# Resulting directory structure:
-# Directories: stage_a, stage_b, stage_c
-# Files in current directory: stage_a_contigs.fasta, stage_b_contigs.fasta, stage_c_contigs.fasta
+REQUIRED DIRECTORY STRUCTURE:
+pear_reads directory in current path, containing singles.fastq, paired1.fastq, paired2.fastq 
+ 
+RESULTS:
+Directories: stage_a, stage_b, stage_c
+Files in current directory: stage_a_contigs.fasta, stage_b_contigs.fasta, stage_c_contigs.fasta
 
-Run savage.py -h for all arguments.
+Run savage.py -h for a complete description of optional arguments.
 
 """
 
 def main():
-    parser = ArgumentParser(description=usage)
-    parser.add_argument('--ref', dest='reference', type=str)
-    parser.add_argument('--singles', dest='singles', type=str)
-    parser.add_argument('--paired', dest='paired', type=str)
-    parser.add_argument('--no_stage_a', dest='stage_a', action='store_false')
-    parser.add_argument('--no_stage_b', dest='stage_b', action='store_false')
-    parser.add_argument('--no_stage_c', dest='stage_c', action='store_false')
-    parser.add_argument('--edge_threshold', dest='threshold', default=0.97)
+    parser = ArgumentParser(description=usage, formatter_class=RawTextHelpFormatter)
+    parser.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
+    parser.add_argument('--singles', dest='singles', type=str, help='single-end read alignments in SAM format')
+    parser.add_argument('--paired', dest='paired', type=str, help='paired-end read alignments in SAM format')
+    parser.add_argument('--edge_threshold', dest='threshold', default=0.97, help='minimal overlap score required for edges')
+    parser.add_argument('--no_stage_a', dest='stage_a', action='store_false', help='skip Stage a (initial contig formation); \n--> use this option together with --contigs')
+    parser.add_argument('--no_stage_b', dest='stage_b', action='store_false', help='skip Stage b (extending initial contigs); \n--> this automatically skips stage c as well')
+    parser.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
+    parser.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     args = parser.parse_args()
     
     base_path = sys.path[0]
@@ -85,6 +87,10 @@ def main():
         subprocess.check_call("python %s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"  
     else:
+        if args.contigs:
+            subprocess.call(['mkdir', 'stage_a'], stdout=FNULL, stderr=FNULL)
+            subprocess.call(['cp', args.contigs, 'stage_a/singles.fastq'], stdout=FNULL, stderr=FNULL)
+            subprocess.check_call("python %s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Stage a skipped"
 
     if args.stage_b:
