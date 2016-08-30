@@ -9,8 +9,9 @@ from time import clock
 
 
 __author__ = "Jasmijn Baaijens"
+__license__ = "GPL"
 
-usage = """%prog [options]
+usage = """
 
 Create an overlaps file for viral quasispecies assembly
 based on the alignments found by running blast 

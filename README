@@ -62,6 +62,9 @@ To run SAVAGE-ref, complete the following steps:
    containing               singles.fastq
                             paired1.fastq 
                             paired2.fastq
+   Make sure that the read identifiers are numerical, with IDs 
+   0 to num_singles-1 for the single-end reads and IDs num_singles 
+   to num_singles+num_pairs-1 for the paired-end reads.
 3) Align the single- and paired-end reads seperately to this 
    reference, obtaining 
                 singles.sam
@@ -76,17 +79,60 @@ B. SAVAGE-de-novo
 
 This mode does not rely on any reference sequence; instead, it 
 computes all approximate suffix-prefix overlaps among the reads 
-using SFO (https://www.cs.helsinki.fi/group/suds/sfo/). 
+using the included package SFO from Valimaki et al.
+(https://www.cs.helsinki.fi/group/suds/sfo/). 
 
-Unfortunately, this option is not available for public use yet, 
-but will appear soon.
+SAVAGE-de-novo is very easy to run, since it doesn't use any prior
+information:
+
+1) Create a directory <my_directory> where you want to store the 
+   results, and add a folder 
+                pear_reads/
+   containing               singles.fastq
+                            paired1.fastq 
+                            paired2.fastq
+   Make sure that the read identifiers are numerical, with IDs 
+   0 to num_singles-1 for the single-end reads and IDs num_singles 
+   to num_singles+num_pairs-1 for the paired-end reads.
+2) Now you're ready to run SAVAGE: enter <my_directory> and run
+
+       python savage.py
+
+
+*********************
+FREQUENCY ESTIMATION:
+*********************
 
 
 ********
 Example:
 ********
 
-** to appear soon **
+The directory example/ contains a small working example, with both 
+single- and paired-end reads contained in pear_reads/ and alignments
+singles.sam, paired.sam to an HIV-1 HXB2 reference strain 
+(hiv-ref.fasta). 
+
+To run the example, cd into example/ and
+                        
+A) for SAVAGE-ref execute:
+
+                        python savage.py --ref <reference.fasta> 
+                                         --singles <singles.sam>
+                                         --paired <paired.sam>
+B) for SAVAGE-de-novo execute:
+
+                        python savage.py
+                                         
+Then apply the frequency estimation procedure on Stage b contigs:
+
+    python ../freq_est.py --fas stage_b/singles.fastq 
+                          --subreads stage_b/subreads.txt 
+                          --min_len 0
+    
+The desired output of this final procedure is given in 
+A) frequencies.ref.txt
+B) frequencies.denovo.txt
 
 
 ****************
