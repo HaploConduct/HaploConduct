@@ -1,0 +1,224 @@
+--------------------------------------------------------------------------------
+sfoverlap  -  http://www.cs.helsinki.fi/group/suds/sfo/
+
+This program computes all approximate suffix/prefix overlaps for a collection 
+of reads. It computes for every read of the collection (the number of reads is 
+given as parameter), the overlaps with other reads in normal and reverse 
+complemented orientations.
+
+* Number of allowed errors can be either fixed or proportional to the overlap 
+  length. We recommend the latter option (uses the suffix filters algorithm).
+
+* Align reads using either the Hamming or edit distance model.
+
+* Algorithms are based on Burrows-Wheeler transform and suffix filters, 
+  see [1,2] for details.
+
+* Supports FASTA input and SOLiD color coded sequences. Output can be filtered
+  to contain only the longest approximate overlaps for each string-pair.
+
+
+Latest version can be downloaded from 
+http://www.cs.helsinki.fi/group/suds/sfo/
+
+This software has been tested using g++ (GCC) 4.4.1-4 (64bit). If you encounter 
+any problems with other compilers, or with the software itself, please let us 
+know. You can contact us by email: niko.valimaki <ät> cs.helsinki.fi
+
+--------------------------------------------------------------------------------
+Change log
+
+Feb 2011 - First public release:
+   Supports FASTA input and SOLiD color coded sequences.
+   Incremental BWT construction, and parallel searching (OpenMP [4]).
+   Alignment with fixed k (simple backtracking algorithm), or 
+   with error-rate e (suffix filters algorithm [1,2]).
+
+--------------------------------------------------------------------------------
+Basic usage
+
+1) Compile the software by issuing the command `make'.
+
+2) Construct an index for the sequences by `./builder input.fasta'.
+   See below or `./builder --help' for more information.
+
+3) To find all approximate overlaps with an error-rate 0.05 and minimum length
+   threshold 40: 
+   `./sfoverlap -e20 -t40 input.fasta'.
+
+   Or, as another example, Hamming distance (mismatches only) and a fixed number
+   of errors 2:
+   `./sfoverlap --mismatch -k2 -t40 input.fasta'.
+
+4) To find only the longest approximate overlaps, use the attached maxoverlaps
+   tool to filter any result set:   
+   `./sfoverlap -e20 -t40 input.fasta | ./maxoverlaps'
+
+See below or `./sfoverlap --help' for more information.
+
+--------------------------------------------------------------------------------
+Different alignment modes
+
+Alignment modes (choose either one, first one is recommended):
+ -e <int>
+      Uses error-rate 1/<int>, e.g. -e20 equals the error-rate of 1/20 = 0.05.
+      The number of errors allowed in the alignment depens on the length of
+      the overlap, that is, overlap length divided by <int> (and round the 
+      result up). This is the recommended alignment mode. 
+
+ -k <int>
+      Uses a fixed number of errors for all overlap lengths. In practice, the 
+      algorithm is usable only for small values of <int> (less than 4).
+
+
+Distance model:
+ --indels      (default setting)
+      Allow mismatches, insertions and deletions in the aligment.
+      Outputs also alignments that go inside other reads.
+
+ --mismatch
+      Allow only mismatches in the alignment.
+
+--------------------------------------------------------------------------------
+Input/Output format
+
+The default input format is FASTA.
+
+The output (uses standard output) contains one line per overlap with the 
+following fields:
+
+    idA idB O OHA OHB OLA OLB K
+
+where idA is the id number of read A and idB is the id number of read B, and 
+idA <= idB is always true. O is a character indicating if the orientation is 
+normal (N) or inverted (I). The read A is always in normal orientation, and 
+it overlaps with the normal version of read B (when O=N) or with its 
+complemented version (O=I) 
+
+Overlap lengths are encoded as follows:
+
+        OHA     OLA 
+(A)    -------------  
+(B)           -----------------
+                OLB      OHB 
+
+OHA is the number of characters of A that are before the overlap. It can be a 
+negative integer if the overlap is:
+
+(A)       --------------
+(B) ------------
+
+(remember that idA is always <= idB, so OHA can be negative) 
+
+OHB is the number of characters of read B after the overlap (it can be negative 
+if read B finish before read A). For example 
+
+(A) ------------------------------------
+(B)          ----------------
+
+Here OHA is >0, because A starts before B, and OHB<0 because it finish after B.
+
+OLA, OLB indicate the length of the overlap. The length of the overlap for read A 
+and for read B can be different if errors (deletes and insertions) are allowed.
+
+The last value K is the number of errors in the overlap alignment.
+
+The output can be filtered to contain only the longest approximate overlaps for
+each string-pair by directing the standard output to the attached "maxoverlaps" 
+tool, for example:
+     `./sfoverlap -e20 -t40 input.fasta | ./maxoverlaps'
+
+--------------------------------------------------------------------------------
+Parallel processing
+
+If your compiler supports OpenMP [3], e.g. GCC version 4.2 or later, you can
+enable parallel processing by uncommenting the lines
+
+     #PARALLEL_FLAGS = -DPARALLEL_SUPPORT -fopenmp
+     #PARALLEL_LIB = -lgomp
+
+from Makefile, and issue the commands `make shallow_clean' and `make'. The 
+number of parallel threads to be used is then determined by the option 
+`-P, --parallel'. Default is one thread, give argument value 0 to use all 
+available cores. See `./sfoverlap --help' for more information.
+
+--------------------------------------------------------------------------------
+Constructing an index:
+
+./builder [options] <input> [output]
+
+<input> is the input filename. The input must be in FASTA format.
+If no output filename is given, the index is stored as <input>.fmi 
+
+Options:
+ -c, --color                   Build an index for SOLiD color codes.
+ -s <int>, --sample-rate <int> Sampling rate for the index, a smaller number 
+                               yields a bigger index but can decrease search 
+                               time (default: 16).
+ -h, --help                    Display command line options.
+ -v, --verbose                 Verbose mode, uses the standard error output.
+
+
+--------------------------------------------------------------------------------
+Using the read aligner:
+
+./sfoverlap [options] <index>
+
+Input file:
+  <index>   Index filename, see `builder --help' for more information
+            about constructing indexes. By default, all reads in the index are 
+            matched against all other reads in the index. Options --skip and 
+            --nreads can be used to define the subset of reads to be searched.
+
+Basic alignment modes:
+ -e <int>                    Uses error-rate 1/<int>, e.g. -e20 equals the   
+                             error-rate of 1/20 = 0.05. The number of errors 
+                             allowed in the alignment depens on the length of
+                             the overlap, that is, overlap length divided by 
+                             <int> (round up). This is the recommended mode.
+                             
+ -k <int>                    Uses a fixed number of errors for all overlap 
+                             lengths. Usable only for small values of <int> 
+                             (less than 4).
+
+Alignment options (default is --indels):
+ --indels                    Allow mismatches, insertions and deletions in 
+                             the aligment.
+ --mismatch                  Allow only mismatches in the alignment.
+
+General options:
+ -t <int>, --threshold <int> Minimum overlap length threshold. Only overlaps
+                             longer than or equal to <int> are outputted
+                             (default is 40).
+ --skip <int>                Skip first <int> reads the set (default is 0).
+ --nreads <int>              Align <int> reads from the set (after skipping)
+                             (default is all reads).
+ -c, --color                 Reads are in SOLiD color codes.
+ -v, --verbose               Verbose mode, uses the standard error output.
+ -h, --help                  Display command line options.
+ -P <int>, --parallel <int>  Number of parallel threads to use (default is one, 
+                             give argument 0 to use all available cores).
+
+Alignment options -k and -e are mutually exclusive.
+
+--------------------------------------------------------------------------------
+Authors and acknowledgments
+
+Susana Ladra (2009), and Niko Välimäki (2010-).
+
+We wish to thank Jouni Sirén (incremental BWT construction), 
+Francisco Claude (libcds), Veli Mäkinen and others for their valuable feedback.
+
+--------------------------------------------------------------------------------
+References
+
+[1] Niko Välimäki, Susana Ladra and Veli Mäkinen: Approximate All-Pairs 
+    Suffix/Prefix Overlaps. In Proc. 21st Annual Symposium on Combinatorial 
+    Pattern Matching (CPM'10), Springer-Verlag, LNCS 6129, pages 76-87, 
+    New York, USA, June 21-23, 2010. 
+
+[2] Niko Välimäki, Susana Ladra and Veli Mäkinen: Approximate All-Pairs 
+    Suffix/Prefix Overlaps. Submitted to CPM 2010 Special Issue of 
+    Information and Computation.
+
+[3] http://www.openmp.org/
