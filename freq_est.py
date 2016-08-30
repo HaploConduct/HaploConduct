@@ -171,8 +171,9 @@ def main():
     print "total subread count: ", total_subreads_used
     tmp_freqs = []
     tmp_reads = []
-    print "absolute frequencies:"
-    print "(ID: freq, length)"
+    tmp_lengths = []
+#    print "absolute frequencies:"
+#    print "(ID: freq, length)"
     for read in contigs2originals:
         seq = contig_dict[read]
         weighted_count = 0
@@ -182,9 +183,10 @@ def main():
 #        freq = (weighted_count/total_subreads_used)*(genome_len/len(seq))
         freq = (weighted_count/total_subreads_used)*(1/len(seq))
         if len(contig_dict[read]) > args.min_len:
-            print "%s: %f, %d" % (read, freq, len(seq))
+#            print "%s: %f, %d" % (read, freq, len(seq))
             tmp_freqs += [freq]
             tmp_reads += [read]
+            tmp_lengths += [len(seq)]
             
     print "*"
     
@@ -194,12 +196,13 @@ def main():
 #        print "*"
 #    else:
     print "normalized frequencies:"
-    print "(ID: freq)"
+    print "(ID: freq, length)"
     i = 0
     for freq in tmp_freqs:
         read = tmp_reads[i]
+        length = tmp_lengths[i]
         normalized_freq = freq/float(sum(tmp_freqs))*100
-        print "%s: %.2f" % (read, normalized_freq)
+        print "%s: %.2f, %d" % (read, normalized_freq, length)
         i += 1
     print "*"
         

@@ -22,7 +22,11 @@ boost::system, and boost::program_options) and it needs OpenMP.
 
 For maximal clique enumeration, SAVAGE depends on the quick-cliques 
 package (https://github.com/darrenstrash/quick-cliques) which is 
-included. 
+included.
+
+For suffix-prefix overlaps (de novo mode), SAVAGE depends on the 
+SFO package (https://www.cs.helsinki.fi/group/suds/sfo/) which is 
+also included.
 
 Stages b and c of the algorithm also require BLAST from the ncbi C++ 
 Toolkit.
@@ -102,6 +106,23 @@ information:
 *********************
 FREQUENCY ESTIMATION:
 *********************
+
+We provide a frequency estimation procedure which computes for 
+every contig an estimate of its relative frequency. This procedure 
+needs a fasta/fastq file of contigs and the corresponding subreads 
+file (subreads.txt) as output by SAVAGE. This method works best 
+when applied to Stage b or Stage c contigs, because those sequences 
+have been maximally extended. 
+
+The frequency estimation can be applied as follows:
+
+python freq_est.py --fas <fasta/fastq-file>
+                   --subreads <subreads-file>
+                   --min_len 5000
+                   
+The parameter --min_len can be set to any non-negative integer; 
+only contigs of at least this length will be considered during 
+frequency estimation.
 
 
 ********
