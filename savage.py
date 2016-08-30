@@ -11,6 +11,7 @@ from sets import Set
 
 
 __author__ = "Jasmijn Baaijens"
+__license__ = "GPL"
 
 usage = """
 
@@ -27,14 +28,22 @@ Run savage.py -h for a complete description of optional arguments.
 
 """
 
+def file_len(fname):
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return i + 1
+    
+
 def main():
     parser = ArgumentParser(description=usage, formatter_class=RawTextHelpFormatter)
     parser.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
     parser.add_argument('--singles', dest='singles', type=str, help='single-end read alignments in SAM format')
     parser.add_argument('--paired', dest='paired', type=str, help='paired-end read alignments in SAM format')
-    parser.add_argument('--edge_threshold', dest='threshold', default=0.97, help='minimal overlap score required for edges')
+    parser.add_argument('--threshold', dest='threshold', type=float, default=0.97, help='edge threshold for Stage a')
+    parser.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; make sure to enter the full path!!')
     parser.add_argument('--no_stage_a', dest='stage_a', action='store_false', help='skip Stage a (initial contig formation); \n--> use this option together with --contigs')
-    parser.add_argument('--no_stage_b', dest='stage_b', action='store_false', help='skip Stage b (extending initial contigs); \n--> this automatically skips stage c as well')
+    parser.add_argument('--no_stage_b', dest='stage_b', action='store_false', help='skip Stage b (extending initial contigs); \n--> this automatically skips Stage c as well')
     parser.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
     parser.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     args = parser.parse_args()
@@ -46,35 +55,65 @@ def main():
     if args.overlaps and (args.reference or args.singles or args.paired):
         print "Overlaps file given, so reference / singles sam / paired sam are ignored"
         
-    if args.reference and (args.singles or args.paired):
+    if args.overlaps:
+        preprocessing = False
+    elif args.reference and (args.singles or args.paired):
         preprocessing = True
+        denovo = False
     elif args.singles or args.paired:
         print usage
         print "Provide a reference fasta file"
         print 
         return -1
-    else:
+    elif args.reference:
         print usage
         print "Provide samfile(s)"
         print 
         return -1
+    else:
+        preprocessing = True
+        denovo = True
     
-    print "Edge threshold is set to %f" % args.threshold
+    print "Edge threshold is set to %.3f" % args.threshold
     
     if preprocessing:
-        print "Preprocessing: get induced overlaps"
-        # Induce overlaps from alignment
-        if args.singles and args.paired:
-            print
-            subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_p %s --sam_s %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.paired, args.singles, args.reference), shell=True)
-        elif args.singles:
-            subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_s %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.singles, args.reference), shell=True)
-        elif args.paired:
-            subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_p %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.paired, args.reference), shell=True)
+        overlaps = "../original_overlaps.txt"
+        if denovo:
+            print "Preprocessing: get de novo overlaps using SFO"
+            # prepare fasta
+            subprocess.check_call("cat pear_reads/singles.fastq pear_reads/paired1.fastq pear_reads/paired2.fastq > s_p1_p2.fastq", shell=True)
+            subprocess.check_call("python %s/scripts/fastq2fasta.py s_p1_p2.fastq s_p1_p2.fasta" % base_path, shell=True)
+            singles_count = int(file_len('pear_reads/singles.fastq')/4.0)
+            paired_count = int(file_len('pear_reads/paired1.fastq')/4.0)
+            assert paired_count == int(file_len('pear_reads/paired2.fastq')/4.0)
+            # run SFO
+            print "Running SFO..."
+            subprocess.check_call("%s/sfo_2011_5/builder s_p1_p2.fasta" % base_path, shell=True)
+            subprocess.check_call("%s/sfo_2011_5/sfoverlap --parallel 0 --indels -e 50 -t 167 s_p1_p2.fasta | %s/sfo_2011_5/maxoverlaps > sfoverlaps.out" % (base_path, base_path), shell=True)
+            # run postprocessing scripts
+            print "Processing SFO output..."
+            subprocess.check_call("python %s/scripts/sfo2overlaps_script1.py %d %d sfoverlaps.out" % (base_path, singles_count, paired_count), stdout=FNULL, shell=True)
+            subprocess.check_call("python %s/scripts/sfo2overlaps_script2.py %d %d" % (base_path, singles_count, paired_count), stdout=FNULL, shell=True)
+            # combine output and remove intermediate files
+            print "Finishing and cleaning up..."
+            subprocess.check_call("cat *formatted9 > original_overlaps.txt", shell=True)
+            subprocess.check_call("rm *_sorted", shell=True)
+            subprocess.check_call("rm *formatted9", shell=True)
+            subprocess.check_call("rm s_p1_p2.fast*", shell=True)
+            print "Overlaps are ready!"
+        else:
+            print "Preprocessing: get induced overlaps from alignments"
+            # Induce overlaps from alignment
+            if args.singles and args.paired:
+                print
+                subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_p %s --sam_s %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.paired, args.singles, args.reference), shell=True)
+            elif args.singles:
+                subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_s %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.singles, args.reference), shell=True)
+            elif args.paired:
+                subprocess.check_call("python %s/scripts/sam2overlaps.py --sam_p %s --ref %s --min_overlap_len 150 --out original_overlaps.txt" %(base_path, args.paired, args.reference), shell=True)
     else:
-        print "Preprocessing: get de novo overlaps"
-        print "This option is not yet supported but will appear soon!"
-        return -1
+        print "Using overlaps from %s" % args.overlaps
+        overlaps = args.overlaps
 
     if args.stage_a:
         print "**************"
@@ -82,7 +121,7 @@ def main():
         # Run SAVAGE Stage a: error correction and initial contig formation
         subprocess.call(['mkdir', 'stage_a'], stdout=FNULL, stderr=FNULL)
         os.chdir('stage_a')
-        subprocess.check_call("python %s/scripts/pipeline_stage_a.py --fastq ../pear_reads --overlaps ../original_overlaps.txt --merging --cliques --error_correction --edge_threshold %f --min_overlap_perc 0 --fno 3 --min_clique_size 4 --transitive_edges 2" %(base_path, args.threshold), stdout=FNULL, shell=True)
+        subprocess.check_call("python %s/scripts/pipeline_stage_a.py --fastq ../pear_reads --overlaps %s --merging --cliques --error_correction --edge_threshold %f --min_overlap_perc 0 --fno 3 --min_clique_size 4 --transitive_edges 2" %(base_path, overlaps, args.threshold), stdout=FNULL, shell=True)
         os.chdir('..')
         subprocess.check_call("python %s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"  
