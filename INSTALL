@@ -12,6 +12,10 @@ SAVAGE uses the quick-cliques package
 enumeration. It needs the cliques to be output one-by-one, as is the case in 
 the included quick-cliques release.
 
+Similarly, SAVAGE uses the SFO package 
+(https://www.cs.helsinki.fi/group/suds/sfo/) for computing all approximate 
+suffix-prefix overlaps (de novo mode). This package is also included.
+
 Finally, SAVAGE requires 'makeblastdb' and 'blastn' from the ncbi toolkit. 
 Follow the installation instructions on 
 http://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/
@@ -29,7 +33,13 @@ cd quick-cliques-1.0
 make
 cd ..
 
-2. Compile the SAVAGE source code:
+2. Compile the SFO package:
+
+cd sfo_2011_5
+make
+cd ..
+
+3. Compile the SAVAGE source code:
 
 mkdir bin
 cd src
