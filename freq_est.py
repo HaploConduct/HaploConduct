@@ -171,6 +171,8 @@ def main():
     print "total subread count: ", total_subreads_used
     tmp_freqs = []
     tmp_reads = []
+    print "absolute frequencies:"
+    print "(ID: freq, length)"
     for read in contigs2originals:
         seq = contig_dict[read]
         weighted_count = 0
@@ -186,19 +188,20 @@ def main():
             
     print "*"
     
-    if len(tmp_freqs) == 2: # for div-vs-ratio experiments  
-        max_freq = max(tmp_freqs)/float(sum(tmp_freqs))*100
-        print "\t\t\t\tmax normalized frequency: %.2f" % max_freq
-        print "*"
-    else:
-        print "normalized frequencies:"
-        i = 0
-        for freq in tmp_freqs:
-            read = tmp_reads[i]
-            normalized_freq = freq/float(sum(tmp_freqs))*100
-            print "%s: %.2f" % (read, normalized_freq)
-            i += 1
-        print "*"
+#    if len(tmp_freqs) == 2: # for div-vs-ratio experiments  
+#        max_freq = max(tmp_freqs)/float(sum(tmp_freqs))*100
+#        print "\t\t\t\tmax normalized frequency: %.2f" % max_freq
+#        print "*"
+#    else:
+    print "normalized frequencies:"
+    print "(ID: freq)"
+    i = 0
+    for freq in tmp_freqs:
+        read = tmp_reads[i]
+        normalized_freq = freq/float(sum(tmp_freqs))*100
+        print "%s: %.2f" % (read, normalized_freq)
+        i += 1
+    print "*"
         
         
 if __name__ == '__main__':
