@@ -25,23 +25,9 @@ http://www.ncbi.nlm.nih.gov/IEB/ToolBox/CPP_DOC/
 INSTALLATION:
 ************
 
-Download the git repository and change to the extracted directory. Then:
+Download the git repository and change to the extracted directory, then use 
+make:
 
-1. Compile the quick-cliques package:
-
-cd quick-cliques-1.0
-make
-cd ..
-
-2. Compile the SFO package:
-
-cd sfo_2011_5
-make
-cd ..
-
-3. Compile the SAVAGE source code:
-
-mkdir bin
-cd src
-g++ -Wall -fopenmp -std=c++11 -g -O0 ViralQuasispecies.cpp FastqStorage.cpp EdgeCalculator.cpp OverlapGraph.cpp GraphAlgos.cpp SRBuilder.cpp FindNextOverlaps.cpp FindNextOverlaps2.cpp FindNextOverlaps3.cpp -o ../bin/ViralQuasispecies -l boost_timer -l boost_system -l boost_program_options
-src ..
+$ git clone https://jbaaijens@bitbucket.org/jbaaijens/savage.git
+$ cd savage
+$ make
