@@ -1,3 +1,5 @@
+## Synopsis
+
 SAVAGE is a computational tool for reconstructing individual 
 haplotypes of intra-host virus strains (a viral quasispecies) without 
 the need for a high quality reference genome. SAVAGE makes use of 
@@ -10,10 +12,20 @@ Following an iterative scheme, a new overlap assembly algorithm that
 is based on the enumeration of statistically well-calibrated groups 
 of reads/contigs then efficiently reconstructs the individual 
 haplotypes from this overlap graph.
+
+## Motivation
+
+A viral quasispecies, the ensemble of viral strains populating an 
+infected person, can be highly diverse. For optimal assessment of 
+virulence, pathogenesis and therapy selection, determining the 
+haplotypes of the individual strains can play a key role. As many 
+viruses are subject to high mutation and recombination rates, high-
+quality reference genomes are often not available at the time of a 
+new disease outbreak. SAVAGE is able to reconstruct individual 
+haplotypes of the viral quasispecies without the need for a high-
+quality reference genome.
   
-******************************
-REQUIREMENTS and INSTALLATION:
-******************************
+## Dependencies
 
 The SAVAGE program is a combination of C++ code (which has to be 
 compiled) and Python scripts (version 2.6 or later, but not Python 
@@ -31,20 +43,22 @@ also included.
 Stages b and c of the algorithm also require BLAST from the ncbi C++ 
 Toolkit.
 
+## Installation
+
+Make sure you install the boost C++ libraries, OpenMP, and ncbi-blast.
+Then download and enter the repository and type 'make'. 
 Complete installation instructions can be found in the INSTALL file.
 
-*******
-MANUAL:
-*******
+## Manual
 
 Currently, SAVAGE is designed for Illumina MiSeq sequencing reads 
 that have been pre-processed by PEAR (for merging self-overlapping 
 pairs). Thus, the input consists of both single-end and paired-end 
 reads.
 
-SAVAGE offers two modes:
+SAVAGE offers two modes: SAVAGE-ref and SAVAGE-de-novo
 
-A. SAVAGE-ref
+### SAVAGE-ref
 
 This mode constructs the overlap graph of the reads 
 using the pairwise overlaps induced from a read-to-reference 
@@ -79,7 +93,7 @@ To run SAVAGE-ref, complete the following steps:
                         --singles <singles.sam>
                         --paired <paired.sam>
 
-B. SAVAGE-de-novo
+### SAVAGE-de-novo
 
 This mode does not rely on any reference sequence; instead, it 
 computes all approximate suffix-prefix overlaps among the reads 
@@ -103,9 +117,7 @@ information:
        python savage.py
 
 
-*********************
-FREQUENCY ESTIMATION:
-*********************
+## Frequency estimation
 
 We provide a frequency estimation procedure which computes for 
 every contig an estimate of its relative frequency. This procedure 
@@ -125,9 +137,7 @@ only contigs of at least this length will be considered during
 frequency estimation.
 
 
-********
-Example:
-********
+## Example
 
 The directory example/ contains a small working example, with both 
 single- and paired-end reads contained in pear_reads/ and alignments
@@ -156,9 +166,7 @@ A) frequencies.ref.txt
 B) frequencies.denovo.txt
 
 
-****************
-General remarks:
-****************
+## General remarks
 
 SAVAGE expects as input single- and/or paired-end reads. For the 
 paired-end reads, it assumes they are stored both on the same strand 
@@ -193,11 +201,23 @@ run SAVAGE Stages b and c:
 
        python savage.py --no_stage_a 
                         --contigs <combined_contigs.fastq>
+                        
+To apply frequency estimation on the resulting contigs (stage b or c)
+it is necessary to provide the subreads files (subreads.txt) for each
+of the stage a results. Use the option --split-subreads as follows:
+
+    python ../freq_est.py --fas stage_b/singles.fastq 
+                          --subreads stage_b/subreads.txt 
+                          --min_len 0
+                          --split-subreads <subreads files>
+                          
+<subreads files> must be the list of paths to subreads files, 
+separated by a ',' (no spaces!). It is very important that the subreads 
+files are provided in the same order in which the corresponding fastq 
+files were concatenated after stage a.
 
 
-********
-CONTACT:
-********    
+## Contact   
 
 In case of any questions or issues, please contact Jasmijn Baaijens: 
 <lastname> AT cwi DOT nl

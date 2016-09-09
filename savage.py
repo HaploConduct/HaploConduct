@@ -132,7 +132,7 @@ def main():
             subprocess.check_call("python %s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Stage a skipped"
 
-    if args.stage_b:
+    if args.stage_b and args.stage_a:
         print "**************"
         print "SAVAGE Stage b"
         # Run SAVAGE Stage b: build maximized contigs
@@ -145,7 +145,22 @@ def main():
         subprocess.check_call("python %s/scripts/pipeline_stages_b_c.py --fastq ../stage_a/singles.fastq --overlaps ../contig_overlaps.txt --transitive_edges 1 --merge_contigs 0 --min_qual 0.999 --use_subreads" % base_path, stdout=FNULL, shell=True)
         os.chdir('..')
         subprocess.check_call("python %s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
-        print "Done!"  
+        print "Done!"
+    elif args.stage_b: # (but not stage a)
+        print "**************"
+        print "SAVAGE Stage b"
+        # Run SAVAGE Stage b: build maximized contigs
+        subprocess.check_call("makeblastdb -in contigs_stage_a.fasta -dbtype nucl -out contigs_db", shell=True)
+        subprocess.check_call("blastn -db contigs_db -query contigs_stage_a.fasta -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send qlen slen' -out blastout_contigs.tsv -perc_identity 98", shell=True)
+        subprocess.check_call("python %s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out contig_overlaps.txt --min_overlap_len 50" % base_path, shell=True)
+        subprocess.call(['mkdir', 'stage_b'], stdout=FNULL, stderr=FNULL)
+        subprocess.check_call("cp stage_a/subreads.txt stage_b/subreads.txt", shell=True)
+        os.chdir('stage_b')
+        subprocess.check_call("python %s/scripts/pipeline_stages_b_c.py --fastq ../stage_a/singles.fastq --overlaps ../contig_overlaps.txt --transitive_edges 1 --merge_contigs 0 --min_qual 0.999" % base_path, stdout=FNULL, shell=True) # note: not using stage a subreads
+        os.chdir('..')
+        subprocess.check_call("python %s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
+        print "Done!"
+        print "Note: stage a was skipped, so stage b did not use the subread information from stage a. For frequency estimation of stage b or stage c contigs, make sure to provide the subreads files from stage a (see the README)."
     else:
         print "Stage b skipped"
 
