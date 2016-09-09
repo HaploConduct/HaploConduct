@@ -58,7 +58,9 @@ that have been pre-processed by [PEAR](http://sco.h-its.org/exelixis/web/softwar
 pairs). Thus, the input consists of both single-end and paired-end 
 reads.
 
-SAVAGE offers two modes: SAVAGE-ref and SAVAGE-de-novo
+SAVAGE offers two modes: SAVAGE-ref and SAVAGE-de-novo. SAVAGE-ref is the
+more efficient option, while SAVAGE-de-novo gives slightly better results.
+Instructions for using these modes can be found below.
 
 ### SAVAGE-ref
 
@@ -75,23 +77,28 @@ accurate de novo viral quasispecies assemblies.
 
 To run SAVAGE-ref, complete the following steps:
 
-1. Download or assemble a reference genome `reference.fasta`
+1. Download or assemble a reference genome `reference.fasta`.
 2. Create a directory `my_directory` where you want to store the 
 results, and add a folder `pear_reads/` containing
+
 ```bash
 singles.fastq
 paired1.fastq 
 paired2.fastq
 ```
+
 Make sure that the read identifiers are numerical, with IDs 0 to 
-`num_singles-1` for the single-end reads and IDs `num_singles` 
-to `num_singles+num_pairs-1` for the paired-end reads.
+num\_singles-1 for the single-end reads and IDs num\_singles 
+to num\_singles+num\_pairs-1 for the paired-end reads.
+
 3. Align the single- and paired-end reads seperately to this reference, 
-for example using [bwa-mem](), obtaining 
+for example using [bwa-mem](http://bio-bwa.sourceforge.net/), obtaining 
+
 ```bash
 singles.sam
 paired.sam
 ```
+
 4. Now you're ready to run SAVAGE: enter `my_directory` and run
 ```python
 python savage.py --ref reference.fasta --singles singles.sam --paired paired.sam
@@ -108,19 +115,19 @@ SAVAGE-de-novo is very easy to run, since it doesn't use any prior
 information:
 
 1. Create a directory `my_directory` where you want to store the 
-results, and add a folder `pear_reads/` containing
-```bash
-singles.fastq
-paired1.fastq 
-paired2.fastq
-```
-Make sure that the read identifiers are numerical, with IDs 0 to 
-`num_singles-1` for the single-end reads and IDs `num_singles` 
-to `num_singles+num_pairs-1` for the paired-end reads.
+    results, and add a folder `pear_reads/` containing
+    ```bash
+    singles.fastq
+    paired1.fastq 
+    paired2.fastq
+    ```
+    Make sure that the read identifiers are numerical, with IDs 0 to 
+    `num_singles-1` for the single-end reads and IDs `num_singles` 
+    to `num_singles+num_pairs-1` for the paired-end reads.
 2. Now you're ready to run SAVAGE: enter `my_directory` and run
-```python
-python savage.py
-```
+    ```python
+    python savage.py
+    ```
 
 ## Frequency estimation
 
@@ -134,7 +141,7 @@ have been maximally extended.
 The frequency estimation can be applied as follows:
 
 ```python
-python freq\_est.py --fas contigs.fastq --subreads subreads.txt --min\_len 5000
+python freq_est.py --fas contigs.fastq --subreads subreads.txt --min_len 5000
 ```
 
 The parameter `--min_len` can be set to any non-negative integer; 
@@ -166,7 +173,7 @@ python savage.py
 Then apply the frequency estimation procedure on Stage b contigs:
 
 ```python
-python ../freq\_est.py --fas stage\_b/singles.fastq --subreads stage\_b/subreads.txt --min\_len 0
+python ../freq_est.py --fas stage_b/singles.fastq --subreads stage_b/subreads.txt --min_len 0
 ```
     
 The desired output of this final procedure is given in the files 
@@ -179,6 +186,8 @@ SAVAGE expects as input single- and/or paired-end reads. For the
 paired-end reads, it assumes they are stored both on the same strand 
 (hence resulting in F-F alignments) as output by [PEAR](http://sco.h-its.org/exelixis/web/software/pear/).
 
+### Algorithm stages
+
 The algorithm proceeds in three stages: 
 * Stage a has the original reads as input and contigs
 * Stage b has these contigs as input and maximally extended contigs 
@@ -186,25 +195,28 @@ The algorithm proceeds in three stages:
 * Stage c (OPTIONAL) merges maximized contigs into master strain 
   sequences.
 By default, SAVAGE runs all three stages, but the output of Stage b 
-(`contigs\_stage\_b.fasta`) is considered as the viral quasispecies 
+(`contigs_stage_b.fasta`) is considered as the viral quasispecies 
 assembly. 
 
 SAVAGE performs error correction on the reads in the first iteration 
 of Stage a, which has been optimized for a coverage of 500x-1000x. 
+
+### High coverage data sets
+
 In case of (ultra-)deep sequencing data, exceeding a coverage of 
 1000x, it is currently required to split the data into patches of 
 500x. Then, on each of these subsets, run only SAVAGE Stage a:
 
 ```python
-python savage.py --ref reference.fasta --singles singles.sam --paired paired.sam --no\_stage\_b --no\_stage\_c
+python savage.py --ref reference.fasta --singles singles.sam --paired paired.sam --no_stage_b --no_stage_c
 ```
                         
-Then concatenate the resulting contig files (`stage\_a/singles.fastq`) 
-into a file `combined\_contigs.fastq`. Now enter `my\_directory` and 
+Then concatenate the resulting contig files (`stage_a/singles.fastq`) 
+into a file `combined_contigs.fastq`. Now enter `my_directory` and 
 run SAVAGE Stages b and c:
 
 ```python
-python savage.py --no\_stage\_a --contigs combined\_contigs.fastq
+python savage.py --no_stage_a --contigs combined_contigs.fastq
 ```
                         
 To apply frequency estimation on the resulting contigs (Stage b or c)
@@ -212,7 +224,7 @@ it is necessary to provide the subreads files (`subreads.txt`) for each
 of the Stage a results. Use the option `--split-subreads` as follows:
 
 ```python
-python ../freq\_est.py --fas stage\_b/singles.fastq --subreads stage\_b/subreads.txt --min\_len 0 --split-subreads /path/to/subreads1.txt,...,/path/to/subreadsk.txt
+python ../freq_est.py --fas stage_b/singles.fastq --subreads stage_b/subreads.txt --min_len 0 --split-subreads /path/to/subreads1.txt,...,/path/to/subreadsk.txt
 ```
                           
 The subreads files must be given as a list of paths to subreads files, 
