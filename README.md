@@ -79,26 +79,18 @@ To run SAVAGE-ref, complete the following steps:
 
 1. Download or assemble a reference genome `reference.fasta`.
 2. Create a directory `my_directory` where you want to store the 
-results, and add a folder `pear_reads/` containing
-
-```bash
-singles.fastq
-paired1.fastq 
-paired2.fastq
-```
-
-Make sure that the read identifiers are numerical, with IDs 0 to 
-num\_singles-1 for the single-end reads and IDs num\_singles 
-to num\_singles+num\_pairs-1 for the paired-end reads.
-
+    results, and add a folder `pear_reads/` containing
+    ```
+    singles.fastq,
+    paired1.fastq,
+    paired2.fastq.
+    ```
+    Make sure that the read identifiers are numerical, with IDs 0 to 
+    num\_singles-1 for the single-end reads and IDs num\_singles 
+    to num\_singles+num\_pairs-1 for the paired-end reads.
 3. Align the single- and paired-end reads seperately to this reference, 
-for example using [bwa-mem](http://bio-bwa.sourceforge.net/), obtaining 
-
-```bash
-singles.sam
-paired.sam
-```
-
+    for example using [bwa-mem](http://bio-bwa.sourceforge.net/), obtaining 
+    `singles.sam` and `paired.sam`.
 4. Now you're ready to run SAVAGE: enter `my_directory` and run
 ```python
 python savage.py --ref reference.fasta --singles singles.sam --paired paired.sam
@@ -116,18 +108,18 @@ information:
 
 1. Create a directory `my_directory` where you want to store the 
     results, and add a folder `pear_reads/` containing
-    ```bash
-    singles.fastq
-    paired1.fastq 
-    paired2.fastq
+    ```
+    singles.fastq,
+    paired1.fastq,
+    paired2.fastq.
     ```
     Make sure that the read identifiers are numerical, with IDs 0 to 
-    `num_singles-1` for the single-end reads and IDs `num_singles` 
-    to `num_singles+num_pairs-1` for the paired-end reads.
+    num\_singles-1 for the single-end reads and IDs num\_singles 
+    to num\_singles+num\_pairs-1 for the paired-end reads.
 2. Now you're ready to run SAVAGE: enter `my_directory` and run
-    ```python
-    python savage.py
-    ```
+```python
+python savage.py
+```
 
 ## Frequency estimation
 
