@@ -13,7 +13,7 @@ __author__ = "Jasmijn Baaijens"
 usage = """%prog [options]
 
 Create an overlaps file for viral quasispecies assembly
-based on the alignments to a reference genome. Assumes a
+based on the alignments to a reference genome. Assumes an
 interleaved sam file as input.
 
 """
@@ -245,33 +245,8 @@ def get_key_s(record):
     
 def get_key_p(record):
     return record[0][3]    
-
-def main():
-    parser = ArgumentParser(description=usage)
-    parser.add_argument('--sam_s', dest='infile_s', type=str)
-    parser.add_argument('--sam_p', dest='infile_p', type=str)
-    parser.add_argument('--ref', dest='reference', type=str)
-    parser.add_argument('--out', dest='outfile', type=str)
-    parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=0)
-    args = parser.parse_args()
-
-    if not ((args.infile_s or args.infile_p) and args.outfile):
-        print "Specify input and output files."
-        parser.print_help()
-        
-    ref = ""
-    with open(args.reference, 'r') as f:
-        lines = f.readlines()
-        ref = lines[1].strip('\n')
-        
-    if args.infile_s:
-        sam_records_s = read_sam_to_list(args.infile_s)
-    else:
-        sam_records_s = []
-    if args.infile_p:
-        sam_records_p = read_paired_sam_to_list(args.infile_p)
-    else:
-        sam_records_p = []
+    
+def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
     readcount_s = len(sam_records_s)
     readcount_p = len(sam_records_p)
     
@@ -312,7 +287,7 @@ def main():
     active_reads = []
     overlap_types = [0, 0, 0, 0] # [++, +-, -+, --]
     count_problems = 0
-    with open(args.outfile, 'w') as outfile:
+    with open(outfile, 'a') as outfile:
         i = 0
         cur_pos = 0
         overlap_count = 0
@@ -321,7 +296,7 @@ def main():
             new_pos = merged_records[i][0]
             assert new_pos >= cur_pos # records have to be sorted
             cur_pos = new_pos
-            [overlaps, active_reads, subcount_problems] = get_overlaps(cur_read, active_reads, cur_pos, args.min_overlap_len)
+            [overlaps, active_reads, subcount_problems] = get_overlaps(cur_read, active_reads, cur_pos, min_overlap_len)
             count_problems += subcount_problems
             active_reads.append(cur_read)
             for line in overlaps:
@@ -343,6 +318,78 @@ def main():
     print "... of which +-: ", overlap_types[1]
     print "... of which -+: ", overlap_types[2]
     print "... of which --: ", overlap_types[3]
+    
+    
+def main():
+    parser = ArgumentParser(description=usage)
+    parser.add_argument('--sam_s', dest='infile_s', type=str)
+    parser.add_argument('--sam_p', dest='infile_p', type=str)
+    parser.add_argument('--ref', dest='reference', type=str)
+    parser.add_argument('--out', dest='outfile', type=str)
+    parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=0)
+    args = parser.parse_args()
+
+    if not ((args.infile_s or args.infile_p) and args.outfile):
+        print "Specify input and output files."
+        parser.print_help()
+        
+    try:
+        os.remove(args.outfile)
+    except OSError:
+        pass
+        
+    ref_list = []
+    ref_dict = {}
+    with open(args.reference, 'r') as f:
+        lines = f.readlines()
+        if len(lines) == 0:
+            print "empty reference fasta... exiting."
+        elif len(lines) % 2 != 0:
+            print "invalid reference fasta... exiting."
+        ref_id = ""
+        ref_seq = ""
+        idx = 0
+        for i in xrange(len(lines)):
+            if i%2 == 0:
+                id_line = lines[i].strip('\n')
+                ref_id = id_line.split()[0][1:]
+                print ref_id
+            elif i%2 == 1:
+                ref_seq = lines[i].strip('\n')
+                ref_list.append(ref_seq)
+                ref_dict[ref_id] = idx
+                idx += 1
+        
+    if args.infile_s:
+        sam_records_s = read_sam_to_list(args.infile_s)
+    else:
+        sam_records_s = []
+    if args.infile_p:
+        sam_records_p = read_paired_sam_to_list(args.infile_p)
+    else:
+        sam_records_p = []
+        
+    # split sam records (single-end) per reference genome
+    sam_records_s_per_ref = [[] for i in xrange(len(ref_list))]
+    for record in sam_records_s:
+        ref_id = record[2]
+        ref_idx = ref_dict[ref_id]
+        sam_records_s_per_ref[ref_idx].append(record)
+          
+    # split sam records (paired-end) per reference genome 
+    sam_records_p_per_ref = [[] for i in xrange(len(ref_list))]
+    for record in sam_records_p:
+        ref_id = record[0][2]
+        ref_idx = ref_dict[ref_id]
+        sam_records_p_per_ref[ref_idx].append(record)
+        
+    # find overlaps per reference genome 
+    for idx in xrange(len(ref_list)):
+        ref_seq = ref_list[idx]
+        sam_singles = sam_records_s_per_ref[idx]
+        sam_paired = sam_records_p_per_ref[idx]
+        process_sam(ref_seq, sam_singles, sam_paired, args.outfile, args.min_overlap_len)
+       
 
 if __name__ == '__main__':
     sys.exit(main())
