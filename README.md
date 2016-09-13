@@ -1,3 +1,5 @@
+# SAVAGE: Strain Aware VirAl GEnome assembly
+
 ## Synopsis
 
 SAVAGE is a computational tool for reconstructing individual 
@@ -197,10 +199,14 @@ of Stage a, which has been optimized for a coverage of 500x-1000x.
 
 In case of (ultra-)deep sequencing data, exceeding a coverage of 
 1000x, it is currently required to split the data into patches of 
-500x. Then, on each of these subsets, run only SAVAGE Stage a:
+500x. A pipeline for processing such data sets will appear soon; 
+until then, proceed as follows:
+
+Split the data set into patches of 500x-1000x coverage and, on each of 
+these subsets, run only SAVAGE Stage a:
 
 ```python
-python savage.py --ref reference.fasta --singles singles.sam --paired paired.sam --no_stage_b --no_stage_c
+python savage.py --no_stage_b --no_stage_c
 ```
                         
 Then concatenate the resulting contig files (`stage_a/singles.fastq`) 
