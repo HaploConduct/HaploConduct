@@ -303,7 +303,8 @@ int main(int argc, char *argv[])
     
     if (program_settings.cliques) {
         // Process the resulting overlap graph: run quick-cliques degeneracy for enumerating all maximal cliques
-        std::string command = program_settings.base_path + "/quick-cliques-1.0/bin/degeneracy <" + program_settings.output_dir + "graph.txt > " + program_settings.output_dir + "cliques.txt";
+//        std::string command = program_settings.base_path + "/quick-cliques-1.0/bin/degeneracy <" + program_settings.output_dir + "graph.txt > " + program_settings.output_dir + "cliques.txt";
+        std::string command = program_settings.base_path + "/quick-cliques/bin/qc --algorithm=degeneracy --input-file=" + program_settings.output_dir + "graph.txt > " + program_settings.output_dir + "cliques.txt";
         system(command.c_str()); 
     }
 //    return 0;

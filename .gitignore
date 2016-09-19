@@ -8,8 +8,8 @@ example/*
 !example/singles.sam
 !example/paired.sam
 !example/pear_reads/
-quick-cliques-1.0/bin/
-quick-cliques-1.0/obj/
+quick-cliques/bin/
+quick-cliques/obj/
 sfo_2011_5/*.o
 sfo_2011_5/*.a
 sfo_2011_5/*/*.o

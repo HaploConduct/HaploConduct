@@ -1,7 +1,7 @@
 SRC_DIR    = src
 BIN_DIR    = bin
 SFO_DIR    = sfo_2011_5
-QC_DIR     = quick-cliques-1.0
+QC_DIR     = quick-cliques
 
 CC = g++
 CPPFLAGS = -Wall -fopenmp -std=c++11 -g -O0
