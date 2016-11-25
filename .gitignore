@@ -7,7 +7,7 @@ example/*
 !example/hiv-ref.fasta
 !example/singles.sam
 !example/paired.sam
-!example/pear_reads/
+!example/input_fas/
 quick-cliques/bin/
 quick-cliques/obj/
 quick-cliques/build/
