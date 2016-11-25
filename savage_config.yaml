@@ -1,31 +1,27 @@
 # please enter the full path to the SAVAGE root directory
 SAVAGE_DIR:
-    '~/git_repos/private-savage'
+    '~/git_repos/savage'
 
 # Choose the mode in which you want to run SAVAGE: de novo or reference guided?
 DE_NOVO:
-    True # set to True for de novo mode, False for ad-hoc reference guided mode
+    True # set to True for de novo mode, False for reference guided mode
 REF: # fasta file containing reference genome; only used in reference guided mode
-    "/home/jasmijn/git_repos/private-savage/example_unmerged/test/test_ref.fasta"
+    "~/git_repos/savage/example/hiv-ref.fasta"
 
-MIN_OVERLAP_LEN:
+MIN_OVERLAP_LEN: # min_overlap_len parameter of SAVAGE
     200
-NUM_THREADS:
+NUM_THREADS: # Number of cores allowed for parallel processing of SAVAGE
     4
-MIN_LEN_FREQ_EST:
+MIN_LEN_FREQ_EST: # min_len parameter for frequency estimation
     1000
-
-# Are you using single-end or paired-end reads? It is recommended not to use both.
-SINGLE_END_READS:
-    False # set to True for single-end reads, False for paired-end reads
 
 # Please enter the paths (full or from the current directory) to your input fastq files
 SINGLES_FILE: # enter empty string "" if absent
     "../input/singles.fastq"
 PAIRED1_FILE: # enter empty string "" if absent
-    "../input/forward.fastq"
+    "../input/paired1.fastq"
 PAIRED2_FILE: # enter empty string "" if absent
-    "../input/reverse.fastq"
+    "../input/paired2.fastq"
 
 # Set a threshold for the mismatch rate allowed when building master strains (stage c)
 MERGE_CONTIGS:
