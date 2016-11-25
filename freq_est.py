@@ -11,9 +11,12 @@ from sets import Set
 
 __author__ = "Jasmijn Baaijens"
 
-usage = """%prog [options]
+usage = """
 
-Estimate relative frequencies for the input contigs.
+Estimate relative frequencies for contigs produced by SAVAGE.
+
+Make sure to run SAVAGE with the option --use_subreads for better
+frequency estimates of stage b/c contigs.
 
 """
 
@@ -26,13 +29,11 @@ def print_string(filename, string):
 
 def main():
     parser = ArgumentParser(description=usage)
-    parser.add_argument('--fas', dest='contigs_file', type=str, required=True)
-    parser.add_argument('--subreads', dest='subreads_file', type=str, required=True)
-    parser.add_argument('--split-subreads', dest='split_subreads_file', type=str, required=False)
-    parser.add_argument('--out', dest='out_file', type=str, default="", help="write output to file; if not specified, output is written to stdout.")
-    parser.add_argument('--min_len', dest='min_len', type=int, default=0)
-#    parser.add_argument('--min_output_len', dest='min_output_len', type=int, default=0)
-#    parser.add_argument('--genome_len', dest='genome_len', type=int)
+    parser.add_argument('--fas', dest='contigs_file', type=str, required=True, help='fastq or fasta file containing contigs')
+    parser.add_argument('--subreads', dest='subreads_file', type=str, required=True, help='subreads file produced by savage, corresponding to the fastq file provided')
+    parser.add_argument('--out', dest='out_file', type=str, default="", help='write output to file; if not specified, output is written to stdout.')
+    parser.add_argument('--min_len', dest='min_len', type=int, default=0, help='only consider contigs at least this length')
+    parser.add_argument('--split_subreads', dest='split_subreads_file', type=str, help='use subreads files from separate patches; instead, better use the provided Snakefile which are already combines the subreads files from different patches')
     args = parser.parse_args()
 
     if args.out_file != "" and os.path.isfile(args.out_file):
