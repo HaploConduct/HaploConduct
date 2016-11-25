@@ -315,7 +315,7 @@ def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
                     overlap_types[3] += 1
                 outfile.write('\t'.join(line) + '\n')
             i += 1
-    if count_problems > 0:
+    if count_problems > 0 and verbose:
         print "# cases where overlap_pos2 < 0: ", count_problems
     if verbose:
         print "Total number of overlaps found: ", overlap_count
