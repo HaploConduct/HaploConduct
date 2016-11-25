@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : OverlapGraph.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Construct an overlap graph for viral quasispecies assembly
@@ -14,7 +14,7 @@
 #include <stdio.h>
 #include <boost/timer.hpp>
 #include <map>
- 
+
 #include "OverlapGraph.h"
 
 
@@ -23,13 +23,13 @@ void OverlapGraph::getGraphStats() {
     int ps_count[5] = {0};
     int sp_count[5] = {0};
     int ss_count[5] = {0};
-    
+
     std::map<std::string, int> ori_to_index;
     ori_to_index["++"] = 0;
     ori_to_index["+-"] = 1;
     ori_to_index["-+"] = 2;
     ori_to_index["--"] = 3;
-    
+
     std::vector< std::list<Edge> >::const_iterator it;
     for (it = adj_out.begin(); it != adj_out.end(); it++) {
         std::list<Edge>::const_iterator it2;
@@ -46,7 +46,7 @@ void OverlapGraph::getGraphStats() {
             else
                 ori = "--";
             int index = ori_to_index[ori];
-            
+
             if (type1 && type2) {
                 pp_count[index]++;
                 pp_count[4]++; // keep total pp-count
@@ -69,12 +69,14 @@ void OverlapGraph::getGraphStats() {
             }
         }
     }
-    std::cout << "\nEdge statistics:\n";
-    std::cout << "\t++\t+-\t-+\t--\tTotal\n";
-    std::cout << "P-P\t" << pp_count[0] << "\t" << pp_count[1] << "\t" << pp_count[2] << "\t" << pp_count[3] << "\t" << pp_count[4] << "\n";
-    std::cout << "P-S\t" << ps_count[0] << "\t" << ps_count[1] << "\t" << ps_count[2] << "\t" << ps_count[3] << "\t" << ps_count[4] << "\n";
-    std::cout << "S-P\t" << sp_count[0] << "\t" << sp_count[1] << "\t" << sp_count[2] << "\t" << sp_count[3] << "\t" << sp_count[4] << "\n";
-    std::cout << "S-S\t" << ss_count[0] << "\t" << ss_count[1] << "\t" << ss_count[2] << "\t" << ss_count[3] << "\t" << ss_count[4] << "\n\n";
+    if (program_settings.verbose) {
+        std::cout << "\nEdge statistics:\n";
+        std::cout << "\t++\t+-\t-+\t--\tTotal\n";
+        std::cout << "P-P\t" << pp_count[0] << "\t" << pp_count[1] << "\t" << pp_count[2] << "\t" << pp_count[3] << "\t" << pp_count[4] << "\n";
+        std::cout << "P-S\t" << ps_count[0] << "\t" << ps_count[1] << "\t" << ps_count[2] << "\t" << ps_count[3] << "\t" << ps_count[4] << "\n";
+        std::cout << "S-P\t" << sp_count[0] << "\t" << sp_count[1] << "\t" << sp_count[2] << "\t" << sp_count[3] << "\t" << sp_count[4] << "\n";
+        std::cout << "S-S\t" << ss_count[0] << "\t" << ss_count[1] << "\t" << ss_count[2] << "\t" << ss_count[3] << "\t" << ss_count[4] << "\n\n";
+    }
 }
 
 
@@ -82,13 +84,13 @@ bool OverlapGraph::getOrientation(node_id_t v) {
     assert (v < vertex_orientations.size());
     return vertex_orientations[v]; // 1 if forward, 0 if reverse
 }
-    
+
 node_id_t OverlapGraph::addVertex(read_id_t read_ID) {
     vertex_to_read.push_back(read_ID);
     vertex_count++;
     return vertex_to_read.size()-1;
 }
- 
+
 void OverlapGraph::addEdge(Edge edge) {
 //    std::cout << "In OverlapGraph::addEdge\n";
     node_id_t v = edge.get_vertex(1);
@@ -98,16 +100,18 @@ void OverlapGraph::addEdge(Edge edge) {
     edge_count++;
 }
 
- 
-void OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
+
+Edge OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
 //    std::cout << "Removing edge " << v << " to " << w << "... ";
     bool found = false;
     std::list< Edge > adj_list_v = adj_out.at(v);
 	std::list< Edge >::iterator it = adj_out.at(v).begin();
 	assert (adj_list_v.size() > 0);
+    Edge edge;
 	for (node_id_t i = 0; i < adj_list_v.size(); i++) {
 //	    std::cout << it->get_vertex(2) << " ";
 		if (it->get_vertex(2) == w) {
+            edge = *it;
 		    int s1 = adj_out.at(v).size();
 			it = adj_out.at(v).erase(it);
 			int s2 = adj_out.at(v).size();
@@ -139,6 +143,7 @@ void OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
 	        it2++;
 	    }
     }
+    return edge;
 }
 
 
@@ -189,11 +194,11 @@ Edge* OverlapGraph::getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed) 
     std::cout << v << " " << w << " Edge not found. Exiting.\n";
     exit(1);
 }
- 
+
 unsigned int OverlapGraph::getEdgeCount() {
     return edge_count;
 }
- 
+
 unsigned int OverlapGraph::getBackEdgeCount() {
     return backedge_count;
 }
@@ -207,7 +212,9 @@ void OverlapGraph::writeGraphToFile() {
     std::string filename = PATH + "graph.txt";
     std::string tmpfile1 = PATH + "tmp_head.txt";
     std::string tmpfile2 = PATH + "tmp_graph.txt";
-    std::cout << "WriteGraphToFile " << filename << "\n";
+    if (program_settings.verbose) {
+        std::cout << "WriteGraphToFile " << filename << "\n";
+    }
     remove(filename.c_str());
     std::ofstream graph_file(tmpfile2);
 //    graph_file << std::to_string(vertex_count) + "\n";
@@ -217,7 +224,9 @@ void OverlapGraph::writeGraphToFile() {
 	node_id_t i = 0;
 	node_id_t j;
 	unsigned int count = 0;
-	std::cout << "count inclusion vertices: " << inclusions.count() << "\n";
+    if (program_settings.verbose) {
+        std::cout << "count inclusion vertices: " << inclusions.count() << "\n";
+    }
 	for (it2 = adj_out.begin(); it2 != adj_out.end(); it2++) {
 	    if (inclusions[i] == 1) {
 	        continue;
@@ -232,18 +241,18 @@ void OverlapGraph::writeGraphToFile() {
 	        if (j < i && checkEdge(j, i, false) > 0) {
 	            continue;
 	        }
-	        // write both forward and reverse edge to the graph file, since we  
+	        // write both forward and reverse edge to the graph file, since we
 	        // consider the graph as undirected when enumerating maximal cliques.
 		    std::string line1 = std::to_string(i) + "," + std::to_string(j) + "\n"; // forward edge
 		    std::string line2 = std::to_string(j) + "," + std::to_string(i) + "\n"; // reverse edge
-		    graph_file << line1; 
+		    graph_file << line1;
 		    graph_file << line2;
 		    count++;
 	    }
 	    i++;
     }
     graph_file.close();
-    // write head to final graph file 
+    // write head to final graph file
     std::ofstream head_file(tmpfile1);
     head_file << std::to_string(vertex_count) + "\n"; // number of vertices
     head_file << std::to_string(2*count) + "\n"; // number of edge lines
@@ -257,7 +266,9 @@ void OverlapGraph::writeGraphToFile() {
 
 void OverlapGraph::writeDiGraphToFile() { // store directed edges
     std::string filename = PATH + "digraph.txt";
-    std::cout << "WriteDiGraphToFile " << filename << "\n";
+    if (program_settings.verbose) {
+        std::cout << "WriteDiGraphToFile " << filename << "\n";
+    }
     remove(filename.c_str());
     std::ofstream graph_file(filename);
 	std::list< Edge >::const_iterator it1;
@@ -279,7 +290,9 @@ void OverlapGraph::writeDiGraphToFile() { // store directed edges
 
 void OverlapGraph::write2FASTG() { // store directed edges
     std::string filename = PATH + "graph.fastg";
-    std::cout << "Write2FASTG " << filename << "\n";
+    if (program_settings.verbose) {
+        std::cout << "Write2FASTG " << filename << "\n";
+    }
     remove(filename.c_str());
     std::ofstream graph_file(filename);
 	std::list< Edge >::const_iterator it1;
@@ -333,7 +346,10 @@ void OverlapGraph::write2FASTG() { // store directed edges
 
 void OverlapGraph::write2GFA() { // store directed edges
     std::string filename = PATH + "graph.gfa";
-    std::cout << "Write2GFA " << filename << "\n";
+    if (program_settings.verbose) {
+        std::cout << "Write2GFA " << filename << "\n";
+        std::cout << "Note: currently only S-S edges are written to GFA." << "\n";
+    }
     remove(filename.c_str());
     std::ofstream graph_file(filename);
 	std::list< Edge >::const_iterator it1;
@@ -341,7 +357,7 @@ void OverlapGraph::write2GFA() { // store directed edges
 	graph_file << "H\tVN:Z:1.0\n"; // write GFA header
 	// write a segment line for every node
 	// write a link line for every edge without containment
-	// write a containment line for every containment edge  
+	// write a containment line for every containment edge
 	node_id_t i = 0;
 	node_id_t j;
     unsigned int L_count = 0;
@@ -376,7 +392,7 @@ void OverlapGraph::write2GFA() { // store directed edges
 	        assert (j != i);
 	        // only add edges between single-end reads:
 	        if (j < singlecount || (j >= readcount && j < (readcount + singlecount))) {
-	            int overlap_len = it1->get_len();
+	            int overlap_len = it1->get_len(0);
 	            // check if the overlap is fully contained
 	            std::string edge_line;
 	            if (it1->get_perc() < 100) { // not fully contained
@@ -385,9 +401,11 @@ void OverlapGraph::write2GFA() { // store directed edges
 	                L_count++;
 	            }
 	            else { // fully contained
-	                edge_line = "C\t" + std::to_string(i) + "\t+\t" + std::to_string(j) + "\t+\t";
-	                int pos = it1->get_pos(1);
-	                edge_line.append(std::to_string(pos) + "\t" + std::to_string(overlap_len) + "M\n");
+                	edge_line = "L\t" + std::to_string(i) + "\t+\t" + std::to_string(j) + "\t+\t";
+	                edge_line.append(std::to_string(overlap_len) + "M\n");
+//	                edge_line = "C\t" + std::to_string(i) + "\t+\t" + std::to_string(j) + "\t+\t";
+//                    int pos = it1->get_pos(1);
+//	                edge_line.append(std::to_string(pos) + "\t" + std::to_string(overlap_len) + "M\n");
 	                C_count++;
 	            }
 	            graph_file << edge_line;
@@ -396,14 +414,16 @@ void OverlapGraph::write2GFA() { // store directed edges
 	    i++;
     }
     graph_file.close();
-    std::cout << "L_count = " << L_count << "\n";
-    std::cout << "C_count = " << C_count << "\n";
-    std::cout << "Total count = " << L_count + C_count << "\n";
+    if (program_settings.verbose) {
+        std::cout << "L_count = " << L_count << "\n";
+        std::cout << "C_count = " << C_count << "\n";
+        std::cout << "Total count = " << L_count + C_count << "\n";
+    }
 }
 
 
-/* Write cycle edge found to file cycles.txt 
- */ 
+/* Write cycle edge found to file cycles.txt
+ */
 void OverlapGraph::reportCycle(node_id_t u, node_id_t v, bool remove) {
 //    std::cout << "reporting cycle...\n" << u << " to " << v << "\n";
     std::ofstream cycle_file;
@@ -413,13 +433,14 @@ void OverlapGraph::reportCycle(node_id_t u, node_id_t v, bool remove) {
         exit(1);
     }
     if (remove) {
-        removeEdge(u, v);
+        Edge edge = removeEdge(u, v);
+        branching_edges.push_back(edge);
     }
     cycle_file << u << "\t" << v << std::endl;
     cycle_file.close();
 }
 
- 
+
 void OverlapGraph::printAdjacencyLists() {
     std::cout << "Adjacency lists of outgoing edges: \n";
     std::list< Edge >::const_iterator it;
@@ -457,7 +478,9 @@ void OverlapGraph::checkDuplicateEdges() {
             prev_it = it;
         }
     }
-    std::cout << "Duplicate edge check done.\n";
+    if (program_settings.verbose) {
+        std::cout << "Duplicate edge check done.\n";
+    }
 }
 
 
@@ -524,7 +547,7 @@ void OverlapGraph::addEquivalentEdges() {
             node_id_t node1 = read_1->get_vertex_id(ori1);
             node_id_t node2 = read_2->get_vertex_id(ori2);
             edge.set_vertices(node1, node2);
-            edge.set_len(edge_it.get_len());
+            edge.set_len(edge_it.get_len(1), edge_it.get_len(2));
             edge.set_perc(edge_it.get_perc());
             // store in extra adjacency list
             extra_edges.at(node1).push_back(edge);
@@ -532,7 +555,7 @@ void OverlapGraph::addEquivalentEdges() {
     }
     // add all extra edges to G
     unsigned int count = 0;
-    unsigned int doubles = 0; 
+    unsigned int doubles = 0;
     for (node_id_t i=0; i < vertex_count; i++) {
         for (auto it : extra_edges.at(i)) {
             // check if edge already exists:
@@ -546,14 +569,14 @@ void OverlapGraph::addEquivalentEdges() {
                 }
             }
             score = checkEdge(v1, v2, /*reverse_allowed*/ false);
-            if (score < 0) { 
+            if (score < 0) {
                 // edge does not yet exist, so add it now
                 addEdge(it);
                 count++;
-            }                   
+            }
             else if (it.get_score() > score) {
-                // new edge scores better, so replace current edge in the graph 
-                int edgecount1 = getEdgeCount();                    
+                // new edge scores better, so replace current edge in the graph
+                int edgecount1 = getEdgeCount();
                 removeEdge(v1, v2);
                 int edgecount2 = getEdgeCount();
                 addEdge(it);
@@ -568,13 +591,17 @@ void OverlapGraph::addEquivalentEdges() {
             }
         }
     }
-    std::cout << "Number of equivalent edges built: " << count << std::endl;
-    std::cout << "Number of duplicates: " << doubles << std::endl;
+    if (program_settings.verbose) {
+        std::cout << "Number of equivalent edges built: " << count << std::endl;
+        std::cout << "Number of duplicates: " << doubles << std::endl;
+    }
 }
 
 
 void OverlapGraph::sortEdges() {
-    std::cout << "sortEdges: sort adjacency lists by non-overlap length" << std::endl;
+    if (program_settings.verbose) {
+        std::cout << "sortEdges: sort adjacency lists by non-overlap length" << std::endl;
+    }
     std::vector< std::list< Edge > > new_adj_out;
     for (auto adj_list : adj_out) {
         // sort adjacency list by non-overlap length

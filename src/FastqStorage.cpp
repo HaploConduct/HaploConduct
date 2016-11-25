@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : FastqStorage.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Read and store the reads from input fastq files
@@ -22,7 +22,7 @@ void FastqStorage::writeIDsToFile(std::string filename) {
     std::string path = PATH + filename;
     std::ofstream id_file(path);
 	std::vector< Read* >::const_iterator it;
-	for (it = m_read_vec.begin(); it != m_read_vec.end(); it++) {   
+	for (it = m_read_vec.begin(); it != m_read_vec.end(); it++) {
 	    std::string line = read_id_to_str((*it)->get_read_id()) + "\n";
 	    id_file << line;
     }
@@ -69,7 +69,7 @@ void FastqStorage::read_new_ids() {
             ss << tupleline;
             getline(ss, new_read_ID, '\t');
             getline(ss, old_read_ID, '\t');
-            if (old_read_ID.at(0) == '>') { 
+            if (old_read_ID.at(0) == '>') {
                 std::string tmp = old_read_ID.substr(1);
                 old_read_ID = tmp;
             }
@@ -82,7 +82,7 @@ void FastqStorage::read_new_ids() {
         }
         new_ids.close();
     }
-    else {   
+    else {
         std::cout << "Unable to open read-to-overlapID file";
         exit(1);
     }
@@ -101,7 +101,7 @@ void FastqStorage::read_singles() {
 	std::string phred;
 	while (it != tmp_fastqvector.end()) {
 		switch (c%4) {
-			case 0: {
+			case 0: { // ID-line
 			    if (*(it->begin()) != '@') {
 			        std::cerr << "Read ID does not start with @. Exiting read_singles.\n";
                     exit(1);
@@ -119,18 +119,18 @@ void FastqStorage::read_singles() {
 				c++;
 				break;
 		    }
-			case 1: {
-			    seq = *it;
+			case 1: { // seq-line
+			    seq = boost::to_upper_copy(*it);
 				it++;
 				c++;
 				break;
 			}
-			case 2: {
+			case 2: { // + line
 				it++;
 				c++;
 				break;
 			}
-			case 3: {
+			case 3: { // qual-line
 			    phred = *it;
 				it++;
 				c++;
@@ -141,12 +141,12 @@ void FastqStorage::read_singles() {
 				    exit(1);
 				}
                 else {
-                    Read current_read(is_paired, is_super, id, seq, "", phred, ""); 
+                    Read current_read(is_paired, is_super, id, seq, "", phred, "");
                     (m_singles_vec).push_back(current_read);
                 }
 				break;
 			}
-		}		
+		}
 	}
 	tmp_fastqvector.clear();
 }
@@ -228,7 +228,7 @@ void FastqStorage::read_pairs() {
 	            }
 				break;
 			}
-		}		
+		}
 	}
 	tmp_fastqvector1.clear();
 	tmp_fastqvector2.clear();

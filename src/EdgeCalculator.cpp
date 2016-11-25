@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : EdgeCalculator.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Compute edges from overlaps file by computing overlap scores
@@ -29,9 +29,9 @@ double EdgeCalculator::score(char nt1, char nt2, double p1, double p2, int & mis
     assert (nt1=='A' || nt1=='T' || nt1=='C' || nt1=='G' || nt1=='N');
     assert (nt2=='A' || nt2=='T' || nt2=='C' || nt2=='G' || nt2=='N');
 //    if (!program_settings.error_correction && nt1 != nt2) {
-//        return 1; 
+//        return 1;
 //    }
-	double p;     
+	double p;
 	if (nt1=='N' || nt2=='N') {
 	    p = 0.25;
         mismatch_count++;
@@ -39,14 +39,14 @@ double EdgeCalculator::score(char nt1, char nt2, double p1, double p2, int & mis
     else if (nt1==nt2) {
         p = (1-p1)*(1-p2) + (p1*p2)/3.0;
     }
-    else { 
+    else {
         p = p1*(1-p2)/3.0 + p2*(1-p1)/3.0 + (2/9.0)*p1*p2;
         mismatch_count++;
     }
     assert (p > 0 && p <= 1);
     // only accept alignment if the probability that the reads come from the same strain is sufficiently high
     if (p < program_settings.mismatch) {
-        return 1; 
+        return 1;
     }
 	double lp = log(p);
 	assert (lp == lp); // checks that lp != NaN
@@ -64,12 +64,12 @@ double EdgeCalculator::phred_to_prob(const int phred) {
 
 // Overlap score computation for 2 given sequences and phred scores, together with the overlap start position
 double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::string score1, std::string score2, const unsigned int pos, double & mismatch_rate)
-{   
+{
 //    std::cout << "In overlap_score..\n";
     assert (seq1.length() > 0);
     assert (seq2.length() > 0);
     assert (score1.length() > 0);
-    assert (score2.length() > 0);    
+    assert (score2.length() > 0);
 //    if (pos >= seq1.length()) {
 //        std::cout << "pos >= seq1.length........\n";
 //        std::cout << pos << " " << seq1.length() << " " << seq2.length() << "\n";
@@ -81,11 +81,11 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
         return 0;
     }
     assert (pos < seq1.length());
-    
+
     if (seq1.length() < program_settings.min_read_len || seq2.length() < program_settings.min_read_len) { // too short; TODO: make parameter setting
         return 0;
     }
-                
+
     unsigned int L1 = seq1.length();
     unsigned int L2 = seq2.length();
     int L = std::min(L1-pos, L2); // overlap length
@@ -102,7 +102,7 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
         probs1.push_back(P1);
         probs2.push_back(P2);
     }
-    
+
     double total_score = 0.0;
     double total_len = 0.0; // count the number of overlapping A/C/T/G nucleotides
     int mismatch_count = 0;
@@ -138,7 +138,7 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
 // Finds the overlap case for score computation of input overlap: collects the correct sequences, then calls overlap_score.
 Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
 {
-//    std::cout << "In compute_overlap\n";    
+//    std::cout << "In compute_overlap\n";
 	read_id_t id1 = overlap.get_id(1);
 	read_id_t id2 = overlap.get_id(2);
 	unsigned int pos1 = overlap.get_pos(1);
@@ -148,7 +148,8 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
 	bool ori2 = (overlap.get_ori(2) == "+") ? true : false;
 	if (!(program_settings.add_duplicates || program_settings.resolve_orientations)) { assert (ori1 && ori2); }
 	int overlap_perc = overlap.get_perc();
-	int overlap_len = overlap.get_len(1) + overlap.get_len(2);
+	int overlap_len1 = overlap.get_len(1);
+	int overlap_len2 = overlap.get_len(2);
     unsigned int index1;
     unsigned int index2;
     Read* read_1;
@@ -180,19 +181,19 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
 	assert (node1 != node2);
 	std::string type1 = read_1->is_paired() ? "p" : "s";
 	std::string type2 = read_2->is_paired() ? "p" : "s";
-/*    
+/*
     Edge nonedge(-1, 0, 0, 0, 0, "", read_1, read_2);
     if (id1 == id2) {
         self_overlap_count++;
         return Edge(0, 0, 0, 0, 0, "", read_1, read_2);
     }
-*/            
+*/
     if (single_count > 0) {
 //        std::cout << "Considering overlaps with single-end reads\n";
         if (type1 == "s" && type2 == "s") {
 //            std::cout << "S-S overlap\n";
             std::string seq1, seq2;
-            std::string phred1, phred2;            
+            std::string phred1, phred2;
             if (ori1) {
                 seq1 = read_1->get_seq(0);
                 phred1 = read_1->get_phred(0);
@@ -200,7 +201,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             else {
                 seq1 = read_1->get_rev_comp(0);
                 phred1 = read_1->get_rev_phred(0);
-            }   
+            }
             if (ori2) {
                 seq2 = read_2->get_seq(0);
                 phred2 = read_2->get_phred(0);
@@ -217,7 +218,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             edge.set_vertices(node1, node2);
             edge.set_extra_pos(pos3);
             edge.set_perc(overlap_perc);
-            edge.set_len(overlap_len);
+            edge.set_len(overlap_len1, 0);
             if (!(mismatch_rate >= 0)) {
                 std::cout << "mismatch rate: " << mismatch_rate << std::endl;
             }
@@ -245,8 +246,8 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
                 ov2 = overlap_score(read_1->get_rev_comp(0), read_2->get_rev_comp(1), read_1->get_rev_phred(0), read_2->get_rev_phred(1), pos2, mismatch2);
             }
             double mismatch_rate = std::max(mismatch1, mismatch2);
-            double score;        
-            if (ov1 > program_settings.edge_threshold && ov2 > program_settings.edge_threshold) {                    
+            double score;
+            if (ov1 > program_settings.edge_threshold && ov2 > program_settings.edge_threshold) {
                 score = 0.5 * (ov1 + ov2);
             }
             else {
@@ -258,7 +259,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             edge.set_vertices(node1, node2);
             edge.set_extra_pos(pos3, pos4);
             edge.set_perc(overlap_perc);
-            edge.set_len(overlap_len);
+            edge.set_len(overlap_len1, overlap_len2);
             edge.set_mismatch(mismatch_rate);
             return edge;
         }
@@ -277,14 +278,14 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             else if (ori1 && !ori2) {
                 ov1 = overlap_score(read_1->get_seq(1), read_2->get_rev_comp(0), read_1->get_phred(1), read_2->get_rev_phred(0), pos1, mismatch1);
                 ov2 = overlap_score(read_2->get_rev_comp(0), read_1->get_seq(2), read_2->get_rev_phred(0), read_1->get_phred(2), pos2, mismatch2);
-            } 
+            }
             else {
                 ov1 = overlap_score(read_1->get_rev_comp(2), read_2->get_rev_comp(0), read_1->get_rev_phred(2), read_2->get_rev_phred(0), pos1, mismatch1);
                 ov2 = overlap_score(read_2->get_rev_comp(0), read_1->get_rev_comp(1), read_2->get_rev_phred(0), read_1->get_rev_phred(1), pos2, mismatch2);
             }
             double mismatch_rate = std::max(mismatch1, mismatch2);
             double score;
-            if (ov1 > program_settings.edge_threshold && ov2 > program_settings.edge_threshold) {                    
+            if (ov1 > program_settings.edge_threshold && ov2 > program_settings.edge_threshold) {
                 score = 0.5 * (ov1 + ov2);
             }
             else {
@@ -296,12 +297,12 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             edge.set_vertices(node1, node2);
             edge.set_extra_pos(pos3, pos4);
             edge.set_perc(overlap_perc);
-            edge.set_len(overlap_len);
+            edge.set_len(overlap_len1, overlap_len2);
             edge.set_mismatch(mismatch_rate);
             return edge;
         }
     }
-        
+
     if (type1 == "p" && type2 == "p") {
 //        std::cout << "P-P overlap\n";
         double ov1, ov2;
@@ -364,7 +365,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
         edge.set_vertices(node1, node2);
         edge.set_extra_pos(pos3, pos4);
         edge.set_perc(overlap_perc);
-        edge.set_len(overlap_len);
+        edge.set_len(overlap_len1, overlap_len2);
         edge.set_mismatch(mismatch_rate);
         return edge;
     }
@@ -392,14 +393,14 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
             Overlap overlap = overlaps_vec.at(i);
             Edge edge = compute_overlap(overlap);
             if (edge.get_score() > program_settings.edge_threshold) {
-                edges_this_thread.push_back(edge); // add edge to vector 
+                edges_this_thread.push_back(edge); // add edge to vector
             }
             else if (edge.get_mismatch_rate() != -1 && edge.get_mismatch_rate() < program_settings.merge_contigs) {
                 edges_this_thread.push_back(edge);
             }
-            else if (edge.get_score() > program_settings.ov_threshold && edge.get_mismatch_rate() != -1) { 
+            else if (edge.get_score() > program_settings.ov_threshold && edge.get_mismatch_rate() != -1) {
                 assert(overlap.get_id(1) != overlap.get_id(2));
-                overlaps_this_thread.push_back(overlap); // add overlap to nonedge vector 
+                overlaps_this_thread.push_back(overlap); // add overlap to nonedge vector
             }
         }
         #pragma omp critical(write_edges)
@@ -410,15 +411,16 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
         {
             nonedge_overlaps.insert(nonedge_overlaps.end(), overlaps_this_thread.begin(), overlaps_this_thread.end());
         }
-    }  
-    
-    std::cout << "build edges / write overlaps to file\n";
+    }
+    if (program_settings.verbose) {
+        std::cout << "build edges / write overlaps to file\n";
+    }
     #pragma omp parallel sections num_threads(N_THREADS)
     {
         #pragma omp section
         {
             unsigned int count = 0;
-            unsigned int doubles = 0;   
+            unsigned int doubles = 0;
             for (std::vector<Edge>::iterator it1 = edges.begin(); it1 != edges.end(); it1++) {
 //                // check for self-overlap:
 //                if (it1->get_read(1) == it1->get_read(2)) {
@@ -439,7 +441,7 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     inclusion_count++;
                 }
                 score = overlap_graph->checkEdge(v1, v2, /*reverse_allowed*/ true);
-                if (score < 0) { 
+                if (score < 0) {
                     // edge does not yet exist, so add it now
                     overlap_graph->addEdge(*it1);
                     count++;
@@ -452,10 +454,10 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                             overlap_graph->inclusions[v2] = 1;
                         }
                     }
-                }                   
+                }
                 else if (it1->get_score() > score) {
-                    // new edge scores better, so replace current edge in the graph 
-                    int edgecount1 = overlap_graph->getEdgeCount();                    
+                    // new edge scores better, so replace current edge in the graph
+                    int edgecount1 = overlap_graph->getEdgeCount();
                     if (overlap_graph->checkEdge(v1, v2, /*reverse_allowed*/ false) < 0) {
                         overlap_graph->removeEdge(v2, v1);
                     }
@@ -474,8 +476,10 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     doubles++;
                 }
             }
-            std::cout << "Number of edges found: " << count << std::endl;
-            std::cout << "Number of duplicates: " << doubles << std::endl;
+            if (program_settings.verbose) {
+                std::cout << "Number of edges found: " << count << std::endl;
+                std::cout << "Number of duplicates: " << doubles << std::endl;
+            }
             dup_count += doubles;
         }
         #pragma omp section
@@ -495,11 +499,12 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
 // Builds edges from overlaps file and add to the overlap graph
 void EdgeCalculator::construct_edges()
 {
-    std::cout << "In construct_edges... ";
-    const char* nonedge_file = (program_settings.output_dir + "nonedge_overlaps.txt").c_str();
-    remove(nonedge_file);
+//    std::cout << "In construct_edges... ";
+//    const char* nonedge_file = (program_settings.output_dir + "nonedge_overlaps.txt").c_str();
+//    std::cout << "Nonedge file: " << nonedge_file << std::endl;
+    std::remove("nonedge_overlaps.txt");
     std::vector<Overlap> nonedge_overlaps;
-    
+
     std::ifstream overlapsfile (program_settings.overlaps_file.c_str());
     unsigned int i = 0;
     const unsigned int overlaps_per_vec = 1000000;
@@ -507,7 +512,9 @@ void EdgeCalculator::construct_edges()
     overlaps_vec.reserve(overlaps_per_vec);
     if (overlapsfile.is_open())
     {
-        std::cout << "reading overlaps file... \n";
+        if (program_settings.verbose) {
+            std::cout << "reading overlaps file... \n";
+        }
         std::stringstream ss;
         std::string tupleline;
         // read at most overlaps_per_vec overlaps into a vector and process this chunk; continue until all overlaps have been considered
@@ -538,11 +545,22 @@ void EdgeCalculator::construct_edges()
             if (overlap.get_id(1) == overlap.get_id(2)) {
                 continue;
             }
-            if (program_settings.cliques && !program_settings.error_correction && overlap.get_perc() == 100) {
+            if (program_settings.cliques && !program_settings.error_correction
+                && overlap.get_perc() == 100) {
 //                continue;
             }
-            if (overlap.get_perc() >= program_settings.min_overlap_perc && (overlap.get_len(1) + overlap.get_len(2)) >= program_settings.min_overlap_len) {
-                overlaps_vec.push_back(overlap);
+            if (overlap.get_len(1) >= program_settings.min_overlap_len
+                && overlap.get_type(1) == "s" && overlap.get_type(2) == "s") {
+                if (overlap.get_perc() >= program_settings.min_overlap_perc) {
+                    overlaps_vec.push_back(overlap);
+                }
+            }
+            else if (overlap.get_len(1) >= 0.5*program_settings.min_overlap_len
+                && overlap.get_len(2) >= 0.5*program_settings.min_overlap_len
+                && (overlap.get_type(1) == "p" || overlap.get_type(2) == "p")) {
+                if (overlap.get_perc() >= program_settings.min_overlap_perc) {
+                    overlaps_vec.push_back(overlap);
+                }
             }
             else { // store overlap, later on write it back to file (nonedge_overlaps)
                 nonedge_overlaps.push_back(overlap);
@@ -550,19 +568,21 @@ void EdgeCalculator::construct_edges()
             if (overlaps_vec.size() == overlaps_per_vec) {
                 process_overlaps(overlaps_vec); // process the currently collected overlaps
                 overlaps_vec.clear(); // empty the vector
-            }            
+            }
         }
         if (overlaps_vec.size() > 0) { // process the remaining overlaps
             process_overlaps(overlaps_vec); // process the currently collected overlaps
             overlaps_vec.clear();
         }
         overlapsfile.close();
-        std::cout << "Number of self-overlapping reads: " << self_overlap_count << "\n";
-        std::cout << "Number of inclusion edges: " << inclusion_count << "\n";
+        if (program_settings.verbose) {
+            std::cout << "Number of self-overlapping reads: " << self_overlap_count << "\n";
+            std::cout << "Number of inclusion edges: " << inclusion_count << "\n";
+        }
         if (program_settings.add_duplicates) {
             overlap_graph->addEquivalentEdges(); // for every ++edge also add the equivalent --edge, and similarly for +-/-+ edges
         }
-        
+
         std::ofstream new_overlapsfile;
         new_overlapsfile.open(program_settings.output_dir + "nonedge_overlaps.txt", std::fstream::out | std::fstream::app);
         for (auto overlap_it : nonedge_overlaps) {
@@ -571,8 +591,8 @@ void EdgeCalculator::construct_edges()
         }
         new_overlapsfile.close();
     }
-    else 
-    {   
+    else
+    {
         std::cout << "Unable to open file";
         exit(1);
     }

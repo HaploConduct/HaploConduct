@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : EdgeCalculator.h
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Compute edges from overlaps file by computing overlap scores
@@ -21,7 +21,7 @@
 #include "Types.h"
 
 
-// A class to read the overlaps from file and compute the corresponding edges; 
+// A class to read the overlaps from file and compute the corresponding edges;
 // these edges are added to the overlap graph associated to the edge calculator.
 class EdgeCalculator
 {
@@ -33,7 +33,6 @@ private:
     std::map< read_id_t, unsigned int > &ID_dict = fastq_storage->m_ID_to_index;
 
     double score(char nt1, char nt2, double p1, double p2, int & mismatch_count);
-    double overlap_score(std::string seq1, std::string seq2, std::string score1, std::string score2, const unsigned int pos, double & mismatch_rate);
     Edge compute_overlap(const Overlap &overlap);
     void process_overlaps(std::vector<Overlap> overlaps_vec);
 
@@ -41,10 +40,10 @@ public:
     unsigned int self_overlap_count;
     unsigned int inclusion_count;
     unsigned int dup_count;
-    
+
     EdgeCalculator(std::shared_ptr<FastqStorage> fastq, std::shared_ptr<OverlapGraph> graph, const ProgramSettings ps)
 	{
-        std::cout << "EdgeCalculator is being created.\n";
+//        std::cout << "EdgeCalculator is being created.\n";
         N_THREADS = ps.n_threads;
         program_settings = ps;
         fastq_storage = fastq;
@@ -53,13 +52,14 @@ public:
         inclusion_count = 0;
         dup_count = 0;
 	}
-	
+
 	~EdgeCalculator(void)
     {
-        std::cout << "EdgeCalculator is being deleted" << std::endl;
+//        std::cout << "EdgeCalculator is being deleted" << std::endl;
     }
-    
-    void construct_edges();    
+
+    double overlap_score(std::string seq1, std::string seq2, std::string score1, std::string score2, const unsigned int pos, double & mismatch_rate);
+    void construct_edges();
     double phred_to_prob(const int phred);
 };
 

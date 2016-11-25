@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : ViralQuasispecies.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : De novo viral quasispecies assembly using overlap graphs
@@ -37,12 +37,12 @@ static timestamp_t get_timestamp() {
 }
 
 int main(int argc, char *argv[])
-{    
+{
     namespace po = boost::program_options;
-    
-    // Declare the supported options in a struct (see Types.h)    
-    ProgramSettings program_settings;    
-    
+
+    // Declare the supported options in a struct (see Types.h)
+    ProgramSettings program_settings;
+
     // Gives the options of the input file.
     po::options_description desc("Program options");
     desc.add_options()
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
         ("max_reads,MR", po::value< unsigned long > (&program_settings.max_reads)->default_value(100000000), "set the maximum number of reads used")
         ("threads,t", po::value< unsigned int > (&program_settings.n_threads)->default_value(1), "set the number of threads used")
         ("min_clique_size", po::value< unsigned int > (&program_settings.min_clique_size)->default_value(4), "set the minimum clique size for a superread")
-        ("min_qual", po::value< double > (&program_settings.min_qual)->default_value(0.999), "set the minimum base quality (probability that it is correct) for a superread")
+        ("min_qual", po::value< double > (&program_settings.min_qual)->default_value(0.999), "set the minimum base quality (probability that it is correct) for a superread; otherwise an 'N' is inserted.")
         ("min_overlap_perc", po::value< unsigned int > (&program_settings.min_overlap_perc)->default_value(0), "set the minimum overlap percentage")
         ("min_overlap_len", po::value< unsigned int > (&program_settings.min_overlap_len)->default_value(150), "set the minimum overlap length (bp)")
         ("edge_threshold", po::value< double > (&program_settings.edge_threshold)->default_value(0.99), "set the minimal overlap score for creating an edge")
@@ -75,7 +75,7 @@ int main(int argc, char *argv[])
         ("FNO", po::value< int > (&program_settings.fno)->default_value(2), "set the FindNextOverlaps function desired")
         ("original_readcount", po::value< unsigned int > (&program_settings.original_readcount), "the number of original reads")
         ("mismatch", po::value< double > (&program_settings.mismatch)->default_value(0), "minimal score per position in overlap")
-        ("optimize", po::value< bool > (&program_settings.optimize)->default_value(true), "optimize by not reconsidering non-edge overlaps")
+        ("optimize", po::value< bool > (&program_settings.optimize)->default_value(true), "optimize FNO by not reconsidering non-edge overlaps")
         ("no_inclusion_overlaps", po::value< bool > (&program_settings.no_inclusions)->default_value(false), "do not add full inclusion overlaps")
         ("merge_contigs", po::value< double > (&program_settings.merge_contigs)->default_value(0), "allow edge construction based on <merge_contigs> mismatch rate instead if overlap score is insufficient")
         ("remove_multi_occ", po::value< bool > (&program_settings.remove_multi_occ)->default_value(false), "remove clique nodes when used before, so use nodes at most once; to be used at merging iterations using cliques")
@@ -83,18 +83,19 @@ int main(int argc, char *argv[])
         ("remove_branches", po::value< bool > (&program_settings.remove_branches)->default_value(false), "remove branches from overlap graph")
         ("min_read_len", po::value< unsigned int > (&program_settings.min_read_len)->default_value(0), "set the minimum read length (bp) for allowing edges")
         ("base_path", po::value< std::string > (&program_settings.base_path)->default_value("."), "set path to SAVAGE directory containing quick-cliques-1.0")
+        ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
     po::variables_map vm;
-    po::store(po::parse_command_line(argc, argv, desc), vm);  
+    po::store(po::parse_command_line(argc, argv, desc), vm);
 
     if (vm.count("help")) {
         std::cout << desc << "\n";
         return 1;
     }
-    
-    po::notify(vm);  
-     
+
+    po::notify(vm);
+
     if (!(vm.count("fastq") || vm.count("singles") || vm.count("paired1") || vm.count("paired2"))) {
         std::cout << "No fastq file(s) provided.\n\n";
         std::cout << desc << "\n";
@@ -105,41 +106,41 @@ int main(int argc, char *argv[])
         std::cout << desc << "\n";
         return 1;
     }
-    
+
     if ((vm.count("paired1") && !vm.count("paired2")) || (!vm.count("paired1") && vm.count("paired2"))) {
         std::cout << "Only one paired-end fastq file provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
-    
+
     if (!vm.count("overlaps")) {
         std::cout << "No overlaps file provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
-    
+
     if (!vm.count("original_readcount")) {
         std::cout << "No original readcount provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
-    
-    if (program_settings.id_correspondence == "" && program_settings.first_it) {
-        std::cout << "\nWARNING: no ID-correspondence provided at first iteration. Use the option --IDs <id_correspondence>.\n";
-    }
-    
+
+    // if (program_settings.id_correspondence == "" && program_settings.first_it) {
+    //     std::cout << "\nWARNING: no ID-correspondence provided at first iteration. Use the option --IDs <id_correspondence>.\n";
+    // }
+
     if (program_settings.add_duplicates && program_settings.resolve_orientations) {
         std::cout << "Add duplicates and resolve orientations are exclusive options, use at most 1.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
-    
+
     if (program_settings.error_correction && !program_settings.cliques) {
         std::cout << "Error correction requires clique enumeration. Set --cliques=true.\n";
         std::cout << desc << "\n";
         return 1;
     }
-    
+
     if (program_settings.remove_trans == 1 && program_settings.min_clique_size > 2 && program_settings.cliques) {
         std::cout << "WARNING: Removing transitive edges while minimum clique size is larger than 2; there cannot be any such cliques in the resulting overlap graph. Reduce --min_clique_size.\n";
     }
@@ -149,7 +150,7 @@ int main(int argc, char *argv[])
     else if (program_settings.remove_trans == 3 && program_settings.min_clique_size > 8 && program_settings.cliques) {
         std::cout << "WARNING: Removing triple transitive edges while minimum clique size is larger than 8; there cannot be any such cliques in the resulting overlap graph. Reduce --min_clique_size.\n";
     }
-    
+
     // create log file
     std::ofstream logfile;
     logfile.open(program_settings.output_dir + "viralquasispecies.log", std::fstream::out);
@@ -198,18 +199,20 @@ int main(int argc, char *argv[])
 
     // Read fastq file to vectors in fastq storage.
     t0 = get_timestamp();
-    
+
     if (vm.count("fastq")) {
-        program_settings.singles_file = program_settings.fastq_file + "_singles.fastq";
-        program_settings.paired1_file = program_settings.fastq_file + "_paired1.fastq";
-        program_settings.paired2_file = program_settings.fastq_file + "_paired2.fastq";
+        program_settings.singles_file = program_settings.fastq_file + "/singles.fastq";
+        program_settings.paired1_file = program_settings.fastq_file + "/paired1.fastq";
+        program_settings.paired2_file = program_settings.fastq_file + "/paired2.fastq";
     }
-  
+
     FastqStorage* input_fastq = new FastqStorage(program_settings);
     std::shared_ptr<FastqStorage> fastq_storage(input_fastq);
-    t1 = get_timestamp();    
+    t1 = get_timestamp();
     time_s = (t1 - t0) / 1000000.0L;
-	std::cout << "FastqStorage ready! Construction took " << time_s << " seconds.\n";
+    if (program_settings.verbose) {
+        std::cout << "FastqStorage ready! Construction took " << time_s << " seconds.\n";
+    }
 //	fastq_storage->writeIDsToFile("readIDs.txt"); // write IDs to file such that overlaps can be filtered
 //    return 0;
 
@@ -224,62 +227,83 @@ int main(int argc, char *argv[])
     }
     OverlapGraph* graph = new OverlapGraph(graph_size, fastq_storage, program_settings);
     std::shared_ptr<OverlapGraph> overlap_graph(graph);
-    std::cout << "Adding vertices...\n";
-    
+    if (program_settings.verbose) {
+        std::cout << "Adding vertices...\n";
+    }
+
     std::vector<Read *> read_vector = fastq_storage->m_read_vec; // contains all reads: first single-end, then paired-end
     for (auto read_iterator : read_vector){
         read_id_t id = read_iterator->get_read_id();
         unsigned int vertex_id = overlap_graph->addVertex(id);
         read_iterator->set_vertex_id(/*normal=*/ true, vertex_id);
     }
-    
+
     if (program_settings.add_duplicates) { // also add a vertex for each reverse complementary read
         for (auto read_iterator : read_vector) {
             read_id_t id = read_iterator->get_read_id();
             unsigned int vertex_id = overlap_graph->addVertex(id);
             read_iterator->set_vertex_id(/*normal=*/ false, vertex_id);
         }
-    }    
+    }
     t1 = get_timestamp();
     time_s = (t1 - t0) / 1000000.0L;
-    std::cout << "Overlap graph ready! Construction took " << time_s << " seconds.\n";
-    std::cout << "Number of vertices: " << overlap_graph->getVertexCount() << std::endl;
-    
+    if (program_settings.verbose) {
+        std::cout << "Overlap graph ready! Construction took " << time_s << " seconds.\n";
+        std::cout << "Number of vertices: " << overlap_graph->getVertexCount() << std::endl;
+    }
     // Construct edges by computing overlap scores for the overlaps given.
     EdgeCalculator edge_calculator(fastq_storage, overlap_graph, program_settings);
     t0 = get_timestamp();
     edge_calculator.construct_edges();
     t1 = get_timestamp();
     time_s = (t1 - t0) / 1000000.0L;
-    std::cout << overlap_graph->getEdgeCount() << " edges have been constructed in " << time_s << " seconds.\n";
-    overlap_graph->getGraphStats();
+    if (overlap_graph->getEdgeCount() == 0) {
+        if (program_settings.verbose) {
+            std::cout << "There were no edges constructed, so there is nothing to be done." << std::endl;
+        }
+        std::string graphfile = program_settings.output_dir + "graph.txt";
+        remove(graphfile.c_str()); // remove graph.gfa to ensure pipeline termination
+        return 0;
+    }
+    else if (program_settings.verbose) {
+        std::cout << overlap_graph->getEdgeCount() << " edges have been constructed in " << time_s << " seconds.\n";
+    }
+//    overlap_graph->getGraphStats();
     overlap_graph->checkDuplicateEdges();
-    
+
     // Add vertex labels indicating read orientations
     unsigned int conflict_count;
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
-    
+
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
-    // Find branches (if specified)
+    // Find branches (remove if specified)
     if (program_settings.remove_branches) {
+        overlap_graph->removeTips();
         overlap_graph->removeBranches();
     }
-    
+    // else {
+    //     overlap_graph->removeTips();
+    //     overlap_graph->findBranches();
+    // }
+
     // Find cycles in the overlap graph
     t0 = get_timestamp();
     overlap_graph->sortEdges(); // sort edges
-    if (program_settings.cliques) {
-        overlap_graph->findCycles();
+    bool remove_backedges;
+    if (program_settings.error_correction) {
+        remove_backedges = false;
     }
     else {
-        overlap_graph->removeCycles();
+        remove_backedges = true;
     }
+    overlap_graph->cycleRemovalHeuristic(remove_backedges);
     t1 = get_timestamp();
     time_s = (t1 - t0) / 1000000.0L;
-    std::cout << "Cycle detection (DFS) took " << time_s << " seconds.\n";
-    
+    if (program_settings.verbose) {
+        std::cout << "Cycle detection (DFS) took " << time_s << " seconds.\n";
+    }
     // write to log file
     logfile.open(program_settings.output_dir + "viralquasispecies.log", std::fstream::out | std::fstream::app);
     logfile << "\nOutput:" << std::endl;
@@ -290,51 +314,64 @@ int main(int argc, char *argv[])
     logfile << "Inclusions: " << edge_calculator.inclusion_count << std::endl;
     logfile << "Conflicting edges removed: " << conflict_count << std::endl;
     logfile << "Number of backedges (DFS): " << overlap_graph->getBackEdgeCount() << "\n" << std::endl;
+    logfile << "Backedges removed: " << remove_backedges << std::endl;
     logfile.close();
-    
-    if (program_settings.cliques) { 
-        overlap_graph->writeGraphToFile(); // write current graph to file for quick-cliques
-    }
+
+//    if (program_settings.cliques) {
+    overlap_graph->writeGraphToFile(); // write current graph to file for quick-cliques
     overlap_graph->write2GFA(); // build a GFA file for analyzing the graph with Bandage
 //    overlap_graph->writeDiGraphToFile(); // write digraph to file for comparison between runs
     if (program_settings.graph_only) {
         return 0;
     }
-    
+
     if (program_settings.cliques) {
         // Process the resulting overlap graph: run quick-cliques degeneracy for enumerating all maximal cliques
 //        std::string command = program_settings.base_path + "/quick-cliques-1.0/bin/degeneracy <" + program_settings.output_dir + "graph.txt > " + program_settings.output_dir + "cliques.txt";
         std::string command = program_settings.base_path + "/quick-cliques/bin/qc --algorithm=degeneracy --input-file=" + program_settings.output_dir + "graph.txt > " + program_settings.output_dir + "cliques.txt";
-        system(command.c_str()); 
+        if (!program_settings.verbose) {
+            command.append(" 2> /dev/null");
+        }
+        system(command.c_str());
     }
 //    return 0;
-	
+
     // Compute consensus sequences from cliques.
     SRBuilder* SR_input = new SRBuilder(fastq_storage, overlap_graph, program_settings);
     std::shared_ptr<SRBuilder> superread_builder(SR_input);
     superread_builder->buildOriginalsDict();
     if (program_settings.cliques) {
-        std::cout << "Building superreads from clique file...\n";
+        if (program_settings.verbose) {
+            std::cout << "Building superreads from clique file...\n";
+        }
         t0 = get_timestamp();
         superread_builder->cliquesToSuperreads();
         t1 = get_timestamp();
         time_s = (t1 - t0) / 1000000.0L;
-        std::cout << "Superread builder took " << time_s << " seconds.\n";
+        if (program_settings.verbose) {
+            std::cout << "Superread builder took " << time_s << " seconds.\n";
+        }
     }
     else {
-        std::cout << "Merging reads along edges...\n";
+        if (program_settings.verbose) {
+            std::cout << "Merging reads along edges...\n";
+        }
         t0 = get_timestamp();
         overlap_graph->sortEdges(); // sort edges
         t1 = get_timestamp();
         time_s = (t1 - t0) / 1000000.0L;
-        std::cout << "Sorting edges took " << time_s << " seconds.\n";
+        if (program_settings.verbose) {
+            std::cout << "Sorting edges took " << time_s << " seconds.\n";
+        }
         t0 = get_timestamp();
         superread_builder->mergeAlongEdges();
         t1 = get_timestamp();
         time_s = (t1 - t0) / 1000000.0L;
-        std::cout << "Superread builder took " << time_s << " seconds.\n";
-    }        
-    
+        if (program_settings.verbose) {
+            std::cout << "Superread builder took " << time_s << " seconds.\n";
+        }
+    }
+
     // Find new overlaps for next iteration
     t0 = get_timestamp();
     std::string overlapcount;
@@ -350,21 +387,22 @@ int main(int argc, char *argv[])
         superread_builder->findNextOverlaps3();
         overlapcount = ".";
     }
-    
+
     t1 = get_timestamp();
     time_s = (t1 - t0) / 1000000.0L;
-    std::cout << "FindNextOverlaps took " << time_s << " seconds.\n";
-    
+    if (program_settings.verbose) {
+        std::cout << "FindNextOverlaps took " << time_s << " seconds.\n";
+    }
     // Write statistics to file
     std::string stats_filename = program_settings.output_dir + "stats.txt";
     std::ofstream stats_file(stats_filename, std::fstream::app);
     if (stats_file.is_open()) {
-        stats_file << overlap_graph->getVertexCount() 
+        stats_file << overlap_graph->getVertexCount()
             << "\t" << overlap_graph->getEdgeCount()
             << "\t" << overlapcount
-            << "\n"; 
+            << "\n";
     }
-    
+
     // write to log file
     logfile.open(program_settings.output_dir + "viralquasispecies.log", std::fstream::out | std::fstream::app);
     logfile << "Total clique count: " << superread_builder->clique_count << std::endl;
@@ -374,6 +412,6 @@ int main(int argc, char *argv[])
     logfile << "Next overlaps count: " << superread_builder->next_overlaps_count << std::endl;
     logfile << "\n*****************************************\n" << std::endl;
     logfile.close();
-	
+
     return 0;
 }

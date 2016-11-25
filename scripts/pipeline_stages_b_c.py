@@ -12,7 +12,7 @@ __author__ = "Jasmijn Baaijens"
 
 usage = """%prog [options]
 
-Pipeline for de novo viralquasispecies assembly. 
+Pipeline for de novo viralquasispecies assembly.
 
 """
 # fixed settings
@@ -27,13 +27,22 @@ def get_original_readcount(fastq):
         for line in f1:
             count += 1
     return int(count/4)
-     
+
+def get_max_subread_id(subreads):
+    max_ID = 0
+    with open(subreads, 'r') as f:
+        for line in f:
+            splitline = line.strip('\n').split('\t')
+            for subread in splitline[1:]:
+                ID = subread.split(':')[0]
+                max_ID = max(max_ID, int(ID))
+    return max_ID
 
 # GLOBALS
 ORIGINAL_READCOUNT = 0
 max_read_lengths = []
 max_coverages = []
-comp_times = [] 
+comp_times = []
 overlap_counts = []
 iteration = 0
 outputdir = "."
@@ -43,7 +52,7 @@ transitive_edges = 0
 
 def main():
     print "Pipeline_stages_b_c.py"
-    
+
     parser = ArgumentParser(description=usage)
     parser.add_argument('--cliques', dest='cliques', action='store_true')
     parser.add_argument('--min_overlap_perc', dest='min_overlap_perc', type=int, default=0)
@@ -56,13 +65,16 @@ def main():
     parser.add_argument('--transitive_edges', dest='transitive_edges', type=int, default=0)
     parser.add_argument('--use_subreads', dest='use_subreads', action='store_true')
     args = parser.parse_args()
-        
+
     if not (args.transitive_edges in [0, 1, 2, 3]):
         print "Transitive edges needs to be 0 (default, keep all edges), 1 (remove transitive edges), 2 (remove double transitive edges), or 3 (remove triple transitive edges)."
         parser.print_help()
-    
+
     global iteration, max_read_lengths, max_coverages_comp_times, overlap_counts, ORIGINAL_READCOUNT, read_counts, outputdir, min_qual, transitive_edges
-    ORIGINAL_READCOUNT = get_original_readcount(args.fastq)
+    if args.use_subreads:
+        ORIGINAL_READCOUNT = get_max_subread_id("subreads.txt") + 1
+    else:
+        ORIGINAL_READCOUNT = get_original_readcount(args.fastq)
     read_counts = [ORIGINAL_READCOUNT]
     original_overlaps = analyze_overlaps(args.overlaps)
     overlap_counts = [original_overlaps]
@@ -77,45 +89,45 @@ def main():
     subprocess.call(["rm", "stats.txt"])
     subprocess.call(["touch", "stats.txt"])
 
-    min_overlap_lengths = [500, 150, 50]
+#    min_overlap_lengths = [500, 150, 50]
+    min_overlap_lengths = [args.min_overlap_len]
 
-    if args.cliques:  
-        # pre-merging      
+    if args.cliques:
+        # pre-merging
         i = 0
-        min_overlap_len = min_overlap_lengths[i]
-        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, 100, 0, args.merge_contigs, first_it)
-        while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
-            run_merging_it(args.edge_threshold, 100, 0, args.merge_contigs)
-        # first iteration    
-#        run_first_it_cliques(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, args.merge_contigs)    
-        run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
-        i += 1
-        # remaining iterations (until nothing left to be done)
-        while i < len(min_overlap_lengths):   
-            min_overlap_len = min_overlap_lengths[i]   
+        min_overlap_len = args.min_overlap_len
+        # first merge inclusions to avoid clique explosion
+#        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, 100, 150, args.merge_contigs, first_it)
+#        while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+#            run_merging_it(args.edge_threshold, 100, 75, args.merge_contigs)
+        # now run clique iterations with merging inclusions in between
+        run_first_it_cliques(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
+        const_read_its = 0
+        while overlap_counts[-1] > 0 and const_read_its < 2: # TODO: actually need to check that there are still edges built
+            if read_counts[-1] == read_counts[-2]:
+                const_read_its += 1
+            # merge inclusions
+#                while transitive_edges != 1 and overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+#            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
+#            run_merging_it(args.edge_threshold, 100, 150, args.merge_contigs)
+            # clique iteration
             run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
-            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
-                # merge inclusions
-                while transitive_edges != 1 and overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
-    #            while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
-                    run_merging_it(args.edge_threshold, 100, 0, args.merge_contigs) 
-                # clique iteration
-                run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)  
-            i += 1
+        i += 1
     else: # merging only
         print "WARNING: merging only, no cliques!!"
-        # first iteration    
+        # first iteration
         i = 0
-        min_overlap_len = min_overlap_lengths[i]
-        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)  
-#        i += 1     
+#        min_overlap_len = min_overlap_lengths[i]
+        min_overlap_len = args.min_overlap_len
+        run_first_it_merge(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
+#        i += 1
         # remaining iterations (until nothing left to be done)
         while i < len(min_overlap_lengths):
             min_overlap_len = min_overlap_lengths[i]
             run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
             while overlap_counts[-1] > 0 and read_counts[-1] != read_counts[-2]:
                 run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
-            i += 1   
+            i += 1
 
     print "Algorithm done; in total %d iterations" %iteration
     print "Maximum read length per iteration: \t", max_read_lengths
@@ -126,18 +138,18 @@ def main():
 
 def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it):
     global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
-    iteration += 1    
+    iteration += 1
     print "\n**************************************"
     print "**** Iteration %d = first_it_merge ****" %iteration
     print "**************************************"
     min_clique_size = 2
-    subprocess.check_call([viralquasispecies, 
+    subprocess.check_call([viralquasispecies,
         "--singles=%s" %fastq,
         "--overlaps=%s" %overlaps,
-        "--threads=%d" %THREADS, 
-        "--edge_threshold=%f" %edge_threshold, 
-        "--first_it=%s" %first_it, 
-        "--min_clique_size=%d" %min_clique_size, 
+        "--threads=%d" %THREADS,
+        "--edge_threshold=%f" %edge_threshold,
+        "--first_it=%s" %first_it,
+        "--min_clique_size=%d" %min_clique_size,
         "--min_overlap_perc=%d" %min_overlap_perc,
         "--min_overlap_len=%d" %min_overlap_len,
         "--merge_contigs=%f" %error_rate,
@@ -147,12 +159,14 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--min_qual=%f" % min_qual,
         "--remove_trans=%d" %transitive_edges,
         "--optimize=false",
+        "--verbose=true",
+        "--remove_branches=true",
         "--base_path=%s" % selfpath
     ])
-#    copy_files(iteration)
+    copy_files(iteration)
     copy_log()
     [readcount, n_overlaps] = analyze_results()
-    read_counts.append(readcount) 
+    read_counts.append(readcount)
     overlap_counts.append(n_overlaps)
     print "***"
 
@@ -164,13 +178,13 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
     print "**** Iteration %d = merging ****" %iteration
     print "*******************************"
     min_clique_size = 2
-    subprocess.check_call([viralquasispecies, 
+    subprocess.check_call([viralquasispecies,
         "--singles=%s" %"singles.fastq",
-        "--overlaps=%s" %"overlaps.txt", 
-        "--threads=%d" %THREADS, 
-        "--edge_threshold=%f" %edge_threshold, 
-        "--first_it=false", 
-        "--min_clique_size=%d" %min_clique_size, 
+        "--overlaps=%s" %"overlaps.txt",
+        "--threads=%d" %THREADS,
+        "--edge_threshold=%f" %edge_threshold,
+        "--first_it=false",
+        "--min_clique_size=%d" %min_clique_size,
         "--min_overlap_perc=%d" %min_overlap_perc,
         "--min_overlap_len=%d" %min_overlap_len,
         "--merge_contigs=%f" %error_rate,
@@ -180,46 +194,49 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--min_qual=%f" % min_qual,
         "--remove_trans=%d" %transitive_edges,
         "--optimize=false",
-        "--base_path=%s" % selfpath
-    ])
-#    copy_files(iteration)
-    copy_log()
-    [readcount, n_overlaps] = analyze_results()
-    read_counts.append(readcount) 
-    overlap_counts.append(n_overlaps)
-    print "***"
-
-
-def run_first_it_cliques(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate):
-    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
-    iteration += 1    
-    print "\n****************************************"
-    print "**** Iteration %d = first_it_cliques ****" %iteration
-    print "****************************************"
-    min_clique_size = 2
-    subprocess.check_call([viralquasispecies, 
-        "--singles=%s" %fastq,
-        "--overlaps=%s" %overlaps,
-        "--threads=%d" %THREADS, 
-        "--edge_threshold=%f" %edge_threshold, 
-        "--first_it=true", 
-        "--cliques=true",
-        "--min_clique_size=%d" %min_clique_size, 
-        "--min_overlap_perc=%d" %min_overlap_perc,
-        "--min_overlap_len=%d" %min_overlap_len,
-        "--merge_contigs=%f" %error_rate,
-        "--FNO=1",
-        "--original_readcount=%d" %ORIGINAL_READCOUNT,
-        "--error_correction=false",
-        "--min_qual=%f" % min_qual,
-        "--remove_trans=%d" %transitive_edges,
-        "--optimize=false",
+        "--verbose=true",
+        "--remove_branches=true",
         "--base_path=%s" % selfpath
     ])
     copy_files(iteration)
     copy_log()
     [readcount, n_overlaps] = analyze_results()
-    read_counts.append(readcount) 
+    read_counts.append(readcount)
+    overlap_counts.append(n_overlaps)
+    print "***"
+
+
+def run_first_it_cliques(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it):
+    global iteration, max_read_lengths, max_coverages_comp_times, read_counts, overlap_counts, outputdir, min_qual, transitive_edges
+    iteration += 1
+    print "\n****************************************"
+    print "**** Iteration %d = first_it_cliques ****" %iteration
+    print "****************************************"
+    min_clique_size = 2
+    subprocess.check_call([viralquasispecies,
+        "--singles=%s" %fastq,
+        "--overlaps=%s" %overlaps,
+        "--threads=%d" %THREADS,
+        "--edge_threshold=%f" %edge_threshold,
+        "--first_it=%s" %first_it,
+        "--cliques=true",
+        "--min_clique_size=%d" %min_clique_size,
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=3",
+        "--original_readcount=%d" %ORIGINAL_READCOUNT,
+        "--error_correction=false",
+        "--min_qual=%f" % min_qual,
+        "--remove_trans=%d" %transitive_edges,
+        "--optimize=false",
+        "--verbose=true",
+        "--base_path=%s" % selfpath
+    ])
+    copy_files(-iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount)
     overlap_counts.append(n_overlaps)
     print "***"
 
@@ -231,33 +248,34 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
     print "**** Iteration %d = cliques ****" %iteration
     print "*******************************"
     min_clique_size = 2
-    subprocess.check_call([viralquasispecies, 
+    subprocess.check_call([viralquasispecies,
         "--singles=%s" %"singles.fastq",
-        "--overlaps=%s" %"overlaps.txt", 
-        "--threads=%d" %THREADS, 
-        "--edge_threshold=%f" %edge_threshold, 
-        "--first_it=false", 
+        "--overlaps=%s" %"overlaps.txt",
+        "--threads=%d" %THREADS,
+        "--edge_threshold=%f" %edge_threshold,
+        "--first_it=false",
         "--cliques=true",
-        "--min_clique_size=%d" %min_clique_size, 
+        "--min_clique_size=%d" %min_clique_size,
         "--min_overlap_perc=%d" %min_overlap_perc,
         "--min_overlap_len=%d" %min_overlap_len,
         "--merge_contigs=%f" %error_rate,
-        "--FNO=1",
+        "--FNO=3",
         "--original_readcount=%d" %ORIGINAL_READCOUNT,
         "--error_correction=false",
         "--min_qual=%f" % min_qual,
         "--remove_trans=%d" %transitive_edges,
         "--optimize=false",
+        "--verbose=true",
         "--base_path=%s" % selfpath
     ])
-#    copy_files(iteration)
+    copy_files(-iteration)
     copy_log()
     [readcount, n_overlaps] = analyze_results()
-    read_counts.append(readcount) 
+    read_counts.append(readcount)
     overlap_counts.append(n_overlaps)
     print "***"
-    
-    
+
+
 def copy_files(it):
     subprocess.call(["cp", "singles.fastq", "it%d_singles.fastq" %it])
     subprocess.call(["cp", "paired1.fastq", "it%d_paired1.fastq" %it])
@@ -277,57 +295,67 @@ def analyze_results(cliques=False):
     max_read_lengths.append(max_len)
     if cliques:
         analyze_cliques()
-    n_overlaps = analyze_overlaps('overlaps.txt')  
+
+    if os.path.isfile('overlaps.txt'):
+        n_overlaps = analyze_overlaps('overlaps.txt')
+    else:
+        n_overlaps = 0
     return [readcount, n_overlaps]
-    
+
 
 def analyze_coverage():
     cov_counts = [0 for i in xrange(10000)]
     max_cov = 0
-          
+
     infile = "subreads.txt"
-    with open(infile, 'r') as f:
-        for line in f:
-            reads = line.split()
-            cov = len(reads)-1
-            cov_counts[cov-1] += 1
-            if cov > max_cov:
-                max_cov = cov
-                
-    print "cov\tcount (top 5)"
-    for i in range(max_cov-5, max_cov):
-        if cov_counts[i] != 0:
-            print "%d\t%d" % (i+1, cov_counts[i])
-    print "\n"    
-    return max_cov
-    
+    if os.path.isfile(infile):
+        with open(infile, 'r') as f:
+            for line in f:
+                reads = line.split()
+                cov = len(reads)-1
+                cov_counts[cov-1] += 1
+                if cov > max_cov:
+                    max_cov = cov
+
+        print "cov\tcount (top 5)"
+        for i in range(max_cov-5, max_cov):
+            if cov_counts[i] != 0:
+                print "%d\t%d" % (i+1, cov_counts[i])
+        print "\n"
+        return max_cov
+    else:
+        return 0
+
 
 def analyze_fastq():
     len_counts = [0 for i in xrange(100000)]
     max_len = 0
-          
+
     infile = "singles.fastq"
-    with open(infile, 'r') as f:
-        c = 0
-        for line in f:
-            c += 1
-            if c%4 != 2:
-                continue
-            seq = line.strip()
-            l = len(seq)
-            len_counts[l-1] += 1
-            
-            if l > max_len:
-                max_len = l
-    print "longest read: ", max_len
-    print "\n"    
-    return [int(c/4), max_len]
-    
+    if os.path.isfile(infile):
+        with open(infile, 'r') as f:
+            c = 0
+            for line in f:
+                c += 1
+                if c%4 != 2:
+                    continue
+                seq = line.strip()
+                l = len(seq)
+                len_counts[l-1] += 1
+
+                if l > max_len:
+                    max_len = l
+        print "longest read: ", max_len
+        print "\n"
+        return [int(c/4), max_len]
+    else:
+        return [0, 0]
+
 
 def analyze_cliques():
     clique_size_counts = [0 for i in xrange(10000)]
     max_size = 0
-          
+
     infile = "cliques.txt"
     with open(infile, 'r') as f:
         for line in f:
@@ -336,16 +364,16 @@ def analyze_cliques():
             clique_size_counts[s-1] += 1
             if s > max_size:
                 max_size = s
-    print "clique size top 5:"           
+    print "clique size top 5:"
     print "size\tcount"
     for i in range(max_size-5, max_size):
         if clique_size_counts[i] != 0:
             print "%d\t%d" % (i+1, clique_size_counts[i])
-    print "\n"    
+    print "\n"
     return clique_size_counts
-    
 
-def analyze_overlaps(filename):   
+
+def analyze_overlaps(filename):
     pp_count = [0 for i in xrange(4)]
     ps_count = [0 for i in xrange(4)]
     sp_count = [0 for i in xrange(4)]
@@ -401,8 +429,8 @@ def analyze_overlaps(filename):
                     print 'orientation not found...'
             else:
                 print 'read types not recognized...'
-    
-    print "Overlaps:"                
+
+    print "Overlaps:"
     print "[-+, +-, ++, --]"
     print "p-p: ", pp_count
     print "p-s: ", ps_count

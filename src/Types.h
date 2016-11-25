@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : Types.h
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Types used for ViralQuasispecies program
@@ -53,6 +53,7 @@ struct ProgramSettings {
     bool remove_branches;
     unsigned int min_read_len;
     std::string base_path;
+    bool verbose;
 };
 
 struct IterationStats {

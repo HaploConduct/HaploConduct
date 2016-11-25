@@ -1,10 +1,10 @@
 //============================================================================
 // Name        : FindNextOverlaps.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.02 Beta
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
-// Description : An algorithm for finding the new overlaps: 
+// Description : An algorithm for finding the new overlaps:
 //               it induces all superread edges from the existing edges and overlaps, and writes them to a new overlaps file.
 //============================================================================
 
@@ -40,7 +40,8 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
         ori2 = "+";
     }
     int overlap_perc;
-    int overlap_len;
+    int overlap_len1;
+    int overlap_len2;
     std::string type1, type2;
     bool optimize = true;
     if (!visited[u] && !visited[v]) { // both vertices are not in any superread, so add edge to overlaps
@@ -54,13 +55,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
         overlap_line += std::to_string(pos1) + "\t" + std::to_string(pos2) + "\t";
         if (edge_info.get_ord() == '-') { overlap_line += "-\t"; }
         else if (edge_info.get_ord() == '1') { overlap_line += "1\t"; }
-        else { 
+        else {
             assert (edge_info.get_ord() == '2');
-            overlap_line += "2\t"; 
+            overlap_line += "2\t";
         }
         overlap_line += ori1 + "\t" + ori2 + "\t";
         overlap_line += std::to_string(edge_info.get_perc()) + "\t0\t";
-        overlap_line += std::to_string(edge_info.get_len()) + "\t0\t";
+        overlap_line += std::to_string(edge_info.get_len(1)) + "\t" + std::to_string(edge_info.get_len(2)) + "\t";
         (read1->is_paired()) ? type1="p" : type1="s";
         (read2->is_paired()) ? type2="p" : type2="s";
         overlap_line += type1 + "\t" + type2;
@@ -70,11 +71,11 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
         }
     }
     else if (!visited[u]) {
-//      std::cout << "u not in superread\n";
+//        std::cout << "u not in superread\n";
         // consider all superreads S containing v
         std::vector< Read* > SR_list = nodes_to_SR.at(v);
         read_id_t id1 = nodes_to_new_IDs.at(u);
-        for (auto it_SR : SR_list) { 
+        for (auto it_SR : SR_list) {
             // for each S compute the overlap position of u and v in S
             read_id_t id2 = it_SR->get_read_id();
 //            if ((it_SR->get_subread_info(v)).startpos1 > 0 || (it_SR->get_subread_info(v)).startpos2 > 0) {
@@ -111,16 +112,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
                 idx2l = findCliqueIndex(v, it_SR, leftside, second_occ);
                 idx2r = idx2l;
             }
-            bool success = computeOverlapData(read1, it_SR, 0, 0, idx2l, idx2r, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len);
+            bool success = computeOverlapData(read1, it_SR, 0, 0, idx2l, idx2r, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len1, overlap_len2);
             if (!success) {
                 continue;
             }
-            else if (pos1 == 0 && id1 > id2) {
-                continue;
-            }
-            else if (overlap_len < static_cast<int>(program_settings.min_overlap_len)) {
-                continue;
-            }
+            // else if (pos1 == 0 && id1 > id2) {
+            //     continue;
+            // }
             std::string t1, t2;
             std::string overlap_line;
             if (ord1 == '1') {
@@ -136,13 +134,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
             overlap_line += std::to_string(pos1) + "\t" + std::to_string(pos2) + "\t";
             if (ord2 == '-') { overlap_line += "-\t"; }
             else if (ord2 == '1') { overlap_line += "1\t"; }
-            else { 
+            else {
                 assert (ord2 == '2');
-                overlap_line += "2\t"; 
+                overlap_line += "2\t";
             }
             overlap_line += ori1 + "\t" + ori2 + "\t";
             overlap_line += std::to_string(overlap_perc) + "\t0\t";
-            overlap_line += std::to_string(overlap_len) + "\t0\t";
+            overlap_line += std::to_string(overlap_len1) + "\t" + std::to_string(overlap_len2) + "\t";
             overlap_line += t1 + "\t" + t2;
             if (!(program_settings.no_inclusions && overlap_perc == 100)) {
                 overlap_set.insert(overlap_line);
@@ -155,7 +153,7 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
         // consider all superreads S containing u
         std::vector< Read* > SR_list = nodes_to_SR.at(u);
         read_id_t id1 = nodes_to_new_IDs.at(v);
-        for (auto it_SR : SR_list) { 
+        for (auto it_SR : SR_list) {
             // for each S compute the overlap position of u and v in S
             read_id_t id2 = it_SR->get_read_id();
 //            if ((it_SR->get_subread_info(u)).startpos1 > 0 || (it_SR->get_subread_info(u)).startpos2 > 0) {
@@ -192,16 +190,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
                 idx1l = findCliqueIndex(u, it_SR, leftside, second_occ);
                 idx1r = idx1l;
             }
-            bool success = computeOverlapData(it_SR, read2, idx1l, idx1r, 0, 0, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len);
+            bool success = computeOverlapData(it_SR, read2, idx1l, idx1r, 0, 0, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len1, overlap_len2);
             if (!success) {
                 continue;
             }
-            else if (pos1 == 0 && id1 > id2) {
-                continue;
-            }
-            else if (overlap_len < static_cast<int>(program_settings.min_overlap_len)) {
-                continue;
-            }
+            // else if (pos1 == 0 && id1 > id2) { // BAD IDEA
+            //     continue;
+            // }
             std::string t1, t2;
             std::string overlap_line;
             if (ord1 == '1') {
@@ -217,13 +212,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
             overlap_line += std::to_string(pos1) + "\t" + std::to_string(pos2) + "\t";
             if (ord2 == '-') { overlap_line += "-\t"; }
             else if (ord2 == '1') { overlap_line += "1\t"; }
-            else { 
+            else {
                 assert (ord2 == '2');
-                overlap_line += "2\t"; 
+                overlap_line += "2\t";
             }
             overlap_line += ori1 + "\t" + ori2 + "\t";
             overlap_line += std::to_string(overlap_perc) + "\t0\t";
-            overlap_line += std::to_string(overlap_len) + "\t0\t";
+            overlap_line += std::to_string(overlap_len1) + "\t" + std::to_string(overlap_len2) + "\t";
             overlap_line += t1 + "\t" + t2;
             if (!(program_settings.no_inclusions && overlap_perc == 100)) {
                 overlap_set.insert(overlap_line);
@@ -289,19 +284,16 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
                     idx2l = findCliqueIndex(v, it_SR2, /*leftside*/ true, /*second_occ*/ false);
                     idx2r = idx2l;
                 }
-                bool success = computeOverlapData(it_SR1, it_SR2, idx1l, idx1r, idx2l, idx2r, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len);
+                bool success = computeOverlapData(it_SR1, it_SR2, idx1l, idx1r, idx2l, idx2r, edge_info, pos1, pos2, ord1, ord2, type1, type2, overlap_perc, overlap_len1, overlap_len2);
                 if (!success) {
                     continue;
                 }
-                else if (pos1 == 0 && id1 > id2) {
-                    continue;
-                }
-                else if (overlap_len < static_cast<int>(program_settings.min_overlap_len)) {
-                    continue;
-                }
-                else if (overlap_perc == 100) {
-//                    continue;
-                }
+                // else if (pos1 == 0 && id1 > id2) {
+                //     continue;
+                // }
+                // else if (overlap_perc == 100) {
+                //     continue;
+                // }
                 std::string t1, t2;
                 std::string overlap_line;
                 if (ord1 == '1') {
@@ -317,13 +309,13 @@ void SRBuilder::updateOverlap(Edge edge_info, unsigned int& copied_count, unsign
                 overlap_line += std::to_string(pos1) + "\t" + std::to_string(pos2) + "\t";
                 if (ord2 == '-') { overlap_line += "-\t"; }
                 else if (ord2 == '1') { overlap_line += "1\t"; }
-                else { 
+                else {
                     assert (ord2 == '2');
-                    overlap_line += "2\t"; 
+                    overlap_line += "2\t";
                 }
                 overlap_line += ori1 + "\t" + ori2 + "\t";
                 overlap_line += std::to_string(overlap_perc) + "\t0\t";
-                overlap_line += std::to_string(overlap_len) + "\t0\t";
+                overlap_line += std::to_string(overlap_len1) + "\t" + std::to_string(overlap_len2) + "\t";
                 overlap_line += t1 + "\t" + t2;
                 if (!(program_settings.no_inclusions && overlap_perc == 100)) {
                     overlap_set.insert(overlap_line);
@@ -347,55 +339,16 @@ int SRBuilder::findCliqueIndex(unsigned int node, Read* superread, bool leftside
     else {
         assert (leftside || !second_occ);
         assert (sub_info.index2 >= 0 && sub_info.startpos2 >= 0);
-        assert (!(sub_info.index2 > 0 && sub_info.startpos2 > 0));
+        if (superread->is_paired()) {
+            assert (!(sub_info.index2 > 0 && sub_info.startpos2 > 0)); // not true when self-overlap was merged
+        }
         return sub_info.index2 - sub_info.startpos2;
     }
 }
 
-//// Given a node, find the index (position) of the corresponding read in a superread
-//int SRBuilder::findCliqueIndex(unsigned int node, Read* superread, bool leftside, bool second_occ) {
-////    std::cout << "in findCliqueIndex... \n";
-//    std::list<unsigned int> clique;
-//    std::list<int> poslist;
-//    assert(superread->is_super());
-//    if (!(superread->is_paired())) {
-//        clique = superread->get_clique(0);
-//        poslist = superread->get_read_indexes(0);
-//    }
-//    else if (leftside) {
-//        clique = superread->get_clique(1);
-//        poslist = superread->get_read_indexes(1);
-//    }
-//    else {
-//        clique = superread->get_clique(2);
-//        poslist = superread->get_read_indexes(2);
-//    }
-//    std::list<unsigned int>::const_iterator it_c = clique.begin();
-//    std::list<int>::const_iterator it_p = poslist.begin();
-//    assert (clique.size() >= 2);
-//    assert (poslist.size() == clique.size());
-//    while (*it_c != node) {
-//        assert (it_c != clique.end());
-//        it_c++;
-//        assert (it_p != poslist.end());
-//        it_p++;
-//    }
-//    if (second_occ) {
-//        it_c++;
-//        it_p++;
-//        while (*it_c != node) {
-//            assert (it_c != clique.end());
-//            assert (it_p != poslist.end());
-//            it_c++;
-//            it_p++;
-//        }
-//    }
-//    return *it_p;
-//}
-
 
 // computes overlap positions, vertex order and read type
-bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l, int idx1r, int idx2l, int idx2r, Edge edge, int &new_pos1, int &new_pos2, char &ord1, char &ord2, std::string &type1, std::string &type2, int& overlap_perc, int& overlap_len) {
+bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l, int idx1r, int idx2l, int idx2r, Edge edge, int &new_pos1, int &new_pos2, char &ord1, char &ord2, std::string &type1, std::string &type2, int& overlap_perc, int& overlap_len1, int& overlap_len2) {
 //    std::cout << "in computeOverlapData... \n";
     int pos1 = edge.get_pos(1);
     int pos2 = edge.get_pos(2);
@@ -417,8 +370,9 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             ord1 = '1';
             len = len1;
         }
-        overlap_len = std::min({len - new_pos1, len1, len2});
-        overlap_perc = (int)floor(std::max(overlap_len/float(len1), overlap_len/float(len2))*100);
+        overlap_len1 = std::min({len - new_pos1, len1, len2});
+        overlap_len2 = 0;
+        overlap_perc = (int)floor(std::max(overlap_len1/float(len1), overlap_len1/float(len2))*100);
         ord2 = '-';
         new_pos2 = 0;
         if (new_pos1 >= len) {
@@ -436,8 +390,6 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
         int len1 = (superread1->get_seq(1)).length() + (superread1->get_seq(2)).length();
         int len2 = (superread2->get_seq(0)).length();
         assert (len1 > 0 && len2 > 0);
-        int overlap1;
-        int overlap2;
         new_pos1 = (pos1 + idx1l) - idx2l;
         if (new_pos1 < 0) {
             ord1 = '2';
@@ -446,7 +398,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread2->get_seq(0)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = (superread1->get_seq(1)).length();
+            overlap_len1 = (superread1->get_seq(1)).length();
         }
         else {
             ord1 = '1';
@@ -454,7 +406,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread1->get_seq(1)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = (superread1->get_seq(1)).length() - new_pos1;
+            overlap_len1 = (superread1->get_seq(1)).length() - new_pos1;
         }
         if (edge.get_ord() == '1') {
             new_pos2 = idx2r - (idx1r + pos2);
@@ -466,12 +418,28 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
         if (new_pos2 >= (int)(superread2->get_seq(0)).length()) {
             return 0; // failure: too much of the read has been removed from the superread
         }
+        else if (new_pos2 < 0) {
+//            std::cout << "P-S: new_pos2 < 0" << std::endl;
+            return 0; // failure: paired-end read should be merged?
+        }
         ord2 = '-';
-        overlap2 = std::min((superread2->get_seq(0)).length() - new_pos2, (superread1->get_seq(2)).length());
-        int total_overlap = overlap1 + overlap2;
-        overlap_len = total_overlap;
+        overlap_len2 = std::min((superread2->get_seq(0)).length() - new_pos2, (superread1->get_seq(2)).length());
+        int total_overlap = overlap_len1 + overlap_len2;
+//        overlap_len = total_overlap;
         overlap_perc = (int)floor(std::max(total_overlap/float(len1), total_overlap/float(len2))*100);
         overlap_perc = std::min(overlap_perc, 100);
+
+        if (new_pos2 < 0) {
+            std::cout << "new_pos2: " << new_pos2 << "\n";
+            std::cout << "pos: " << pos1 << " " << pos2 << "\n";
+            std::cout << "len1l, len1r, len2: " << (superread1->get_seq(1)).length() << " " << (superread1->get_seq(2)).length() << " " << len2 << "\n";
+            std::cout << type1 << " " << type2 << "\n";
+            std::cout << "indexes: " << idx1l << " " << idx1r << " " << idx2l << " " << idx2r << "\n";
+        }
+        assert (new_pos2 >= 0);
+        if (overlap_perc < 0) {
+            std::cout << type1 << type2 << "\n";
+        }
     }
     // S-P overlap
     else if (!superread1->is_paired() && superread2->is_paired()) {
@@ -480,8 +448,6 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
         int len1 = (superread1->get_seq(0)).length();
         int len2 = (superread2->get_seq(1)).length() + (superread2->get_seq(2)).length();
         assert (len1 > 0 && len2 > 0);
-        int overlap1;
-        int overlap2;
         new_pos1 = pos1 + idx1l - idx2l;
         if (new_pos1 < 0) {
             ord1 = '2';
@@ -490,7 +456,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread2->get_seq(1)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = (superread2->get_seq(1)).length() - new_pos1;
+            overlap_len1 = (superread2->get_seq(1)).length() - new_pos1;
         }
         else {
             ord1 = '1';
@@ -498,7 +464,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread1->get_seq(0)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = (superread2->get_seq(1)).length();
+            overlap_len1 = (superread2->get_seq(1)).length();
         }
         if (edge.get_ord() == '2') {
             new_pos2 = idx1r - (pos2 + idx2r);
@@ -510,10 +476,14 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
         if (new_pos2 >= (int)(superread1->get_seq(0)).length()) {
             return 0; // failure: too much of the read has been removed from the superread
         }
+        else if (new_pos2 < 0) {
+//            std::cout << "S-P: new_pos2 < 0" << std::endl;
+            return 0; // failure: paired-end read should be merged?
+        }
         ord2 = '-';
-        overlap2 = std::min((superread1->get_seq(0)).length() - new_pos2, (superread2->get_seq(2)).length());
-        int total_overlap = overlap1 + overlap2;
-        overlap_len = total_overlap;
+        overlap_len2 = std::min((superread1->get_seq(0)).length() - new_pos2, (superread2->get_seq(2)).length());
+        int total_overlap = overlap_len1 + overlap_len2;
+//        overlap_len = total_overlap;
         overlap_perc = (int)floor(std::max(total_overlap/float(len1), total_overlap/float(len2))*100);
         overlap_perc = std::min(overlap_perc, 100);
     }
@@ -522,8 +492,6 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
         type1 = "p";
         type2 = "p";
         new_pos1 = (pos1 + idx1l) - idx2l;
-        int overlap1;
-        int overlap2;
         if (new_pos1 < 0) {
             ord1 = '2';
             new_pos1 = -new_pos1;
@@ -531,7 +499,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread2->get_seq(1)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = std::min((superread1->get_seq(1)).length(), (superread2->get_seq(1)).length()-new_pos1);
+            overlap_len1 = std::min((superread1->get_seq(1)).length(), (superread2->get_seq(1)).length()-new_pos1);
         }
         else {
             ord1 = '1';
@@ -539,7 +507,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos1 >= (int)(superread1->get_seq(1)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap1 = std::min((superread1->get_seq(1)).length()-new_pos1, (superread2->get_seq(1)).length());
+            overlap_len1 = std::min((superread1->get_seq(1)).length()-new_pos1, (superread2->get_seq(1)).length());
         }
         if (edge.get_ord() == '1') {
             new_pos2 = (pos2 + idx1r) - idx2r;
@@ -559,7 +527,7 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos2 >= (int)(superread2->get_seq(2)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap2 = std::min((superread1->get_seq(2)).length(), (superread2->get_seq(2)).length()-new_pos2);
+            overlap_len2 = std::min((superread1->get_seq(2)).length(), (superread2->get_seq(2)).length()-new_pos2);
         }
         else {
             if (ord1 == '1') {
@@ -572,10 +540,10 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
             if (new_pos2 >= (int)(superread1->get_seq(2)).length()) {
                 return 0; // failure: too much of the read has been removed from the superread
             }
-            overlap2 = std::min((superread1->get_seq(2)).length()-new_pos2, (superread2->get_seq(2)).length());
+            overlap_len2 = std::min((superread1->get_seq(2)).length()-new_pos2, (superread2->get_seq(2)).length());
         }
-        int total_overlap = overlap1 + overlap2;
-        overlap_len = total_overlap;
+        int total_overlap = overlap_len1 + overlap_len2;
+//        overlap_len = total_overlap;
         int total_len1 = (superread1->get_seq(1)).length() + (superread1->get_seq(2)).length();
         int total_len2 = (superread2->get_seq(1)).length() + (superread2->get_seq(2)).length();
         overlap_perc = (int)floor(std::max(total_overlap/float(total_len1), total_overlap/float(total_len2))*100);
@@ -583,11 +551,11 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
     }
     assert (new_pos1 >= 0);
     if (new_pos2 < 0) {
+        std::cout << "new_pos2: " << new_pos2 << "\n";
         std::cout << "pos: " << pos1 << " " << pos2 << "\n";
         std::cout << type1 << " " << type2 << "\n";
         std::cout << "indexes: " << idx1l << " " << idx1r << " " << idx2l << " " << idx2r << "\n";
     }
-//    std::cout << new_pos2 << "\n";
     assert (new_pos2 >= 0);
     if (overlap_perc < 0) {
         std::cout << type1 << type2 << "\n";
@@ -599,7 +567,10 @@ bool SRBuilder::computeOverlapData(Read* superread1, Read* superread2, int idx1l
 
 void SRBuilder::processOverlaps(const std::vector<Edge>& edge_vec, unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set)
 {
-    std::cout << "processOverlaps\n";
+    if (program_settings.verbose) {
+        std::cout << "processOverlaps\n";
+        std::cout << "size: " << edge_vec.size() << std::endl;
+    }
     unsigned int size = edge_vec.size();
 	#pragma omp parallel num_threads(N_THREADS) shared(total_copied_count, total_u2SR_count, total_v2SR_count, final_overlap_set)
 	{
@@ -624,19 +595,24 @@ void SRBuilder::processOverlaps(const std::vector<Edge>& edge_vec, unsigned int&
             total_SR2SR_count += SR2SR_count;
         }
     }
+    if (program_settings.verbose) {
+        std::cout << "overlaps: " << final_overlap_set.size() << std::endl;
+    }
 }
 
 
 // Reconsider edge overlaps
-void SRBuilder::reconsiderEdgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set) { 
-    std::cout << "Reconsider existing edges...\n";
+void SRBuilder::reconsiderEdgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set) {
+    if (program_settings.verbose) {
+        std::cout << "Reconsider existing edges...\n";
+    }
 //    std::cout << "visited count: " << visited.count() << "\n";
     std::vector<Edge> edge_vec;
     const unsigned int overlaps_per_vec = 1000000;
     for (auto it_adj_list : overlap_graph->adj_out) {
         if (edge_vec.size() > overlaps_per_vec) {
             // process the currently collected overlaps
-            processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set); 
+            processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
             edge_vec.clear(); // empty the vector
         }
         edge_vec.insert(edge_vec.end(), it_adj_list.begin(), it_adj_list.end());
@@ -645,12 +621,17 @@ void SRBuilder::reconsiderEdgeOverlaps(unsigned int& total_copied_count, unsigne
         processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
         edge_vec.clear();
     }
+    // also reconsider the tips/branching edges that were removed
+    std::vector< Edge > additional_edges = overlap_graph->branching_edges;
+    processOverlaps(additional_edges, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
 }
 
 
 // Reconsider non-edge overlaps
-void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set) {    
-    std::cout << "Reconsider non-edge overlaps...\n";
+void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set) {
+    if (program_settings.verbose) {
+        std::cout << "Reconsider non-edge overlaps...\n";
+    }
     std::string old_overlapsfile = PATH + "nonedge_overlaps.txt";
     std::ifstream overlapsfile (old_overlapsfile.c_str());
     unsigned int i = 0;
@@ -660,7 +641,7 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
         std::string tupleline;
         std::vector<Edge> edge_vec;
         while (getline(overlapsfile, tupleline)) {
-            if (i%1000000 == 0 && i > 0) {
+            if (i%1000000 == 0 && i > 0 && program_settings.verbose) {
                 std::cout << i << " overlaps done...\n";
             }
             i++;
@@ -674,9 +655,9 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
 			ss << "";
 			ss.clear();
             Overlap overlap(tmp_vec);
-            // build a temporary edge such that we can reuse the procedure for updating edges
+            // build a temporary edge such that we can re-use the procedure for updating edges
             read_id_t id1 = overlap.get_id(1);
-	        read_id_t id2 = overlap.get_id(2);	        
+	        read_id_t id2 = overlap.get_id(2);
             unsigned int index1 = (fastq_storage->m_ID_to_index).at(id1);
             unsigned int index2 = (fastq_storage->m_ID_to_index).at(id2);
             Read* read1 = (fastq_storage->m_read_vec).at(index1);
@@ -700,15 +681,17 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
             }
             Edge edge(0, overlap.get_pos(1), overlap.get_pos(2), ori1, ori2, overlap.get_ord(), read1, read2);
             edge.set_perc(overlap.get_perc());
-            edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+            int overlap_len1 = overlap.get_len(1);
+            int overlap_len2 = overlap.get_len(2);
+            edge.set_len(overlap_len1, overlap_len2);
             edge.set_vertices(vertex1, vertex2);
-            
+
 	        // check if there is an edge between this pair of vertices
 	        if (overlap_graph->checkEdge(vertex1, vertex2, /*reverse_allowed*/ true) > 0) {
 	            continue;
 	        }
             edge_vec.push_back(edge);
-            // when adding duplicates, also add opposite overlap 
+            // when adding duplicates, also add opposite overlap
             if (program_settings.add_duplicates) {
                 unsigned int v1 = read1->get_vertex_id(!ori1);
                 unsigned int v2 = read2->get_vertex_id(!ori2);
@@ -718,14 +701,14 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
                         Edge opposite_edge(0, -pos1, 0, !ori2, !ori1, overlap.get_ord(), read2, read1);
                         opposite_edge.set_vertices(v2, v1);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                     else {
                         Edge opposite_edge(0, pos1, 0, !ori1, !ori2, overlap.get_ord(), read1, read2);
                         opposite_edge.set_vertices(v1, v2);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                 }
@@ -736,14 +719,14 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
                         Edge opposite_edge(0, -pos1, pos2, !ori2, !ori1, overlap.get_ord(), read2, read1);
                         opposite_edge.set_vertices(v2, v1);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                     else {
                         Edge opposite_edge(0, pos1, pos2, !ori1, !ori2, overlap.get_ord(), read1, read2);
                         opposite_edge.set_vertices(v1, v2);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                 }
@@ -754,14 +737,14 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
                         Edge opposite_edge(0, -pos1, pos2, !ori2, !ori1, overlap.get_ord(), read2, read1);
                         opposite_edge.set_vertices(v2, v1);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                     else {
                         Edge opposite_edge(0, pos1, pos2, !ori1, !ori2, overlap.get_ord(), read1, read2);
                         opposite_edge.set_vertices(v1, v2);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                 }
@@ -788,7 +771,7 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
                         Edge opposite_edge(0, -pos1, pos2, !ori2, !ori1, ord, read2, read1);
                         opposite_edge.set_vertices(v2, v1);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                     else {
@@ -802,16 +785,16 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
                         Edge opposite_edge(0, pos1, pos2, !ori1, !ori2, ord, read1, read2);
                         opposite_edge.set_vertices(v1, v2);
                         opposite_edge.set_perc(overlap.get_perc());
-                        opposite_edge.set_len(overlap.get_len(1)+overlap.get_len(2));
+                        opposite_edge.set_len(overlap.get_len(1), overlap.get_len(2));
                         edge_vec.push_back(opposite_edge);
                     }
                 }
-	        }                       
+	        }
             if (edge_vec.size() == overlaps_per_vec) {
                 // process the currently collected overlaps
                 processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
                 edge_vec.clear(); // empty the vector
-            }           
+            }
         }
         if (edge_vec.size() > 0) {
             processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
@@ -819,7 +802,7 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
         }
         overlapsfile.close();
     }
-    else {   
+    else {
         std::cout << "Unable to open file\n";
         exit(1);
     }
@@ -827,7 +810,9 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
 
 
 unsigned long SRBuilder::findNextOverlaps() {
-    std::cout << "findNextOverlaps...\n";
+    if (program_settings.verbose) {
+        std::cout << "findNextOverlaps...\n";
+    }
     // keep track of superread edges already found
 //    std::set< read_id_t > empty_set = {};
     overlaps_found = std::vector< std::set< read_id_t >> (new_read_count, std::set< read_id_t >());
@@ -855,28 +840,36 @@ unsigned long SRBuilder::findNextOverlaps() {
     std::set< std::string > final_overlap_set;
 
     reconsiderEdgeOverlaps(total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
-    std::cout << "Current edges have been updated...\n";
-    std::cout << "Number of overlaps so far: " << final_overlap_set.size() << " of which " << total_copied_count << " are copied edges.\n";
-    std::cout << "u2SR, v2SR, SR2SR: " << total_u2SR_count << " " << total_v2SR_count << " " << total_SR2SR_count << "\n";
+    if (program_settings.verbose) {
+        std::cout << "Current edges have been updated...\n";
+        std::cout << "Number of overlaps so far: " << final_overlap_set.size() << " of which " << total_copied_count << " are copied edges.\n";
+        std::cout << "u2SR, v2SR, SR2SR: " << total_u2SR_count << " " << total_v2SR_count << " " << total_SR2SR_count << "\n";
+    }
     if (!program_settings.optimize) {
         reconsiderNonedgeOverlaps(total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
-        std::cout << "Old overlaps have been reconsidered...\n";
+        if (program_settings.verbose) {
+            std::cout << "Old overlaps have been reconsidered...\n";
+        }
     }
     std::set< std::string >::const_iterator it_ss;
     std::string filename = PATH + "overlaps.txt";
     std::ofstream outfile(filename);
-    std::cout << "Number of overlap lines to write: " << final_overlap_set.size() << " of which " << total_copied_count << " are copied edges.\n";
-    std::cout << "u2SR, v2SR, SR2SR: " << total_u2SR_count << " " << total_v2SR_count << " " << total_SR2SR_count << "\n";
+    if (program_settings.verbose) {
+        std::cout << "Number of overlap lines to write: " << final_overlap_set.size() << " of which " << total_copied_count << " are copied edges.\n";
+        std::cout << "u2SR, v2SR, SR2SR: " << total_u2SR_count << " " << total_v2SR_count << " " << total_SR2SR_count << "\n";
+    }
     clock_t t1, t2;
     t1 = clock();
     for (auto it_line : final_overlap_set) {
         outfile << it_line << "\n";
     }
     t2 = clock();
-    std::cout << "Writing overlaps took " << ((float)(t2-t1))/CLOCKS_PER_SEC << " seconds.\n"; 
+    if (program_settings.verbose) {
+        std::cout << "Writing overlaps took " << ((float)(t2-t1))/CLOCKS_PER_SEC << " seconds.\n";
+    }
     outfile.close();
-    
+
     next_overlaps_count = final_overlap_set.size();
-    
+
     return final_overlap_set.size();
 }

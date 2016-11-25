@@ -18,6 +18,9 @@ interleaved sam file as input.
 
 """
 
+# globals
+verbose = False
+
 def power_find(n):
     result = []
     binary = bin(n)[:1:-1]
@@ -39,10 +42,11 @@ def read_sam_to_list(sam):
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
             record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
             if 4 not in power_find(int(FLAG)): # check if read is mapped
-                records.append(record)         
+                records.append(record)
             else:
                 unmapped += 1
-        print "Number of singles unmapped: ", unmapped   
+        if verbose:
+            print "Number of singles unmapped: ", unmapped
     return records
 
 def read_paired_sam_to_list(sam):
@@ -60,12 +64,12 @@ def read_paired_sam_to_list(sam):
             header = False
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
-            record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]            
+            record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
             if 4 not in power_find(int(FLAG)): # check if read is mapped
-                paired_read.append(record)  
+                paired_read.append(record)
             else:
                 unmapped += 1
-            assert len(paired_read) <= 2  
+            assert len(paired_read) <= 2
             if i%2 == 1:
                 if len(paired_read) == 2:
 #                    print paired_read[0][0]
@@ -88,10 +92,11 @@ def read_paired_sam_to_list(sam):
                 else:
                     discarded += 1
                 paired_read = []
-            i += 1    
-        print "Number of read ends discarded: ", discarded
-        print "Number of read ends unmapped: ", unmapped   
-        print "Number of reverse complements considered: ", reverse
+            i += 1
+        if verbose:
+            print "Number of read ends discarded: ", discarded
+            print "Number of read ends unmapped: ", unmapped
+            print "Number of reverse complements considered: ", reverse
     return records
 
 
@@ -124,15 +129,13 @@ def get_overlap_line(read1, read2, pos, ovlen):
 #    return line
     overlap = [id1, id2, pos1, pos2, order, ori1, ori2, perc1, perc2, len1, len2, type1, type2]
     return overlap
-    
+
 def merge_overlaps(overlap1, overlap2, type1, type2):
-    # TODO: check if orientations match
-    if type1 == "s":
-        if overlap1[5] != overlap2[5]:
-            print "orientations1 don't match"
-        if overlap1[6] != overlap2[6]:
-            print ""
-#            print "orientations2 don't match"
+    # if type1 == "s":
+    #     if overlap1[5] != overlap2[5]:
+    #         print "orientations1 don't match"
+    #     if overlap1[6] != overlap2[6]:
+    #         print "orientations2 don't match"
     overlap = overlap1
     overlap[11] = type1
     overlap[12] = type2
@@ -147,7 +150,7 @@ def merge_overlaps(overlap1, overlap2, type1, type2):
     overlap[8] = overlap2[7]
     overlap[10] = overlap2[9]
     return overlap
-    
+
 
 def get_overlaps(record, active_reads, pos, min_overlap_len):
     if len(record) == 3:
@@ -183,8 +186,8 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
                 overlaps.append(overlap)
             elif record_paired == True and read_paired == False:
                 overlap1 = get_overlap_line(read, record[0], overlap_pos, overlap_len)
-                overlap_pos2 = record[1][3] - read[3]    
-                assert overlap_pos2 >= 0            
+                overlap_pos2 = record[1][3] - read[3]
+                assert overlap_pos2 >= 0
                 overlap_len2 = min(len(SEQ2)-overlap_pos2, len(record[1][9]))
                 if overlap_len2 > min_overlap_len:
                     overlap2 = get_overlap_line(read, record[1], overlap_pos2, overlap_len2)
@@ -206,7 +209,7 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
                 if overlap_len2 > min_overlap_len:
                     overlap2 = get_overlap_line(record, read[1], overlap_pos2, overlap_len2)
                     overlap = merge_overlaps(overlap1, overlap2, "p", "s")
-                    # check orientations 
+                    # check orientations
                     ori1 = "-" if read[2] else "+"
                     ori2 = "-" if 16 in power_find(record[1]) else "+"
                     overlap[5] = ori1
@@ -221,18 +224,18 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
                     if overlap_len2 > min_overlap_len:
                         overlap2 = get_overlap_line(record[1], read[1], overlap_pos2, overlap_len2)
                         overlap = merge_overlaps(overlap1, overlap2, "p", "p")
-                        # check orientations 
+                        # check orientations
                         ori1 = "-" if read[2] else "+"
                         ori2 = "-" if record[2] else "+"
                         overlap[5] = ori1
                         overlap[6] = ori2
                         overlaps.append(overlap)
-                else:             
+                else:
                     overlap_len2 = min(len(read[1][9])-overlap_pos2, len(record[1][9]))
                     if overlap_len2 > min_overlap_len:
                         overlap2 = get_overlap_line(read[1], record[1], overlap_pos2, overlap_len2)
                         overlap = merge_overlaps(overlap1, overlap2, "p", "p")
-                        # check orientations 
+                        # check orientations
                         ori1 = "-" if read[2] else "+"
                         ori2 = "-" if record[2] else "+"
                         overlap[5] = ori1
@@ -242,17 +245,17 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
 
 def get_key_s(record):
     return record[3]
-    
+
 def get_key_p(record):
-    return record[0][3]    
-    
+    return record[0][3]
+
 def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
     readcount_s = len(sam_records_s)
     readcount_p = len(sam_records_p)
-    
+
     sorted_records_s = sorted(sam_records_s, key=get_key_s)
     sorted_records_p = sorted(sam_records_p, key=get_key_p)
-    
+
     k1 = 0
     k2 = 0
     merged_records = []
@@ -277,13 +280,14 @@ def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
         for paired in sorted_records_p[k2:]:
             pos_p = paired[0][3]
             merged_records.append([pos_p, paired])
-            
+
     readcount = len(merged_records)
-    print "Total number of alignments: ", readcount
-    print "... of which singles: ", readcount_s
-    print "... of which paired: ", readcount_p
+    if verbose:
+        print "Total number of alignments: ", readcount
+        print "... of which singles: ", readcount_s
+        print "... of which paired: ", readcount_p
     assert readcount == readcount_s + readcount_p
-        
+
     active_reads = []
     overlap_types = [0, 0, 0, 0] # [++, +-, -+, --]
     count_problems = 0
@@ -313,13 +317,14 @@ def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
             i += 1
     if count_problems > 0:
         print "# cases where overlap_pos2 < 0: ", count_problems
-    print "Total number of overlaps found: ", overlap_count
-    print "... of which ++: ", overlap_types[0]
-    print "... of which +-: ", overlap_types[1]
-    print "... of which -+: ", overlap_types[2]
-    print "... of which --: ", overlap_types[3]
-    
-    
+    if verbose:
+        print "Total number of overlaps found: ", overlap_count
+        print "... of which ++: ", overlap_types[0]
+        print "... of which +-: ", overlap_types[1]
+        print "... of which -+: ", overlap_types[2]
+        print "... of which --: ", overlap_types[3]
+
+
 def main():
     parser = ArgumentParser(description=usage)
     parser.add_argument('--sam_s', dest='infile_s', type=str)
@@ -327,17 +332,21 @@ def main():
     parser.add_argument('--ref', dest='reference', type=str)
     parser.add_argument('--out', dest='outfile', type=str)
     parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=0)
+    parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
+
+    global verbose
+    verbose = args.verbose
 
     if not ((args.infile_s or args.infile_p) and args.outfile):
         print "Specify input and output files."
         parser.print_help()
-        
+
     try:
         os.remove(args.outfile)
     except OSError:
         pass
-        
+
     ref_list = []
     ref_dict = {}
     with open(args.reference, 'r') as f:
@@ -353,13 +362,12 @@ def main():
             if i%2 == 0:
                 id_line = lines[i].strip('\n')
                 ref_id = id_line.split()[0][1:]
-                print ref_id
             elif i%2 == 1:
                 ref_seq = lines[i].strip('\n')
                 ref_list.append(ref_seq)
                 ref_dict[ref_id] = idx
                 idx += 1
-        
+
     if args.infile_s:
         sam_records_s = read_sam_to_list(args.infile_s)
     else:
@@ -368,28 +376,28 @@ def main():
         sam_records_p = read_paired_sam_to_list(args.infile_p)
     else:
         sam_records_p = []
-        
+
     # split sam records (single-end) per reference genome
     sam_records_s_per_ref = [[] for i in xrange(len(ref_list))]
     for record in sam_records_s:
         ref_id = record[2]
         ref_idx = ref_dict[ref_id]
         sam_records_s_per_ref[ref_idx].append(record)
-          
-    # split sam records (paired-end) per reference genome 
+
+    # split sam records (paired-end) per reference genome
     sam_records_p_per_ref = [[] for i in xrange(len(ref_list))]
     for record in sam_records_p:
         ref_id = record[0][2]
         ref_idx = ref_dict[ref_id]
         sam_records_p_per_ref[ref_idx].append(record)
-        
-    # find overlaps per reference genome 
+
+    # find overlaps per reference genome
     for idx in xrange(len(ref_list)):
         ref_seq = ref_list[idx]
         sam_singles = sam_records_s_per_ref[idx]
         sam_paired = sam_records_p_per_ref[idx]
         process_sam(ref_seq, sam_singles, sam_paired, args.outfile, args.min_overlap_len)
-       
+
 
 if __name__ == '__main__':
     sys.exit(main())
