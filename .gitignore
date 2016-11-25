@@ -3,7 +3,7 @@
 !/.gitignore
 bin/
 example/*
-!example/frequencies.*
+!example/frequencies*
 !example/hiv-ref.fasta
 !example/singles.sam
 !example/paired.sam
