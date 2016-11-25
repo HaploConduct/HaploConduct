@@ -10,6 +10,7 @@ example/*
 !example/pear_reads/
 quick-cliques/bin/
 quick-cliques/obj/
+quick-cliques/build/
 sfo_2011_5/*.o
 sfo_2011_5/*.a
 sfo_2011_5/*/*.o
