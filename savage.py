@@ -142,6 +142,7 @@ def main():
     if args.stage_a:
         print "**************"
         print "SAVAGE Stage a"
+        sys.stdout.flush()
         os.chdir('stage_a')
         subprocess.check_call("python %s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d" %(base_path, overlaps, args.min_overlap_len, args.threads), shell=True)
         os.chdir('..')
@@ -177,6 +178,7 @@ def main():
             subprocess.check_call("python %s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out contig_overlaps.txt --min_overlap_len %d" % (base_path, args.min_overlap_len), shell=True)
             overlaps = "../contig_overlaps.txt"
         #
+        sys.stdout.flush()
         # run SAVAGE
         os.chdir('stage_b')
         if args.use_subreads:
@@ -213,6 +215,7 @@ def main():
             subprocess.check_call("python %s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out contig_overlaps.txt --min_overlap_len %d" % (base_path, args.min_overlap_len), shell=True)
             overlaps = "../contig_overlaps.txt"
         #
+        sys.stdout.flush()
         # run SAVAGE
         os.chdir('stage_c')
         if args.use_subreads:

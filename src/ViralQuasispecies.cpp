@@ -190,6 +190,7 @@ int main(int argc, char *argv[])
     logfile << "Remove_multi_occ: " << program_settings.remove_multi_occ << "\n";
     logfile << "Remove transitive edges: " << program_settings.remove_trans << "\n";
     logfile << "Minimal read length: " <<  program_settings.min_read_len << "\n";
+    logfile << "Remove branches: " <<  program_settings.remove_branches << "\n";
     logfile << std::endl;
     logfile.close();
 
