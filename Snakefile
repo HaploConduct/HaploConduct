@@ -247,7 +247,12 @@ rule savage_stage_b:
     benchmark:
         "benchmarks/stage_b.txt"
     run:
-        shell("/usr/bin/time -v -o stage_b/time.txt python2 %s/savage.py --no_stage_a --no_stage_c --min_overlap_len %s --num_threads %s --use_subreads=%s --remove_branches=%s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], config["USE_SUBREADS"], config["REMOVE_BRANCHES"]))
+        if config["REMOVE_BRANCHES"] == 0:
+            shell("/usr/bin/time -v -o stage_b/time.txt python2 %s/savage.py --no_stage_a --no_stage_c --min_overlap_len %s --num_threads %s --keep_branches" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"]))
+        elif config["REMOVE_BRANCHES"] == 1:
+            shell("/usr/bin/time -v -o stage_b/time.txt python2 %s/savage.py --no_stage_a --no_stage_c --min_overlap_len %s --num_threads %s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"]))
+        else:
+            print("REMOVE_BRANCHES must be either 0 or 1")
 
 rule savage_stage_c:
     input:
@@ -266,7 +271,12 @@ rule savage_stage_c:
     benchmark:
         "benchmarks/stage_c.txt"
     run:
-        shell("/usr/bin/time -v -o stage_c/time.txt python2 %s/savage.py --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s --use_subreads=%s --remove_branches=%s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs, config["USE_SUBREADS"], config["REMOVE_BRANCHES"]))
+        if config["REMOVE_BRANCHES"] == 0:
+            shell("/usr/bin/time -v -o stage_c/time.txt python2 %s/savage.py --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s --keep_branches" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+        elif config["REMOVE_BRANCHES"] == 1:
+            shell("/usr/bin/time -v -o stage_c/time.txt python2 %s/savage.py --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+        else:
+            print("REMOVE_BRANCHES must be either 0 or 1")
 
 rule frequency_estimation:
     input:
