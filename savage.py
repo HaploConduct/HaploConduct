@@ -51,7 +51,7 @@ def main():
 #    parser.add_argument('--threshold', dest='threshold', type=float, default=0.97, help='edge threshold for Stage a')
     parser.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; make sure to enter the full path!!')
     parser.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
-    parser.add_argument('--use_subreads', dest='use_subreads', action='store_true', help='use subread info from previous stage; default=false')
+    parser.add_argument('--use_subreads', dest='use_subreads', default=True, help='use subread info from previous stage; default=false')
     parser.add_argument('--no_stage_a', dest='stage_a', action='store_false', help='skip Stage a (initial contig formation)')
     parser.add_argument('--no_stage_b', dest='stage_b', action='store_false', help='skip Stage b (extending initial contigs)')
     parser.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
@@ -59,7 +59,7 @@ def main():
     parser.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=M for sfo: maximal mismatch rate 1/M')
     parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=150)
     parser.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.01, help='specify maximal distance between contigs for merging into master strains (stage c)')
-    parser.add_argument('--remove_branches', dest='remove_branches', action='store_true', help='disable merging along branches by removing them from the graph (stage b & c)')
+    parser.add_argument('--remove_branches', dest='remove_branches', default=True, help='disable merging along branches by removing them from the graph (stage b & c)')
     parser.add_argument('--num_threads', dest='threads', type=int, default=1)
     args = parser.parse_args()
 

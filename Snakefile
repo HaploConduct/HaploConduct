@@ -67,7 +67,7 @@ rule prepare_input_fastq:
                    "--in {input[1]} --out {output[1]} "
                    "--id_start %d" % singles_count)
             shell("python2 {params.savage_dir}/scripts/rename_fas.py "
-                   "--in {input[2]} --out {output[2]} --revcomp "
+                   "--in {input[2]} --out {output[2]} "
                    "--id_start %d" % singles_count)
 
 
@@ -76,8 +76,7 @@ rule split_fastqs:
         fastq=expand("input_fas/{type}.fastq", type=ALL_TYPES)
     params:
         split_num=str(config["SPLIT_NUM"]),
-        savage_dir=config["SAVAGE_DIR"],
-        singles=config["SINGLE_END_READS"]
+        savage_dir=config["SAVAGE_DIR"]
     output:
         expand("stage_a/{type}.{i}.fastq", type=ALL_TYPES, i=SPLIT_RANGE)
     run:
@@ -107,7 +106,7 @@ rule rename_fastq:
                "--in {input[1]} --out {output[1]} "
                "--id_start %d" % singles_count)
         shell("python2 {params.savage_dir}/scripts/rename_fas.py "
-               "--in {input[2]} --out {output[2]} --revcomp "
+               "--in {input[2]} --out {output[2]} "
                "--id_start %d" % singles_count)
 
 rule create_patch_dir:
@@ -142,7 +141,6 @@ rule savage_preprocessing:
         "benchmarks/stage_a/patch{i, [0-9]+}_preprocessing.time.txt"
     params:
         de_novo=config["DE_NOVO"],
-        singles=config["SINGLE_END_READS"],
         savage_dir=config["SAVAGE_DIR"],
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"]
@@ -249,7 +247,7 @@ rule savage_stage_b:
     benchmark:
         "benchmarks/stage_b.txt"
     run:
-        shell("/usr/bin/time -v -o stage_b/time.txt python2 %s/savage.py --no_stage_a --no_stage_c --min_overlap_len %s --num_threads %s --use_subreads" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"]))
+        shell("/usr/bin/time -v -o stage_b/time.txt python2 %s/savage.py --no_stage_a --no_stage_c --min_overlap_len %s --num_threads %s --use_subreads=%s --remove_branches=%s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], config["USE_SUBREADS"], config["REMOVE_BRANCHES"]))
 
 rule savage_stage_c:
     input:
@@ -268,7 +266,7 @@ rule savage_stage_c:
     benchmark:
         "benchmarks/stage_c.txt"
     run:
-        shell("/usr/bin/time -v -o stage_c/time.txt python2 %s/savage.py --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --use_subreads --merge_contigs %s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+        shell("/usr/bin/time -v -o stage_c/time.txt python2 %s/savage.py --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s --use_subreads=%s --remove_branches=%s" % (params.savage_dir, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs, config["USE_SUBREADS"], config["REMOVE_BRANCHES"]))
 
 rule frequency_estimation:
     input:
