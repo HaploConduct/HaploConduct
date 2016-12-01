@@ -160,7 +160,9 @@ of Stage a, which has been optimized for a coverage of 500x-1000x.
 * `--min_overlap_len`
 By default this is set to 150bp, which has proven to work well for Illumina
 miseq (2x250bp) reads. Increasing this threshold speeds up the algorithm and
-leads to a lower mismatch rate in the final contigs.
+leads to a lower mismatch rate in the final contigs. It is recommended to set
+the minimal overlap length to be larger than the (expected) largest repetitive
+element in the target genomes.
 However, it also results in a lower fraction of the target genomes being
 reconstructed. We advise you to consider this trade-off when setting this
 parameter. We have been working with a minimal overlap length of 100-200bp.
