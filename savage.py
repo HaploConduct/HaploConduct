@@ -144,7 +144,7 @@ def main():
         print "SAVAGE Stage a"
         sys.stdout.flush()
         os.chdir('stage_a')
-        subprocess.check_call("python %s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d" %(base_path, overlaps, args.min_overlap_len, args.threads), shell=True)
+        subprocess.check_call("python %s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches), shell=True)
         os.chdir('..')
         subprocess.check_call("python %s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"

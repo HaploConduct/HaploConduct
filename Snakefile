@@ -173,7 +173,12 @@ rule savage_stage_a:
         "benchmarks/stage_a/patch{i}_main.txt"
     run:
         os.chdir("stage_a/patch%s" % wildcards.i)
-        shell("/usr/bin/time -v -o %s/benchmarks/stage_a/patch{wildcards.i}_main.time.txt python2 %s/savage.py --no_stage_b --no_stage_c --overlaps %s/stage_a/patch{wildcards.i}/original_overlaps.txt --min_overlap_len %s --num_threads %s" % (PATH, params.savage_dir, PATH, params.min_overlap_len, params.threads))
+        if config["REMOVE_BRANCHES"] == 0:
+            shell("/usr/bin/time -v -o %s/benchmarks/stage_a/patch{wildcards.i}_main.time.txt python2 %s/savage.py --no_stage_b --no_stage_c --overlaps %s/stage_a/patch{wildcards.i}/original_overlaps.txt --min_overlap_len %s --num_threads %s --keep_branches" % (PATH, params.savage_dir, PATH, params.min_overlap_len, params.threads))
+        elif config["REMOVE_BRANCHES"] == 1:
+            shell("/usr/bin/time -v -o %s/benchmarks/stage_a/patch{wildcards.i}_main.time.txt python2 %s/savage.py --no_stage_b --no_stage_c --overlaps %s/stage_a/patch{wildcards.i}/original_overlaps.txt --min_overlap_len %s --num_threads %s" % (PATH, params.savage_dir, PATH, params.min_overlap_len, params.threads))
+        else:
+            print("REMOVE_BRANCHES must be either 0 or 1")
         os.chdir('../..')
 
 rule combine_contigs:

@@ -117,9 +117,10 @@ def main():
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
             # build super-reads from cliques
-            run_clique_it(args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, 0)
-            if read_counts[-1] == read_counts[-2]:
-                const_read_its += 1
+            if args.remove_branches == 'false':
+                run_clique_it(args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, 0)
+                if read_counts[-1] == read_counts[-2]:
+                    const_read_its += 1
     #
     elif args.stage == 'b':
         # Stage b

@@ -30,7 +30,7 @@ MERGE_CONTIGS:
 # Decide whether you want to allow merging along branching edges in stages b & c
 # Not removing branches may lead to longer contigs, but if the diversity in the
 # sample is too low, it will result to too many haplotypes (all possible combinations)
-REMOVE_BRANCHES: # default = 1 (recommended)
+REMOVE_BRANCHES: # default = 1
     1 # set to 0 to allow merging along branching edges
 
 # If the data set is of coverage > 1000x, we recommend to split the data into
