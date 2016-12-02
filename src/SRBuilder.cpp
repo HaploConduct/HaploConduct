@@ -613,10 +613,18 @@ std::unordered_map< unsigned int, SubreadInfo > SRBuilder::calcSubreadInfo(int t
         it = subread_map.find(*node_it);
         if (it != subread_map.end()) { // left index of node already in dict, hence
             assert (trim_pos2 == -1);  // it must be a single-end superread
-            assert (pos >= trim_pos1);
+ //           assert (pos >= trim_pos1);
             SubreadInfo& sub_info = it->second;
-            sub_info.index2 = pos - trim_pos1;
-            sub_info.startpos2 = 0;
+            if (trim_pos1 > pos) {
+                sub_info.startpos2 = trim_pos1 - pos;
+                sub_info.index2 = 0;
+            }
+            else {
+                sub_info.startpos2 = 0;
+                sub_info.index2 = pos - trim_pos1;
+            }
+  //          sub_info.index2 = pos - trim_pos1;
+  //          sub_info.startpos2 = 0;
         }
         else { // node not in dict yet so add new item
             SubreadInfo sub_info;
