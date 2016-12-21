@@ -17,7 +17,13 @@ if not config["DE_NOVO"]:
 #     FASTQ_TYPES = ["paired1", "paired2"]
 #     INPUT_FILES = [config["PAIRED1_FILE"], config["PAIRED2_FILE"]]
 
-INPUT_FILES = [config["SINGLES_FILE"], config["PAIRED1_FILE"], config["PAIRED2_FILE"]]
+if config["SINGLES_FILE"] != "" and config["PAIRED1_FILE"] != "" and config["PAIRED2_FILE"] != "":
+    INPUT_FILES = [config["SINGLES_FILE"], config["PAIRED1_FILE"], config["PAIRED2_FILE"]]
+elif config["SINGLES_FILE"] != "":
+    INPUT_FILES = [config["SINGLES_FILE"]]
+else:
+    INPUT_FILES = [config["PAIRED1_FILE"], config["PAIRED2_FILE"]]
+
 ALL_TYPES = ["singles", "paired1", "paired2"]
 SPLIT_RANGE = range(config["SPLIT_NUM"])
 PATH = os.getcwd()
@@ -58,16 +64,24 @@ rule prepare_input_fastq:
         for fastq_type in ALL_TYPES:
             shell("rm -f input_fas/%s.fastq" % fastq_type)
             shell("touch input_fas/%s.fastq" % fastq_type)
-        singles_count = int(file_len(input[0])/4)
-        if input[0] != "":
+        if len(INPUT_FILES) == 1 or len(INPUT_FILES) == 3:
+            singles_count = int(file_len(input[0])/4)
             shell("python2 {params.savage_dir}/scripts/rename_fas.py "
                    "--in {input[0]} --out {output[0]}")
-        if input[1] != "" and input[2] != "":
+            if len(INPUT_FILES) == 3:
+                shell("python2 {params.savage_dir}/scripts/rename_fas.py "
+                       "--in {input[1]} --out {output[1]} "
+                       "--id_start %d" % singles_count)
+                shell("python2 {params.savage_dir}/scripts/rename_fas.py "
+                       "--in {input[2]} --out {output[2]} "
+                       "--id_start %d" % singles_count)
+        else:
+            singles_count = 0
             shell("python2 {params.savage_dir}/scripts/rename_fas.py "
-                   "--in {input[1]} --out {output[1]} "
+                   "--in {input[0]} --out {output[1]} "
                    "--id_start %d" % singles_count)
             shell("python2 {params.savage_dir}/scripts/rename_fas.py "
-                   "--in {input[2]} --out {output[2]} "
+                   "--in {input[1]} --out {output[2]} "
                    "--id_start %d" % singles_count)
 
 
