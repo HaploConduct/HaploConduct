@@ -51,13 +51,14 @@ def main():
 #    parser.add_argument('--threshold', dest='threshold', type=float, default=0.97, help='edge threshold for Stage a')
     parser.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; make sure to enter the full path!!')
     parser.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
-    parser.add_argument('--no_use_subreads', dest='use_subreads', action='store_false', help='use subread info from previous stage; default=false')
+    parser.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
     parser.add_argument('--no_stage_a', dest='stage_a', action='store_false', help='skip Stage a (initial contig formation)')
     parser.add_argument('--no_stage_b', dest='stage_b', action='store_false', help='skip Stage b (extending initial contigs)')
     parser.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
     parser.add_argument('--preprocessing', dest='preprocessing', action='store_true', help='run preprocessing procedure (i.e. overlaps algorithm)')
     parser.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=M for sfo: maximal mismatch rate 1/M')
     parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=150)
+    parser.add_argument('--overlap_stage_c', dest='overlap_stage_c', type=int, help='min_overlap_len used in stage c')
     parser.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.01, help='specify maximal distance between contigs for merging into master strains (stage c)')
     parser.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
     parser.add_argument('--num_threads', dest='threads', type=int, default=1)
@@ -198,6 +199,10 @@ def main():
     if args.stage_c:
         print "**************"
         print "SAVAGE Stage c"
+        if args.overlap_stage_c:
+            min_overlap_len = args.overlap_stage_c
+        else:
+            min_overlap_len = args.min_overlap_len
         # prepare input files
         overlaps = ""
         if not args.stage_b:
@@ -212,7 +217,7 @@ def main():
             pident = 100*(1-args.merge_contigs)
             subprocess.check_call("makeblastdb -in contigs_stage_b.fasta -dbtype nucl -out contigs_db", shell=True, stdout=FNULL, stderr=FNULL)
             subprocess.check_call("blastn -db contigs_db -query contigs_stage_b.fasta -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send qlen slen' -out blastout_contigs.tsv -perc_identity %s" % pident, shell=True)
-            subprocess.check_call("python %s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out contig_overlaps.txt --min_overlap_len %d" % (base_path, args.min_overlap_len), shell=True)
+            subprocess.check_call("python %s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out contig_overlaps.txt --min_overlap_len %d" % (base_path, min_overlap_len), shell=True)
             overlaps = "../contig_overlaps.txt"
         #
         sys.stdout.flush()
@@ -220,9 +225,9 @@ def main():
         os.chdir('stage_c')
         if args.use_subreads:
             subprocess.check_call("cp ../stage_b/subreads.txt subreads.txt", shell=True)
-            subprocess.check_call("python %s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s" % (base_path, overlaps, args.merge_contigs, args.min_overlap_len, args.threads, remove_branches), shell=True)
+            subprocess.check_call("python %s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches), shell=True)
         else:
-            subprocess.check_call("python %s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s" % (base_path, overlaps, args.merge_contigs, args.min_overlap_len, args.threads, remove_branches), shell=True)
+            subprocess.check_call("python %s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches), shell=True)
         os.chdir('..')
         subprocess.check_call("python %s/scripts/fastq2fasta.py stage_c/singles.fastq contigs_stage_c.fasta" % base_path, shell=True)
         subprocess.call("rm blastout* contigs_db* contig_overlaps.txt", shell=True)

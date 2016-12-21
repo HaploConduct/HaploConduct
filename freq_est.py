@@ -29,9 +29,10 @@ def print_string(filename, string):
 
 def main():
     parser = ArgumentParser(description=usage)
-    parser.add_argument('--fas', dest='contigs_file', type=str, required=True, help='fastq or fasta file containing contigs')
-    parser.add_argument('--subreads', dest='subreads_file', type=str, required=True, help='subreads file produced by savage, corresponding to the fastq file provided')
-    parser.add_argument('--out', dest='out_file', type=str, default="", help='write output to file; if not specified, output is written to stdout.')
+    parser.add_argument('-f', '--fas', dest='contigs_file', type=str, required=True, help='fastq or fasta file containing contigs')
+    parser.add_argument('-s', '--subreads', dest='subreads_file', type=str, required=True, help='subreads file produced by savage, corresponding to the fastq file provided')
+    parser.add_argument('-o', '--out', dest='out_file', type=str, default="", help='write output to file; if not specified, output is written to stdout.')
+    parser.add_argument('-c', '--correction', dest='len_correction', type=float, default=0, help='(optional) correction term for computing effective contig length: use c = fragment_size - 2*(read_len-min_overlap_len)')
     parser.add_argument('--min_len', dest='min_len', type=int, default=0, help='only consider contigs at least this length')
     parser.add_argument('--split_subreads', dest='split_subreads_file', type=str, help='use subreads files from separate patches; instead, better use the provided Snakefile which are already combines the subreads files from different patches')
     args = parser.parse_args()
@@ -57,13 +58,17 @@ def main():
     for ID, seq in contig_dict.iteritems():
         total_len += len(seq)
     print_string(args.out_file, "#contigs: %d" % contig_count)
+    eff_total_len = total_len + contig_count * (1-args.len_correction)
     if contig_count == 0:
         print_string(args.out_file, "WARNING: NO CONTIGS OF SUFFICIENT LENGTH")
         average_len = 0
     else:
         average_len = total_len/contig_count
+        eff_average_len = eff_total_len/contig_count
     print_string(args.out_file, "total length: %d" % total_len)
+    print_string(args.out_file, "total effective length: %d" % eff_total_len)
     print_string(args.out_file, "average length: %d" % average_len)
+    print_string(args.out_file, "average effective length: %d" % eff_average_len)
 
     # create a dict mapping original reads to contigs and vice versa
     contigs2originals = {}
@@ -186,6 +191,7 @@ def main():
     tmp_freqs = []
     tmp_reads = []
     tmp_lengths = []
+    tmp_eff_lengths = []
 #    print "absolute frequencies:"
 #    print "(ID: freq, length)"
     for read in contigs2originals:
@@ -195,12 +201,14 @@ def main():
             if subread in originals2contigs:
                 weighted_count += 1/len(originals2contigs[subread])
 #        freq = (weighted_count/total_subreads_used)*(genome_len/len(seq))
-        freq = (weighted_count/total_subreads_used)*(1/len(seq))
+        eff_len = len(seq) - args.len_correction + 1
+        freq = (weighted_count/total_subreads_used)*(1/eff_len)
         if len(contig_dict[read]) > args.min_len:
 #            print "%s: %f, %d" % (read, freq, len(seq))
             tmp_freqs += [freq]
             tmp_reads += [read]
             tmp_lengths += [len(seq)]
+            tmp_eff_lengths += [eff_len]
 
     print_string(args.out_file, "*")
 
@@ -215,6 +223,7 @@ def main():
     for freq in tmp_freqs:
         read = tmp_reads[i]
         length = tmp_lengths[i]
+        eff_len = tmp_eff_lengths[i]
         normalized_freq = freq/float(sum(tmp_freqs))*100
         print_string(args.out_file, "%s: %.2f, %d" % (read, normalized_freq, length))
         i += 1
