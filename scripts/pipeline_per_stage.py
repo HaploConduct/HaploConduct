@@ -16,7 +16,8 @@ Pipeline for de novo viralquasispecies assembly.
 
 """
 # fixed settings
-tmp_path = sys.path[0].split('/')
+#tmp_path = sys.path[0].split('/')
+tmp_path = os.path.dirname(os.path.abspath(__file__)).split('/')
 selfpath = '/'.join(tmp_path[0:len(tmp_path)-1])
 viralquasispecies = selfpath + "/bin/ViralQuasispecies"
 COPYFILES = False
@@ -51,6 +52,7 @@ edge_counts = []
 iteration = 0
 verbose = False
 stage_a = False
+min_read_len = 0
 
 
 def main():
@@ -70,12 +72,13 @@ def main():
     parser.add_argument('--use_subreads', dest='use_subreads', action='store_true')
     parser.add_argument('--num_threads', dest='num_threads', type=int, default=1)
     parser.add_argument('--remove_branches', dest='remove_branches', type=str, default='false')
+    parser.add_argument('--min_read_len', dest='min_read_len', type=int, default=0)
     parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
 
     FNULL = open(os.devnull, 'w')
 
-    global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts, threads, verbose, stage_a
+    global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts, threads, verbose, stage_a, min_read_len
     if args.use_subreads:
         original_readcount = get_max_subread_id("subreads.txt") + 1
     elif args.stage == 'a':
@@ -83,7 +86,8 @@ def main():
     else:
         original_readcount = get_original_readcount(args.fastq + '/singles.fastq')
     if original_readcount == 0:
-        print "Given fastq files are empty. Exiting."
+        sys.stderr.write("Given fastq files are empty. Exiting.\n")
+        sys.sterr.flush()
         sys.exit(1)
     if args.stage == 'a':
         read_counts = [original_readcount]
@@ -95,6 +99,7 @@ def main():
     threads = args.num_threads
     verbose = 'true' if args.verbose else 'false'
     stage_a = True if args.stage == 'a' else False
+    min_read_len = args.min_read_len
 
     # create a global log file; after every iteration the log file is appended to this global log file
     subprocess.call(["rm", "pipeline.log"], stdout=FNULL, stderr=FNULL)
@@ -153,7 +158,8 @@ def main():
                     const_read_its += 1
     #
     else:
-        print "ERROR: algorithm stage not properly specified; choose stage a, b, or c."
+        sys.stderr.write("ERROR: algorithm stage not properly specified; choose stage a, b, or c.\n")
+        sys.stderr.flush()
         sys.exit(1)
 
     print "Stage %s done in %d iterations" %(args.stage, iteration)
@@ -166,6 +172,7 @@ def main():
 def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, remove_branches='true'):
     global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
     iteration += 1
+    keep_singletons = max(min_overlap_len, min_read_len)
     if verbose == 'true':
         print "\n**************************************"
         print "**** Iteration %d = first_it_merge ****" %iteration
@@ -177,7 +184,7 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--edge_threshold=%f" %edge_threshold,
         "--first_it=%s" %first_it,
         "--min_clique_size=2",
-        "--keep_singletons=%d" %min_overlap_len,
+        "--keep_singletons=%d" %keep_singletons,
         "--remove_branches=%s" %remove_branches,
         "--min_overlap_perc=%d" %min_overlap_perc,
         "--min_overlap_len=%d" %min_overlap_len,
@@ -188,7 +195,8 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" % verbose,
-        "--base_path=%s" % selfpath
+        "--base_path=%s" % selfpath,
+        "--min_read_len=%s" % min_read_len
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -217,6 +225,7 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         paired1 = "None"
         paired2 = "None"
         fno = 1
+    keep_singletons = max(min_overlap_len, min_read_len)
     subprocess.check_call([viralquasispecies,
         "--singles", "singles.fastq",
         "--paired1=%s" %paired1,
@@ -225,7 +234,7 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--threads=%d" %threads,
         "--edge_threshold=%f" %edge_threshold,
         "--first_it=false",
-        "--keep_singletons=%d" %min_overlap_len,
+        "--keep_singletons=%d" %keep_singletons,
         "--min_clique_size=2",
         "--remove_branches=%s" %remove_branches,
         "--min_overlap_perc=%d" %min_overlap_perc,
@@ -237,7 +246,8 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" % verbose,
-        "--base_path=%s" % selfpath
+        "--base_path=%s" % selfpath,
+        "--min_read_len=%s" % min_read_len
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -279,7 +289,8 @@ def run_error_correction(fastq, overlaps, edge_threshold, error_correction, min_
         "--remove_trans=2",
         "--optimize=false",
         "--verbose=%s" %verbose,
-        "--base_path=%s" % selfpath
+        "--base_path=%s" % selfpath,
+        "--min_read_len=%s" % min_read_len
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -306,6 +317,7 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
     else:
         paired1 = "None"
         paired2 = "None"
+    keep_singletons = max(min_overlap_len, min_read_len)
     subprocess.check_call([viralquasispecies,
         "--singles", "singles.fastq",
         "--paired1=%s" %paired1,
@@ -316,7 +328,7 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
         "--first_it=false",
         "--cliques=true",
         "--error_correction=false",
-        "--keep_singletons=%d" %min_overlap_len,
+        "--keep_singletons=%d" %keep_singletons,
         "--min_clique_size=2",
         "--remove_branches=false",
         "--min_overlap_perc=%d" %min_overlap_perc,
@@ -327,7 +339,8 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" %verbose,
-        "--base_path=%s" % selfpath
+        "--base_path=%s" % selfpath,
+        "--min_read_len=%s" % min_read_len
     ])
     if COPYFILES:
         copy_files(iteration)
