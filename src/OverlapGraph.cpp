@@ -258,7 +258,12 @@ void OverlapGraph::writeGraphToFile() {
     head_file << std::to_string(2*count) + "\n"; // number of edge lines
     head_file.close();
     std::string command = "cat " + tmpfile1 + " " + tmpfile2 + " > " + filename;
-    system(command.c_str());
+    int system_ret = system(command.c_str());
+    if(system_ret != 0){
+        // The system method failed
+        std::cerr << "Adding head to file failed. Exiting..." << std::endl;
+        exit(1);
+    }
     remove(tmpfile1.c_str());
     remove(tmpfile2.c_str());
 }
@@ -612,7 +617,12 @@ void OverlapGraph::sortEdges() {
         }
         std::sort(pairs.begin(), pairs.end(), [=](const std::pair<Edge, unsigned int>& a, const std::pair<Edge, unsigned int>& b)
         {
-            return a.second < b.second;
+            if (a.second == b.second) {
+                return a.first.get_vertex(2) < b.first.get_vertex(2);
+            }
+            else {
+                return a.second < b.second;
+            }
         }
         );
         assert (pairs.size() == adj_list.size());

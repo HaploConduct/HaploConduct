@@ -91,36 +91,36 @@ int main(int argc, char *argv[])
 
     if (vm.count("help")) {
         std::cout << desc << "\n";
-        return 1;
+        return 0;
     }
 
     po::notify(vm);
 
     if (!(vm.count("fastq") || vm.count("singles") || vm.count("paired1") || vm.count("paired2"))) {
-        std::cout << "No fastq file(s) provided.\n\n";
+        std::cerr << "No fastq file(s) provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
     else if ((vm.count("fastq") && program_settings.singles_file.size() > 0) || (vm.count("fastq") && program_settings.paired1_file.size() > 0) || (vm.count("fastq") && program_settings.paired2_file.size() > 0)) {
-        std::cout << "Cannot combine --fastq option with --singles, --paired1 or --paired2. \n\n";
+        std::cerr << "Cannot combine --fastq option with --singles, --paired1 or --paired2. \n\n";
         std::cout << desc << "\n";
         return 1;
     }
 
     if ((vm.count("paired1") && !vm.count("paired2")) || (!vm.count("paired1") && vm.count("paired2"))) {
-        std::cout << "Only one paired-end fastq file provided.\n\n";
+        std::cerr << "Only one paired-end fastq file provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
 
     if (!vm.count("overlaps")) {
-        std::cout << "No overlaps file provided.\n\n";
+        std::cerr << "No overlaps file provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
 
     if (!vm.count("original_readcount")) {
-        std::cout << "No original readcount provided.\n\n";
+        std::cerr << "No original readcount provided.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
@@ -130,13 +130,13 @@ int main(int argc, char *argv[])
     // }
 
     if (program_settings.add_duplicates && program_settings.resolve_orientations) {
-        std::cout << "Add duplicates and resolve orientations are exclusive options, use at most 1.\n\n";
+        std::cerr << "Add duplicates and resolve orientations are exclusive options, use at most 1.\n\n";
         std::cout << desc << "\n";
         return 1;
     }
 
     if (program_settings.error_correction && !program_settings.cliques) {
-        std::cout << "Error correction requires clique enumeration. Set --cliques=true.\n";
+        std::cerr << "Error correction requires clique enumeration. Set --cliques=true.\n";
         std::cout << desc << "\n";
         return 1;
     }
@@ -191,7 +191,6 @@ int main(int argc, char *argv[])
     logfile << "Remove transitive edges: " << program_settings.remove_trans << "\n";
     logfile << "Minimal read length: " <<  program_settings.min_read_len << "\n";
     logfile << "Remove branches: " <<  program_settings.remove_branches << "\n";
-    logfile << std::endl;
     logfile.close();
 
     // define timestamps
@@ -273,6 +272,7 @@ int main(int argc, char *argv[])
     overlap_graph->checkDuplicateEdges();
 
     // Add vertex labels indicating read orientations
+    overlap_graph->sortEdges(); // sort edges
     unsigned int conflict_count;
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
@@ -307,6 +307,8 @@ int main(int argc, char *argv[])
     }
     // write to log file
     logfile.open(program_settings.output_dir + "viralquasispecies.log", std::fstream::out | std::fstream::app);
+    logfile << "Remove backedges: " << remove_backedges << std::endl;
+    logfile << std::endl;
     logfile << "\nOutput:" << std::endl;
     logfile << "Vertex count: " << overlap_graph->getVertexCount() << std::endl;
     logfile << "Edge count: " << overlap_graph->getEdgeCount() << std::endl;
@@ -315,7 +317,6 @@ int main(int argc, char *argv[])
     logfile << "Inclusions: " << edge_calculator.inclusion_count << std::endl;
     logfile << "Conflicting edges removed: " << conflict_count << std::endl;
     logfile << "Number of backedges (DFS): " << overlap_graph->getBackEdgeCount() << "\n" << std::endl;
-    logfile << "Backedges removed: " << remove_backedges << std::endl;
     logfile.close();
 
 //    if (program_settings.cliques) {
@@ -333,7 +334,12 @@ int main(int argc, char *argv[])
         if (!program_settings.verbose) {
             command.append(" 2> /dev/null");
         }
-        system(command.c_str());
+        int system_ret = system(command.c_str());
+        if(system_ret != 0){
+            // The system method failed
+            std::cerr << "Adding head to file failed. Exiting..." << std::endl;
+            exit(1);
+        }
     }
 //    return 0;
 

@@ -70,11 +70,7 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
     assert (seq2.length() > 0);
     assert (score1.length() > 0);
     assert (score2.length() > 0);
-//    if (pos >= seq1.length()) {
-//        std::cout << "pos >= seq1.length........\n";
-//        std::cout << pos << " " << seq1.length() << " " << seq2.length() << "\n";
-//        return -100;
-//    }
+    mismatch_rate = 1.0; // will be updated after overlap computation
     assert (pos >= 0);
     if (pos >= seq1.length()) {
         std::cout << "pos: " << pos << ", seq length: " << seq1.length() << std::endl;
@@ -130,6 +126,10 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
         return 0;
     }
     mismatch_rate = float(mismatch_count)/total_len;
+    if (mismatch_rate != mismatch_rate) { // check for NaN
+        std::cout << "mismatch rate NaN" << std::endl;
+        exit(1);
+    }
     total_score = (1.0/total_len)*total_score;
     return exp(total_score);
 }
@@ -188,6 +188,8 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
         return Edge(0, 0, 0, 0, 0, "", read_1, read_2);
     }
 */
+    double ov1 = 0;
+    double ov2 = 0;
     if (single_count > 0) {
 //        std::cout << "Considering overlaps with single-end reads\n";
         if (type1 == "s" && type2 == "s") {
@@ -227,7 +229,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
         }
         else if (type1 == "s" && type2 == "p") {
 //            std::cout << "S-P overlap\n";
-            double ov1, ov2;
+//            double ov1, ov2;
             double mismatch1, mismatch2;
             if (ori1 && ori2) {
                 ov1 = overlap_score(read_1->get_seq(0), read_2->get_seq(1), read_1->get_phred(0), read_2->get_phred(1), pos1, mismatch1);
@@ -265,7 +267,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
         }
         else if (type1 == "p" && type2 == "s") {
 //            std::cout << "P-S overlap\n";
-            double ov1, ov2;
+//            double ov1, ov2;
             double mismatch1, mismatch2;
             if (ori1 && ori2) {
                 ov1 = overlap_score(read_1->get_seq(1), read_2->get_seq(0), read_1->get_phred(1), read_2->get_phred(0), pos1, mismatch1);
@@ -305,7 +307,7 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
 
     if (type1 == "p" && type2 == "p") {
 //        std::cout << "P-P overlap\n";
-        double ov1, ov2;
+//        double ov1, ov2;
         double mismatch1, mismatch2;
         if (!ori1 && ori2) {
             ov1 = overlap_score(read_1->get_rev_comp(2), read_2->get_seq(1), read_1->get_rev_phred(2), read_2->get_phred(1), pos1, mismatch1);
@@ -455,21 +457,70 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                         }
                     }
                 }
-                else if (it1->get_score() > score) {
+                else if (it1->get_score() >= score) {
                     // new edge scores better, so replace current edge in the graph
+                    doubles++;
+                    Edge* existing_edge = overlap_graph->getEdgeInfo(v1, v2, true);
+                    if (score == it1->get_score()) {
+                        // decide which edge is 'greater' to ensure deterministic behaviour
+                        if (existing_edge->get_len(0) != it1->get_len(0)) {
+                            if (existing_edge->get_len(0) > it1->get_len(0)) {
+                                // existing edge has longer overlap
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_mismatch_rate() != it1->get_mismatch_rate()) {
+                            if (existing_edge->get_mismatch_rate() < it1->get_mismatch_rate()) {
+                                // existing edge has lower mismatch rate
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_vertex(1) != it1->get_vertex(1)) {
+                            if (existing_edge->get_vertex(1) < it1->get_vertex(1)) {
+                                // existing edge has different direction
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_ori(1) != it1->get_ori(1)) {
+                            if (existing_edge->get_ori(1)) {
+                                // same direction but different orientation of v1
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_ori(2) != it1->get_ori(2)) {
+                            if (existing_edge->get_ori(2)) {
+                                // same direction but different orientation of v2
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_pos(1) != it1->get_pos(1)) {
+                            if (existing_edge->get_pos(1) < it1->get_pos(1)) {
+                                // existing edge has smaller overlap positions
+                                continue;
+                            }
+                        }
+                        else if (existing_edge->get_pos(2) != it1->get_pos(2)) {
+                            if (existing_edge->get_pos(2) < it1->get_pos(2)) {
+                                // existing edge has smaller overlap positions
+                                continue;
+                            }
+                        }
+                        else {
+//                            std::cout << "Completely equivalent edge candidates: which to choose?" << std::endl;
+                        }
+                    }
                     int edgecount1 = overlap_graph->getEdgeCount();
-                    if (overlap_graph->checkEdge(v1, v2, /*reverse_allowed*/ false) < 0) {
-                        overlap_graph->removeEdge(v2, v1);
+                    if (existing_edge->get_vertex(1) == v1) {
+                        overlap_graph->removeEdge(v1, v2);
                     }
                     else {
-                        overlap_graph->removeEdge(v1, v2);
+                        overlap_graph->removeEdge(v2, v1);
                     }
                     int edgecount2 = overlap_graph->getEdgeCount();
                     overlap_graph->addEdge(*it1);
                     int edgecount3 = overlap_graph->getEdgeCount();
                     assert (edgecount1 == edgecount3);
                     assert (edgecount1 == edgecount2 + 1);
-                    doubles++;
                 }
                 else {
                     // new edge does not improve current edge, so do nothing

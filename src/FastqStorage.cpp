@@ -96,7 +96,7 @@ void FastqStorage::read_singles() {
 	std::vector<std::string>::const_iterator it;
 	it = tmp_fastqvector.begin();
 	int c = 0;
-	read_id_t id;
+	read_id_t id = 0;
 	std::string seq;
 	std::string phred;
 	while (it != tmp_fastqvector.end()) {
@@ -161,7 +161,7 @@ void FastqStorage::read_pairs() {
 	it1 = tmp_fastqvector1.begin();
 	it2 = tmp_fastqvector2.begin();
 	int c = 0;
-	read_id_t id;
+	read_id_t id = 0;
 	std::string seq1, seq2;
 	std::string phred1, phred2;
 	while (it1 != tmp_fastqvector1.end() && it2 != tmp_fastqvector2.end()) {

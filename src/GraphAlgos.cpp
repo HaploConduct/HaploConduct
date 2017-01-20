@@ -64,7 +64,12 @@ std::vector< node_id_t > OverlapGraph::sortVerticesByIndegree() {
     }
     std::sort(pairs.begin(), pairs.end(), [=](const std::pair<node_id_t, unsigned int>& a, const std::pair<node_id_t, unsigned int>& b)
     {
-        return a.second < b.second;
+        if (a.second == b.second) {
+            return a.first < b.first;
+        }
+        else {
+            return a.second < b.second;
+        }
     }
     );
     assert (pairs.size() == vertex_count);
@@ -171,7 +176,7 @@ void OverlapGraph::labelVertices(std::list< Edge > & edges_to_be_moved, std::lis
                 node_id_t neighbor = edge_it.get_vertex(2);
                 adj_vec.push_back(neighbor);
             }
-            std::srand( unsigned( rand_seed ) ); // set the random seed
+            std::srand( unsigned( rand_seed ) ); // set the 'random' seed (fixed per iteration)
             std::random_shuffle( adj_vec.begin(), adj_vec.end() );
             // recursively check all neighbors
             for (auto neighbor_it : adj_vec) {
@@ -251,15 +256,16 @@ void OverlapGraph::labelVertices(std::list< Edge > & edges_to_be_moved, std::lis
 
 
 void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_bitset<> &marked, boost::dynamic_bitset<> &visited, std::vector<node_id_t>& path, std::set< std::pair< node_id_t, node_id_t > >& backedge_vec, int randomize) {
+    if (program_settings.verbose) {
+//        std::cout << "in dfs_helper" << std::endl;
+    }
     if (marked[node]) {
         // node was seen before in this dfs-path, so there must be a cycle in G
         backedge_vec.insert(std::make_pair(parent, node));
         unsigned int len_path = 0;
         bool cycle_identified = false;
-//        std::cout << "cycle path: " << node << " ";
         for (auto it = path.rbegin(); it != path.rend(); it++) {
             len_path++;
-//            std::cout << *it << " ";
             if (*it == node) {
                 cycle_identified = true;
                 break;
@@ -267,7 +273,6 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
         }
         assert (len_path > 0 && len_path <= path.size());
         assert (cycle_identified == true);
-//        std::cout << "(path length = " << len_path << ")" << std::endl;
     }
     else if (!visited[node]) {
         marked[node] = 1;
@@ -285,7 +290,12 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
             }
             std::sort(pairs.begin(), pairs.end(), [=](const std::pair<node_id_t, int>& a, const std::pair<node_id_t, int>& b)
             {
-                return a.second < b.second;
+                if (a.second == b.second) {
+                    return a.first < b.first;
+                }
+                else {
+                    return a.second < b.second;
+                }
             }
             );
             for (auto pair_it : pairs) {
@@ -302,7 +312,12 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
             }
             std::sort(pairs.begin(), pairs.end(), [=](const std::pair<node_id_t, double>& a, const std::pair<node_id_t, double>& b)
             {
-                return a.second > b.second;
+                if (a.second == b.second) {
+                    return a.first < b.first;
+                }
+                else {
+                    return a.second > b.second;
+                }
             }
             );
             for (auto pair_it : pairs) {
@@ -319,7 +334,12 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
             }
             std::sort(pairs.begin(), pairs.end(), [=](const std::pair<node_id_t, int>& a, const std::pair<node_id_t, int>& b)
             {
-                return a.second > b.second;
+                if (a.second == b.second) {
+                    return a.first < b.first;
+                }
+                else {
+                    return a.second > b.second;
+                }
             }
             );
             for (auto pair_it : pairs) {
@@ -336,7 +356,12 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
             }
             std::sort(pairs.begin(), pairs.end(), [=](const std::pair<node_id_t, double>& a, const std::pair<node_id_t, double>& b)
             {
-                return a.second < b.second;
+                if (a.second == b.second) {
+                    return a.first < b.first;
+                }
+                else {
+                    return a.second < b.second;
+                }
             }
             );
             for (auto pair_it : pairs) {
@@ -366,12 +391,13 @@ void OverlapGraph::dfs_helper(node_id_t parent, node_id_t node, boost::dynamic_b
 }
 
 std::set< std::pair< node_id_t, node_id_t > > OverlapGraph::findCycles(int randomize) {
+    if (program_settings.verbose) {
+        std::cout << "findCycles.." << std::endl;
+    }
     std::string filename = PATH + "cycles.txt";
     remove(filename.c_str());
-//    std::cout << "findCycles.." << std::endl;
     // sort vertices by increasing order of indegree and process nodes in this order
     std::vector< node_id_t > sorted_vertices = sortVerticesByIndegree();
-//    std::cout << "vertices sorted by indegree..\n";
     // DFS to find cycles -> O(V+E)
     boost::dynamic_bitset<> visited(vertex_count);
     boost::dynamic_bitset<> marked(vertex_count);
@@ -386,6 +412,9 @@ std::set< std::pair< node_id_t, node_id_t > > OverlapGraph::findCycles(int rando
 }
 
 void OverlapGraph::cycleRemovalHeuristic(bool remove_edges) {
+    if (program_settings.verbose) {
+        std::cout << "in cycleRemovalHeuristic..." << std::endl;
+    }
     std::set< std::pair< node_id_t, node_id_t > > cur_backedge_vec;
     std::set< std::pair< node_id_t, node_id_t > > opt_backedge_vec;
     opt_backedge_vec = findCycles(/*randomize*/ 1);

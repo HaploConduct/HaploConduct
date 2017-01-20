@@ -753,7 +753,8 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
     // 2. Order the vertices from left to right
 //    t1 = clock();
     std::list<int> pos_list1, pos_list2;
-    int len1, len2; // consensus sequence total length
+    int len1 = 0;
+    int len2 = 0; // consensus sequence total length
     std::list<std::string> seq_list1, seq_list2;
     std::list<std::string> qual_list1, qual_list2;
     std::list<unsigned int> sorted_vertices1, sorted_vertices2;
