@@ -1,0 +1,47 @@
+# please enter the command for calling SAVAGE:
+#  --> 'savage' if the tool was installed through bioconda
+#  --> 'python2 /path/to/savage/dir/savage.py' when using the git repository
+SAVAGE_EXE:
+    '~/git_repos/savage/savage'
+
+# Choose the mode in which you want to run SAVAGE: de novo or reference guided?
+DE_NOVO:
+    False # set to True for de novo mode, False for ad-hoc reference guided mode
+REF: # fasta file containing reference genome; only used in reference guided mode
+    "/home/jasmijn/git_repos/savage/example/hiv-ref.fasta"
+
+MIN_OVERLAP_LEN:
+    200
+NUM_THREADS:
+    4
+MIN_LEN_FREQ_EST:
+    1000
+
+# Please enter the paths (full or from the current directory) to your input fastq files
+SINGLES_FILE: # enter empty string "" if absent
+    "input_fas/singles.fastq"
+PAIRED1_FILE: # enter empty string "" if absent
+    "input_fas/paired1.fastq"
+PAIRED2_FILE: # enter empty string "" if absent
+    "input_fas/paired2.fastq"
+
+# Set a threshold for the mismatch rate allowed when building master strains (stage c)
+MERGE_CONTIGS:
+    0.01
+
+# Decide whether you want to allow merging along branching edges in stages b & c
+# Not removing branches may lead to longer contigs, but if the diversity in the
+# sample is too low, it will result to too many haplotypes (all possible combinations)
+REMOVE_BRANCHES: # default = 1 (recommended)
+    1 # set to 0 to allow merging along branching edges
+
+# If the data set is of coverage > 1000x, we recommend to split the data into
+# smaller subsets for error correction. After stage a the resulting contigs
+# will be combined in stage b for the remaining stages of the algorithm.
+# We provide a special Snakefile for this analysis; when using this Snakefile,
+# make sure to set the parameter below.
+
+# In how many patches do you want to split your data?
+# Choose this number such that coverage/SPLIT_NUM is between 500x and 1000x
+SPLIT_NUM:
+    1
