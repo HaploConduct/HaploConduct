@@ -27,3 +27,5 @@ sfo_2011_5/libcds/tests/*
 !sfo_2011_5/libcds/tests/.cpp
 !sfo_2011_5/libcds/tests/.h
 !sfo_2011_5/libcds/tests/Makefile
+savage
+freq_est
