@@ -41,25 +41,34 @@ For suffix-prefix overlaps (de novo mode), SAVAGE depends on the
 [SFO package](https://www.cs.helsinki.fi/group/suds/sfo/) which is
 also included.
 
+For reference-guided assembly, SAVAGE depends on the [bwa mem](http://bio-bwa.sourceforge.net/) aligner. Please make sure this tool is installed.
+
 Stages b and c of the algorithm also require `blastn` and `makeblastdb`
 from the ncbi C++ Toolkit.
 
-Optionally, the different preprocessing of the input data and the different
+Optionally, the preprocessing of the input data and the different
 algorithm stages can all be run in a single command using [Snakemake](https://bitbucket.org/snakemake/snakemake/wiki/Home) to execute the
 Snakefile from the SAVAGE root directory.
+
+We provide a simple algorithm for relative frequency estimation of the assembled
+contigs. For improved frequency estimation, we recommend using [Kallisto](https://pachterlab.github.io/kallisto/).
+This is optional, for more information please see the frequency estimation
+section below.
 
 ## Installation
 
 Please download and install:
 
 * [ncbi-blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
-* [Snakemake](https://bitbucket.org/snakemake/snakemake/wiki/Home) (OPTIONAL)
+* [bwa mem](http://bio-bwa.sourceforge.net/)
+* [Snakemake](https://bitbucket.org/snakemake/snakemake/wiki/Home) (optional)
+* [Kallisto](https://pachterlab.github.io/kallisto/) (optional)
 
-*These tools can also be installed using [Bioconda](https://bioconda.github.io/),
+*Each of these tools can also be installed using [Bioconda](https://bioconda.github.io/),
 a distribution of bioinformatics software realized as a channel for the
-versatile Conda package manager*
+versatile Conda package manager.*
 
-Then download and enter the SAVAGE repository and type `make`.
+Then download the [latest](https://bitbucket.org/jbaaijens/savage/downloads?tab=tags) version of **SAVAGE**, enter the repository and type `make`.
 
 ## Manual
 
@@ -79,81 +88,23 @@ The most important parameter to set is the minimal overlap length *M* during
 overlap graph construction. For best results, please read the section on
 parameters carefully.
 
-### SAVAGE-ref
+### Input
 
-This mode constructs the overlap graph of the reads
-using the pairwise overlaps induced from a read-to-reference
-alignment. Hence, it takes as input a reference genome and alignment
-files in [SAM format](https://samtools.github.io/hts-specs/SAMv1.pdf).
+SAVAGE takes as input single-end and/or paired-end reads, which should be stored
+in separate fastq files (e.g. singles.fastq, paired1.fastq, paired2.fastq). The paired-end reads are assumed to be in *two fastq files with both
+sequences in forward orientation* (instead of the more standard forward-reverse)
+because this how PEAR outputs non-merged reads. These files can be specified
+using the following program options:
 
-SAVAGE has proven to work not only on high-quality, well-curated
-reference genomes, but also on ad-hoc consensus genomes constructed
-from the read set itself using a de novo assembler (such as VICUNA).
-Therefore, even in ref-mode, SAVAGE can be used to compute very
-accurate de novo viral quasispecies assemblies.
-
-To run SAVAGE-ref, complete the following steps:
-
-1. Download or assemble a reference genome `reference.fasta`.
-2. Create a directory `my_directory` where you want to store the
-    results, and add a folder `input_fas/` containing
-    ```
-    singles.fastq,
-    paired1.fastq,
-    paired2.fastq.
-    ```
-    Make sure that the read identifiers are numerical, with IDs 0 to
-    num\_singles-1 for the single-end reads and IDs num\_singles
-    to num\_singles+num\_pairs-1 for the paired-end reads.
-3. Align the single- and paired-end reads seperately to this reference,
-    for example using [bwa-mem](http://bio-bwa.sourceforge.net/), obtaining
-    `singles.sam` and `paired.sam`.
-4. Now you're ready to run SAVAGE: enter `my_directory` and run
-```python
-python savage.py --min_overlap_len M --ref reference.fasta --singles singles.sam --paired paired.sam
-```
-
-### SAVAGE-de-novo
-
-This mode does not rely on any reference sequence; instead, it
-computes all approximate suffix-prefix overlaps among the reads
-using the included package [SFO](https://www.cs.helsinki.fi/group/suds/sfo/)
-from Valimaki et al.
-
-SAVAGE-de-novo is very easy to run, because it doesn't require any prior
-information:
-
-1. Create a directory `my_directory` where you want to store the
-    results, and add a folder `input_fas/` containing
-    ```
-    singles.fastq,
-    paired1.fastq,
-    paired2.fastq.
-    ```
-    Make sure that the read identifiers are numerical, with IDs 0 to
-    num\_singles-1 for the single-end reads and IDs num\_singles
-    to num\_singles+num\_pairs-1 for the paired-end reads.
-2. Now you're ready to run SAVAGE: enter `my_directory` and run
-```python
-python savage.py --min_overlap_len M
-```
-
-
-### Algorithm stages
-
-The algorithm proceeds in three stages:
-* Stage a has the original reads as input and contigs
-* Stage b has these contigs as input and maximally extended contigs
-  as output
-* Stage c (OPTIONAL) merges maximized contigs into master strain
-  sequences.
-By default, SAVAGE runs all three stages, but the output of Stage b
-(`contigs_stage_b.fasta`) is considered as the viral quasispecies
-assembly.
-
-SAVAGE performs error correction on the reads in the first iteration
-of Stage a, which has been optimized for a coverage of 500x-1000x.
-
+* `-s` or `--input_s`
+Input fastq file containing single-end reads.
+* `-p1` or `--input_p1`
+Input fastq file containing /1 paired-end reads.
+* `-p2` or `--input_p2`
+Input fastq file containing /2 paired-end reads.
+* `--ref` (optional)
+Fasta file containing the reference genome to be used for reference-guided mode.
+*Please make sure to enter the full path to this fasta file*
 
 ### Assembly parameters
 
@@ -165,14 +116,21 @@ the minimal overlap length to be larger than the (expected) largest repetitive
 element in the target genomes.
 However, it also results in a lower fraction of the target genomes being
 reconstructed. We advise you to consider this trade-off when setting this
-parameter. We have been working with a minimal overlap length of 100-200bp.
+parameter. We have been working with a minimal overlap length of 100-300bp,
+depending on the read length.
+* `--split`
+In case of (ultra-)deep sequencing data, exceeding a coverage of
+1000x, we advise to split the data into patches of coverage between 500x and
+1000x and run SAVAGE Stage a on each patch individually. After specifying the
+number of patches, SAVAGE takes care of the splitting and recombining. Choose
+the number of patches using such that 500 < read_coverage/patch_num < 1000.
 * `--merge_contigs`
 By default this is set to 0.01, meaning that in stage c (master strain assembly)
 we allow overlaps with a mismatch rate up to 1%. By increasing this threshold,
 you are likely to collapse several strains into one or more master strains, but
 possibly leading to longer contigs and hence a higher N50.
-* `--use_subreads`
-By default this is set to True. When setting use_subreads to False, you choose
+* `--ignore_subreads`
+By default this is set to False. When using the ignore_subreads flag, you choose
 not to use subread information from previous stages in the current stage(s).
 This will speed up the algorithm, but at the cost of less accurate abundance
 estimates.
@@ -182,6 +140,69 @@ the -e parameter for running SFO. By default it is equal to 50, meaning that
 the overlaps output by SFO allow up to 2% mismatches. This accounts for 1%
 sequencing errors. Increasing this parameter will slow down the algorithm, while
 decreasing will lead to a possibly incomplete overlap graph.
+* `--overlap_len_stage_c`
+For Stage c of the algorithm (master strain assembly), it is possible to specify
+a different minimum overlap length using this option.
+* `--contig_len_stage_c`
+By default, only contigs of at least 500 bp in length are considered for master
+strain assembly. The user can adjust this threshold by setting the
+`contig_len_stage_c` parameter.
+
+
+### SAVAGE-ref
+
+This mode constructs the overlap graph of the reads using the
+pairwise overlaps induced from a read-to-reference alignment.
+It takes as input a reference genome along with the read set,
+and uses bwa mem to compute alignments after splitting the data.
+
+SAVAGE has proven to work not only on high-quality, well-curated
+reference genomes, but also on ad-hoc consensus genomes constructed
+from the read set itself using a de novo assembler (such as VICUNA).
+Therefore, even in ref-mode, SAVAGE can be used to compute very
+accurate de novo viral quasispecies assemblies.
+
+To run SAVAGE-ref, complete the following steps:
+
+1. Download or assemble a reference genome `reference.fasta`.
+2. Create a directory `my_directory` where you want to store the
+    results and enter this directory: `cd my_directory`.
+3. Now run SAVAGE with the option `--ref /path/to/reference.fasta`:
+```python
+savage --ref /path/to/reference.fasta --split patch_num --min_overlap_len M --s singles.fastq --p1 paired1.fastq --p2 paired2.fastq
+```
+
+### SAVAGE-de-novo
+
+This mode does not rely on any reference sequence; instead, it
+computes all approximate suffix-prefix overlaps among the reads
+using the included package [SFO](https://www.cs.helsinki.fi/group/suds/sfo/)
+from Valimaki et al.
+
+To run SAVAGE-de-novo, complete the following steps:
+
+1. Create a directory `my_directory` where you want to store the
+    results and enter this directory: `cd my_directory`.
+2. Now run SAVAGE:
+```python
+savage --split patch_num --min_overlap_len M --s singles.fastq --p1 paired1.fastq --p2 paired2.fastq
+```
+
+
+### Algorithm stages
+
+The algorithm proceeds in three stages:
+* Stage a has the original reads as input and contigs
+* Stage b has these contigs as input and maximally extended contigs
+  as output
+* Stage c (OPTIONAL) merges maximized contigs into master strain
+  contigs.
+By default, SAVAGE runs all three stages, but the output of Stage b
+(`contigs_stage_b.fasta`) is considered as the viral quasispecies
+assembly.
+
+SAVAGE performs error correction on the reads in the first iteration
+of Stage a, which has been optimized for a coverage of 500x-1000x.
 
 
 ### Frequency estimation
@@ -196,39 +217,47 @@ have been maximally extended.
 The frequency estimation can be applied as follows:
 
 ```python
-python freq_est.py --fas contigs.fastq --subreads subreads.txt --min_len 1000
+freq_est --contigs contigs.fastq --subreads subreads.txt --min_len 1000
 ```
 
-The parameter `--min_len` can be set to any non-negative integer;
+The parameter `--min_len` (or `-m`) can be set to any non-negative integer;
 only contigs of at least this length will be considered during
 frequency estimation.
+
+For improved frequency estimation, we recommend to use [Kallisto](https://pachterlab.github.io/kallisto/).
+This requires Kallisto to be installed on your machine. Kallisto uses
+the original paired-end sequencing reads *(i.e., before running PEAR)*
+from two separate files (`forward.fastq`, `reverse.fastq`). Run the
+following command to estimate relative frequencies in Kallisto mode:
+```python
+freq_est --kallisto --kallisto_path /path/to/kallisto/executable -f forward.fastq -r reverse.fastq --contigs contigs.fastq --min_len 1000
+```
 
 
 ### Example
 
 The directory `example/` contains a small working example, with both
-single- and paired-end reads contained in `input_fas/` and alignments
-`singles.sam`, `paired.sam` to an HIV-1 HXB2 reference strain
-(`hiv-ref.fasta`).
+single- and paired-end reads contained in `input_fas/` and an HIV-1 HXB2
+reference strain (`hiv-ref.fasta`).
 
 To run the example, cd into `example/` and
 
 * for SAVAGE-ref execute:
 
 ```python
-python savage.py --ref hiv-ref.fasta --singles singles.sam --paired paired.sam
+savage --ref /path/to/example/hiv-ref.fasta -s input_fas/singles.fastq -p1 input_fas/paired1.fastq -p2 input_fas/paired2.fastq -m 200 --split 1
 ```
 
 * for SAVAGE-de-novo execute:
 
 ```python
-python savage.py
+savage -s input_fas/singles.fastq -p1 input_fas/paired1.fastq -p2 input_fas/paired2.fastq -m 200 --split 1
 ```
 
 Then apply the frequency estimation procedure on Stage b contigs:
 
 ```python
-python ../freq_est.py --fas stage_b/singles.fastq --subreads stage_b/subreads.txt --min_len 1000
+../freq_est --contigs stage_b/singles.fastq --subreads stage_b/subreads.txt --min_len 1000
 ```
 
 The desired output of this final procedure (also on Stage a/c contigs) is given in the files
@@ -240,18 +269,19 @@ The desired output of this final procedure (also on Stage a/c contigs) is given 
 In case of (ultra-)deep sequencing data, exceeding a coverage of
 1000x, we advise to split the data into patches of coverage between 500x and
 1000x and run SAVAGE Stage a on each patch individually. The resulting contigs
-can then be combined for a joint Stage b and subsequently also Stage c. We
-provide a **Snakefile** to run the entire procedure. As input it takes your
-fastq-files: single and/or paired-end reads, where the paired-end reads are
-provided in separate files in forward-forward orientation. The file paths need
-to be specified in the config file `savage_config.yaml`, along with the other
-SAVAGE parameters. Please edit the config file and copy it to the directory
-where you wish to store all SAVAGE output, then run
+can then be combined for a joint Stage b and subsequently also Stage c.
+
+### Snakemake workflow
+We provide a **Snakefile** to run experiments with SAVAGE more easily with [Snakemake](https://bitbucket.org/snakemake/snakemake/wiki/Home).
+All SAVAGE parameters need to be specified in the config file `savage_config.yaml`.
+Please edit the config file and copy it to the directory where you wish to store
+all SAVAGE output, then run
 ```
-snakemake -s /path/to/SAVAGE_DIR/Snakefile
+snakemake -s /path/to/SAVAGE_ROOT/Snakefile
 ```
-where /path/to/SAVAGE_DIR specifies the path to the SAVAGE root directory.
-This pipeline uses [bwa-mem](http://bio-bwa.sourceforge.net/) when choosing reference-guided mode, which can also be installed using [Bioconda](https://bioconda.github.io/).
+where /path/to/SAVAGE_ROOT/ specifies the path to the SAVAGE root directory.
+When re-executing a workflow, Snakemake will only run the stages of the algorithm
+for which the input has actually changed, thus avoiding unnecessary computations.
 
 
 ## General remarks
