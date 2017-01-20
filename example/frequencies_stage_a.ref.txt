@@ -1,13 +1,11 @@
-#contigs: 5
-total length: 10353
-average length: 2070
-total subread count: 825
-*
-normalized frequencies:
-(ID: freq, length)
-1: 15.73, 2926
-0: 32.90, 3190
-2: 25.84, 1302
-7: 12.54, 1588
-8: 12.99, 1347
-*
+#contigs: 4
+total length: 9943
+total effective length: 9547
+average length: 2485
+average effective length: 2386
+total subread count: 743
+id	length	frequency
+1	3479	0.172
+0	2654	0.365
+3	2551	0.161
+2	1259	0.302
