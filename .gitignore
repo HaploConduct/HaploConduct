@@ -3,6 +3,7 @@
 !/.gitignore
 bin/
 example/*
+!example/savage_config.yaml
 !example/frequencies*
 !example/hiv-ref.fasta
 !example/singles.sam
