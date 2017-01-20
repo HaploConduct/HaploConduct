@@ -353,20 +353,33 @@ def main():
         lines = f.readlines()
         if len(lines) == 0:
             print "empty reference fasta... exiting."
-        elif len(lines) % 2 != 0:
-            print "invalid reference fasta... exiting."
+            sys.exit(1)
+#        elif len(lines) % 2 != 0:
+#            print "invalid reference fasta... exiting."
         ref_id = ""
         ref_seq = ""
         idx = 0
-        for i in xrange(len(lines)):
-            if i%2 == 0:
-                id_line = lines[i].strip('\n')
+        for line in lines:
+#            if i%2 == 0:
+            if line[0] == '>':
+                if ref_seq != "" and ref_id != "":
+                    ref_list.append(ref_seq)
+                    ref_dict[ref_id] = idx
+                    idx += 1
+                    ref_seq = ""
+                id_line = line.strip('\n')
                 ref_id = id_line.split()[0][1:]
-            elif i%2 == 1:
-                ref_seq = lines[i].strip('\n')
-                ref_list.append(ref_seq)
-                ref_dict[ref_id] = idx
-                idx += 1
+            else:
+                ref_seq += line.strip('\n')
+        if ref_seq == "":
+            print "invalid fasta file... exiting"
+            sys.exit(1)
+        else:
+            ref_list.append(ref_seq)
+            ref_dict[ref_id] = idx
+            idx += 1
+            ref_seq = ""
+
 
     if args.infile_s:
         sam_records_s = read_sam_to_list(args.infile_s)
