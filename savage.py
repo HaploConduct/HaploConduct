@@ -16,18 +16,18 @@ __author__ = "Jasmijn Baaijens"
 __license__ = "GPL"
 
 usage = """
-
-SAVAGE: Strain Aware VirAl GEnome assembly
+Program: SAVAGE - Strain Aware VirAl GEnome assembly
+Version: 0.2.1
+Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
 input single- and/or paired-end Illumina sequencing reads. Please note that the
 paired-end reads are expected to be in forward-forward format, as output by
 PEAR.
 
-Run savage.py -h for a complete description of required and optional arguments.
+Run savage -h for a complete description of required and optional arguments.
 
 For more information, please visit https://bitbucket.org/jbaaijens/savage
-
 """
 
 # ------------------------------
@@ -72,6 +72,11 @@ def main():
         sys.stderr.flush()
         sys.exit(1)
 
+    if len(sys.argv[1:])==0:
+        print usage
+#        parser.print_help()
+#        parser.print_usage()
+        parser.exit()
     args = parser.parse_args()
 
     FNULL = open(os.devnull, 'w')
