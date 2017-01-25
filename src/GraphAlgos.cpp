@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : ViralQuasispecies.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.02 Beta
+// Version     : 0.2.1
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Additional graph algorithms to extend OverlapGraph.cpp

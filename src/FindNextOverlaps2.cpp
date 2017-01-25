@@ -1,10 +1,10 @@
 //============================================================================
 // Name        : FindNextOverlaps2.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.01 Beta
+// Version     : 0.2.1
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
-// Description : An alternative algorithm for finding the new overlaps: 
+// Description : An alternative algorithm for finding the new overlaps:
 //               instead of reconsidering all existing edges, we check all pairs of superreads that have a subread in common.
 //============================================================================
 
@@ -16,7 +16,7 @@
 #include <algorithm> // std::max, std::min
 
 #include "SRBuilder.h"
- 
+
 void SRBuilder::findNextOverlaps2() {
     std::cout << "FindNextOverlaps2...\n";
     // build an adjacency list mapping vertices to superreads
@@ -49,7 +49,7 @@ void SRBuilder::findNextOverlaps2() {
             c = it.size();
         }
     }
-    std::cout << "SR_count = " << SR_count << " , V = " << V <<  ", c = " << c << "\n"; 
+    std::cout << "SR_count = " << SR_count << " , V = " << V <<  ", c = " << c << "\n";
 //    if (V*c*c < SR_count*SR_count) {
     if (true) {
         nodeDictApproach();
@@ -58,7 +58,7 @@ void SRBuilder::findNextOverlaps2() {
         bitvecApproach();
     }
 }
-    
+
 void SRBuilder::bitvecApproach() {
     std::cout << "bitvecApproach...\n";
     // construct a bitvector for every superread, indicating its subreads by node ID
@@ -72,7 +72,7 @@ void SRBuilder::bitvecApproach() {
         Read* read_ptr = & (*it);
         SR_to_bitvec.push_back( std::make_pair( read_ptr, buildBitvec(read_ptr) ) );
     }
-    
+
     // build a list containing every pair of superreads having a subread in common
     std::list< OverlapCandidate > overlaps_list;
     std::pair< Read*, boost::dynamic_bitset<> > SR_bitvec1;
@@ -201,7 +201,7 @@ void SRBuilder::nodeDictApproach() {
     std::cout << "Number of overlaps found: " << overlaps_count << "\n";
     next_overlaps_count += overlaps_count;
     outfile.close();
-}    
+}
 
 boost::dynamic_bitset<> SRBuilder::buildBitvec(Read* superread) {
     unsigned int V = overlap_graph->getVertexCount();
@@ -235,7 +235,7 @@ Overlap SRBuilder::deduceOverlap(OverlapCandidate candidate) {
     unsigned int len2;
     std::string type1;
     std::string type2;
-    
+
     Read* SR1 = candidate.SR1;
     Read* SR2 = candidate.SR2;
     unsigned int node = candidate.common_node;
@@ -405,6 +405,6 @@ Overlap SRBuilder::deduceOverlap(OverlapCandidate candidate) {
         type2 = "p";
     }
     // write data to overlap
-    Overlap overlap(id1, id2, pos1, pos2, ord, ori1, ori2, perc1, perc2, len1, len2, type1, type2);    
+    Overlap overlap(id1, id2, pos1, pos2, ord, ori1, ori2, perc1, perc2, len1, len2, type1, type2);
     return overlap;
 }
