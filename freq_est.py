@@ -60,7 +60,8 @@ def main():
         os.remove(args.out_file)
 
     if args.kallisto and not (args.forward and args.reverse):
-        print "Input arguments missing: Kallisto-mode requires original fastq files."
+        sys.stderr.write("Input arguments missing: Kallisto-mode requires original fastq files.\n")
+        sys.stderr.flush()
         print "Please specify forward and reverse fastq files using options -f and -r"
         sys.exit(1)
 

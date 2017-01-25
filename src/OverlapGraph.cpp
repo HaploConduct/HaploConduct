@@ -125,8 +125,8 @@ Edge OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
 	    }
     }
     if (!found) {
-        std::cout << "Edge to be removed not found...\n";
-        std::cout << v << " " << w << "\n";
+        std::cerr << "Edge to be removed not found...\n";
+        std::cerr << v << " " << w << "\n";
         exit(1);
     }
     std::list< node_id_t > adj_list_w = adj_in.at(w);
@@ -191,7 +191,7 @@ Edge* OverlapGraph::getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed) 
 	        }
         }
     }
-    std::cout << v << " " << w << " Edge not found. Exiting.\n";
+    std::cerr << v << " " << w << " Edge not found. Exiting.\n";
     exit(1);
 }
 

@@ -108,7 +108,7 @@ public:
 
 	void check_pos(int s) {
 	    if (s < 0) {
-	        std::cout << "overlap.m_pos < 0; Exiting.\n";
+	        std::cerr << "overlap.m_pos < 0; Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -129,22 +129,22 @@ public:
             assert (s.length() == 1);
 	    }
 	    if (s != "+" && s != "-") {
-	        std::cout << "overlap.m_ori not of the right format (+, -). Exiting.\n";
+	        std::cerr << "overlap.m_ori not of the right format (+, -). Exiting.\n";
 	        exit(1);
 	    }
 	}
 
 	void check_perc(int s) {
 	    if (s < 0 || s > 100) {
-	        std::cout << s << "\n";
-            std::cout << "overlap.m_perc not of the right format (0 <= perc <= 100). Exiting.\n";
+	        std::cerr << s << "\n";
+            std::cerr << "overlap.m_perc not of the right format (0 <= perc <= 100). Exiting.\n";
 	        exit(1);
 	    }
 	}
 
 	void check_len(int s) {
 		if (s < 0) {
-            std::cout << "overlap.m_len < 0. Exiting.\n";
+            std::cerr << "overlap.m_len < 0. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -157,7 +157,7 @@ public:
 	    }
 	    assert (s.length() == 1);
 	    if (s != "s" && s != "p") {
-	        std::cout << s << " not of the form 's' or 'p'. Exiting.\n";
+	        std::cerr << s << " not of the form 's' or 'p'. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -168,7 +168,7 @@ public:
 	    else if (i == 2)
 	        return m_id2;
 	    else {
-	        std::cout <<  "id requested must be for 1 or 2. Exiting.\n";
+	        std::cerr <<  "id requested must be for 1 or 2. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -179,7 +179,7 @@ public:
 	    else if (i == 2)
 	        return m_pos2;
 	    else {
-	        std::cout <<  "pos requested must be for 1 or 2. Exiting.\n";
+	        std::cerr <<  "pos requested must be for 1 or 2. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -194,7 +194,7 @@ public:
 	    else if (i == 2)
 	        return m_ori2;
 	    else {
-	        std::cout <<  "ori requested must be for 1 or 2. Exiting.\n";
+	        std::cerr <<  "ori requested must be for 1 or 2. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -214,7 +214,7 @@ public:
 	    else if (i == 2)
 	        return m_len2;
 	    else {
-	        std::cout <<  "len requested must be for 1 or 2. Exiting.\n";
+	        std::cerr <<  "len requested must be for 1 or 2. Exiting.\n";
 	        exit(1);
 	    }
 	}
@@ -225,7 +225,7 @@ public:
 	    else if (i == 2)
 	        return m_type2;
 	    else {
-	        std::cout <<  "type requested must be for 1 or 2. Exiting.\n";
+	        std::cerr <<  "type requested must be for 1 or 2. Exiting.\n";
 	        exit(1);
 	    }
 	}

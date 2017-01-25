@@ -127,7 +127,7 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
     }
     mismatch_rate = float(mismatch_count)/total_len;
     if (mismatch_rate != mismatch_rate) { // check for NaN
-        std::cout << "mismatch rate NaN" << std::endl;
+        std::cerr << "mismatch rate NaN" << std::endl;
         exit(1);
     }
     total_score = (1.0/total_len)*total_score;
@@ -561,8 +561,7 @@ void EdgeCalculator::construct_edges()
     const unsigned int overlaps_per_vec = 1000000;
     std::vector<Overlap> overlaps_vec;
     overlaps_vec.reserve(overlaps_per_vec);
-    if (overlapsfile.is_open())
-    {
+    if (overlapsfile.is_open())     {
         if (program_settings.verbose) {
             std::cout << "reading overlaps file... \n";
         }
@@ -642,9 +641,8 @@ void EdgeCalculator::construct_edges()
         }
         new_overlapsfile.close();
     }
-    else
-    {
-        std::cout << "Unable to open file";
+    else {
+        std::cerr << "Unable to open overlaps file";
         exit(1);
     }
 }

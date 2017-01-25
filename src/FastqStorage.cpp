@@ -51,7 +51,7 @@ void FastqStorage::fastq_to_stream(std::string filename, std::vector< std::strin
 		fastqfile.close();
 	}
 	else {
-	    std::cout << "Unable to open fastq file " << filename << std::endl;
+	    std::cerr << "Unable to open fastq file " << filename << std::endl;
         exit(1);
     }
 }
@@ -83,7 +83,7 @@ void FastqStorage::read_new_ids() {
         new_ids.close();
     }
     else {
-        std::cout << "Unable to open read-to-overlapID file";
+        std::cerr << "Unable to open read-to-overlapID file";
         exit(1);
     }
     m_largest_read_id = max_id;
@@ -137,7 +137,7 @@ void FastqStorage::read_singles() {
 				bool is_paired = false;
 				bool is_super = false;
 				if (seq.length() == 0) {
-				    std::cout << "single read with ID " << id << " has an empty sequence... exiting.\n";
+				    std::cerr << "single read with ID " << id << " has an empty sequence... exiting.\n";
 				    exit(1);
 				}
                 else {
@@ -218,7 +218,7 @@ void FastqStorage::read_pairs() {
 				bool is_paired = true;
 				bool is_super = false;
 				if (seq1.length() == 0 || seq2.length() == 0) {
-				    std::cout << "paired read with ID " << id << " has an empty sequence... exiting.\n";
+				    std::cerr << "paired read with ID " << id << " has an empty sequence... exiting.\n";
 				    exit(1);
 				}
 //                else if (seq1.length() > min_overlap_length && seq2.length() > min_overlap_length) {

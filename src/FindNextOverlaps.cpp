@@ -803,7 +803,7 @@ void SRBuilder::reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsi
         overlapsfile.close();
     }
     else {
-        std::cout << "Unable to open file\n";
+        std::cerr << "Unable to open non-edge overlaps file\n";
         exit(1);
     }
 }

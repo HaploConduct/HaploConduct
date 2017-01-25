@@ -124,7 +124,7 @@ public:
             else if (*it == 'N')
                 rev_comp.append("N");
             else {
-                std::cout << "Invalid sequence character. Aborting.\n";
+                std::cerr << "Invalid sequence character. Aborting.\n";
                 exit(1);
             }
         }

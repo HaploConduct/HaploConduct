@@ -93,7 +93,7 @@ void SRBuilder::buildOriginalsDict() {
             originals.close();
         }
         else {
-            std::cout << "Unable to open subreads file";
+            std::cerr << "Unable to open subreads file";
             exit(1);
         }
     }
@@ -465,7 +465,7 @@ bool SRBuilder::consensus_pos(std::string nucleotides, std::string qualities, st
         else if (max_score == score_C) { new_nuc = 'C'; }
         else if (max_score == score_G) { new_nuc = 'G'; }
         else {
-            std::cout << "error computing consensus nucleotide, exiting.\n";
+            std::cerr << "error computing consensus nucleotide, exiting.\n";
             exit(1);
         }
         cons_seq.push_back(new_nuc);
@@ -1226,7 +1226,7 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
         }
     }
     else {
-        std::cout << "Unable to open clique-file";
+        std::cerr << "Unable to open clique-file";
         exit(1);
     }
     if (program_settings.verbose) {
