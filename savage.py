@@ -39,8 +39,9 @@ def main():
     basic.add_argument('-p1', dest='input_p1', type=str, help='path to input fastq containing paired-end reads (/1)')
     basic.add_argument('-p2', dest='input_p2', type=str, help='path to input fastq containing paired-end reads (/2)')
     basic.add_argument('-m', '--min_overlap_len', dest='min_overlap_len', type=int, required=True, help='minimum overlap length required between reads')
-    basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1)
+    basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--split', dest='split_num', type=int, required=True, help='split the data set into patches s.t. 500 < coverage/split_num < 1000')
+    basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
 #    basic.add_argument('--config', dest='config', type=str, help='path to config file containing parameter settings; for an example, \nplease see the SAVAGE repository on https://bitbucket.org/jbaaijens/savage')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
@@ -54,8 +55,8 @@ def main():
     advanced.add_argument('--no_preprocessing', dest='preprocessing', action='store_false', help='skip preprocessing procedure (i.e. creating data patches)')
 #    advanced.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; please make sure \nto enter the full path!')
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
-    advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.01, help='specify maximal distance between contigs for merging into master strains (stage c)')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
+    advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.01, help='specify maximal distance between contigs for merging into master strains (stage c)')
     advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, help='min_overlap_len used in stage c')
     advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=500, help='minimum contig length required for stage c input contigs')
 #    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
@@ -139,14 +140,21 @@ def main():
             # rename or create single-end reads file
             if args.input_s:
                 singles_count = int(file_len('stage_a/singles.%d.fastq' % patch_num)/4)
-                subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
+                if args.revcomp:
+                    subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
+                else:
+                    subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
             else:
                 singles_count = 0
                 subprocess.check_call("touch stage_a/patch%d/input_fas/singles.fastq" % patch_num, shell=True)
             # rename or create paired-end reads files
             if args.input_p1 and args.input_p2:
-                subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
-                subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired2.%d.fastq --out stage_a/patch%d/input_fas/paired2.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
+                if args.revcomp:
+                    subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
+                    subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/paired2.%d.fastq --out stage_a/patch%d/input_fas/paired2.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
+                else:
+                    subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
+                    subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired2.%d.fastq --out stage_a/patch%d/input_fas/paired2.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
             else:
                 subprocess.check_call("touch stage_a/patch%d/input_fas/paired1.fastq stage_a/patch%d/input_fas/paired2.fastq" % (patch_num, patch_num), shell=True)
             if not denovo:
