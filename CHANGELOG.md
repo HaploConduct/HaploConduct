@@ -1,5 +1,13 @@
 # Change log
 
+## [0.2.1] - 2017-01-25
+### Added
+- Option --revcomp to enable processing of forward-reverse paired-end reads instead
+of only forward-forward as output by PEAR
+
+### Changed
+- Print error messages to stderr instead of stdout.
+
 ## [0.2.0] - 2017-01-17
 ### Added
 - Frequency estimation using Kallisto.
