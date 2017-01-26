@@ -31,14 +31,7 @@ def main():
         i = 0
         for line in f:
             if i%4 == 0:
-                illumina_ID = line.split()[0]
-                if args.id_sep:
-                    cur_ID = int(illumina_ID.split('.')[1])
-                else:
-                    cur_ID = int(illumina_ID.strip('@'))
-#                if i > 0 and cur_ID <= prev_ID:
-#                    break
-                prev_ID = cur_ID
+                cur_ID = line.strip('\n')
                 rand_set = random.randint(0, args.split_num-1)
                 ID_to_set[cur_ID] = rand_set
             i += 1
@@ -60,12 +53,8 @@ def main():
         tup = []
         for line in f:
             if i%4 == 0:
-                illumina_ID = line.split()[0]
-                if args.id_sep:
-                    ID = int(illumina_ID.split('.')[1])
-                else:
-                    ID = int(illumina_ID.strip('@'))
-                tup = [illumina_ID + '\n']
+                ID = line.strip('\n')
+                tup = [ID + '\n']
             else:
                 tup.append(line)
 
@@ -82,12 +71,8 @@ def main():
             tup = []
             for line in f:
                 if i%4 == 0:
-                    illumina_ID = line.split()[0]
-                    if args.id_sep:
-                        ID = int(illumina_ID.split('.')[1])
-                    else:
-                        ID = int(illumina_ID.strip('@'))
-                    tup = [illumina_ID + '\n']
+                    ID = line.strip('\n')
+                    tup = [ID + '\n']
                 else:
                     tup.append(line)
 
