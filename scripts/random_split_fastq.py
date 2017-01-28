@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--input2", dest="input2", type=str, required=False, help="input fastq filename (2)")
     parser.add_argument("--output", dest="output", type=str, required=True, help="prefix for output files")
     parser.add_argument("--split_num", dest="split_num", type=int, required=True, help="number of desired output files")
-    parser.add_argument('--illumina_IDs', dest='id_sep', type=bool, default=False)
+#    parser.add_argument('--illumina_IDs', dest='id_sep', type=bool, default=False)
     args = parser.parse_args()
     fastq = args.input
 
@@ -31,7 +31,7 @@ def main():
         i = 0
         for line in f:
             if i%4 == 0:
-                cur_ID = line.strip('\n')
+                cur_ID = line.strip('\n').split()[0]
                 rand_set = random.randint(0, args.split_num-1)
                 ID_to_set[cur_ID] = rand_set
             i += 1
@@ -53,7 +53,7 @@ def main():
         tup = []
         for line in f:
             if i%4 == 0:
-                ID = line.strip('\n')
+                ID = line.strip('\n').split()[0]
                 tup = [ID + '\n']
             else:
                 tup.append(line)
@@ -71,7 +71,7 @@ def main():
             tup = []
             for line in f:
                 if i%4 == 0:
-                    ID = line.strip('\n')
+                    ID = line.strip('\n').split()[0]
                     tup = [ID + '\n']
                 else:
                     tup.append(line)
