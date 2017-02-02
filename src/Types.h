@@ -54,6 +54,7 @@ struct ProgramSettings {
     unsigned int min_read_len;
     std::string base_path;
     bool verbose;
+    bool diploid;
 };
 
 struct IterationStats {

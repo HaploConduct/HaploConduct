@@ -114,6 +114,7 @@ public:
     void removeBranches();
     void removeTransitiveEdges();
     void removeTips();
+    void reduceDiploidBranching();
 };
 
 #endif /* OVERLAPGRAPH_H_ */

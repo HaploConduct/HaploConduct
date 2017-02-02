@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
         ("remove_branches", po::value< bool > (&program_settings.remove_branches)->default_value(false), "remove branches from overlap graph")
         ("min_read_len", po::value< unsigned int > (&program_settings.min_read_len)->default_value(0), "set the minimum read length (bp) for allowing edges")
         ("base_path", po::value< std::string > (&program_settings.base_path)->default_value("."), "set path to SAVAGE directory containing quick-cliques-1.0")
+        ("diploid", po::value< bool > (&program_settings.diploid)->default_value(false), "apply edge filtering for diploid genomes")
         ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
@@ -279,6 +280,10 @@ int main(int argc, char *argv[])
 
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
+    // Remove edges to obtain a diploid assembly
+    if (program_settings.diploid) {
+        overlap_graph->reduceDiploidBranching();
+    }
     // Find branches (remove if specified)
     if (program_settings.remove_branches) {
         overlap_graph->removeTips();

@@ -17,6 +17,65 @@
 
 #include "OverlapGraph.h"
 
+void OverlapGraph::reduceDiploidBranching() {
+    /* Reduce the number of branches in the overlap graph using the fact that
+       the assembly should be diploid. */
+    std::vector< std::list< node_id_t > > unique_out_extensions;
+    // find all uniquely out-extending edges
+    for (auto adj_list : adj_out) {
+        // if out-degree = 1 -> keep edge
+        if (adj_list.size() == 1) {
+            Edge edge = adj_list.front();
+            node_id_t outneighbor = edge.get_vertex(2);
+            unique_out_extensions.push_back(std::list< node_id_t >{outneighbor});
+        }
+        else {
+            unique_out_extensions.push_back(std::list< node_id_t >{});
+        }
+    }
+    std::vector< std::list< node_id_t > > unique_in_extensions;
+    // find all uniquely in-extending edges
+    for (auto adj_list : adj_in) {
+        // if in-degree = 1 -> keep edge
+        if (adj_list.size() == 1) {
+            unique_in_extensions.push_back(adj_list);
+        }
+        else {
+            unique_in_extensions.push_back(std::list< node_id_t >{});
+        }
+    }
+    std::set< std::pair< node_id_t, node_id_t > > edges_to_be_deleted;
+    // find all non-unique edges to delete
+    for (auto u_out : unique_out_extensions) {
+        if (!u_out.empty()) {
+            assert (u_out.size() == 1);
+            node_id_t outneighbor = u_out.front();
+            for (auto inneighbor : adj_in.at(outneighbor)) {
+                if (unique_out_extensions.at(inneighbor).empty() || unique_out_extensions.at(inneighbor).front() != outneighbor) {
+                    edges_to_be_deleted.insert(std::make_pair(inneighbor, outneighbor));
+                }
+            }
+        }
+    }
+    for (auto u_in : unique_in_extensions) {
+        if (!u_in.empty()) {
+            assert (u_in.size() == 1);
+            node_id_t inneighbor = u_in.front();
+            for (auto edge : adj_out.at(inneighbor)) {
+                node_id_t outneighbor = edge.get_vertex(2);
+                if (unique_in_extensions.at(outneighbor).empty() || unique_in_extensions.at(outneighbor).front() != inneighbor) {
+                    edges_to_be_deleted.insert(std::make_pair(inneighbor, outneighbor));
+                }
+            }
+        }
+    }
+    // remove edges
+    for (auto node_pair : edges_to_be_deleted) {
+        removeEdge(node_pair.first, node_pair.second);
+    }
+    std::cout << "Number of edges removed because of diploid argument: " << edges_to_be_deleted.size() << std::endl;
+}
+
 std::vector< std::vector< node_id_t > > OverlapGraph::getEdgesForMerging() {
     /* builds a list of node pairs corresponding to edges that are selected
        for merging (i.e. super-read construction) */
@@ -462,6 +521,7 @@ void OverlapGraph::removeTips() {
         }
         bool alltips = true;
         std::vector< std::pair<node_id_t, node_id_t> > local_tips;
+        std::vector< Read* > local_tip_reads;
         for (auto edge1 = adj_list.begin(); edge1 != adj_list.end() && cont; edge1++) {
             node_id_t v1 = edge1->get_vertex(2);
             // check if i->v1 is a dead end ('tip')
@@ -469,6 +529,7 @@ void OverlapGraph::removeTips() {
                 if (edge1->ext_len(1) < max_tip_len) {
                     tip_count += 1;
                     local_tips.push_back( std::make_pair(i, v1) );
+                    local_tip_reads.push_back( edge1->get_read(2) );
                 }
             }
             else {
@@ -477,6 +538,10 @@ void OverlapGraph::removeTips() {
         }
         if (!alltips) {
             edges_to_remove.insert(local_tips.begin(), local_tips.end());
+            // mark sequences as tips
+            for (auto read_ptr : local_tip_reads) {
+                read_ptr->set_tip();
+            }
         }
     }
     if (program_settings.verbose) {
@@ -491,6 +556,7 @@ void OverlapGraph::removeTips() {
         }
         bool alltips = true;
         std::vector< std::pair<node_id_t, node_id_t> > local_tips;
+        std::vector< Read* > local_tip_reads;
         for (auto v1 = adj_list.begin(); v1 != adj_list.end() && cont; v1++) {
             // check if i->v1 is a dead end ('tip')
             if (adj_in.at(*v1).empty()) {
@@ -498,6 +564,7 @@ void OverlapGraph::removeTips() {
                 if (edge->ext_len(0) < max_tip_len) {
                     tip_count += 1;
                     local_tips.push_back( std::make_pair(*v1, i) );
+                    local_tip_reads.push_back( edge->get_read(1) );
                 }
             }
             else {
@@ -506,6 +573,10 @@ void OverlapGraph::removeTips() {
         }
         if (!alltips) {
             edges_to_remove.insert(local_tips.begin(), local_tips.end());
+            // mark sequences as tips
+            for (auto read_ptr : local_tip_reads) {
+                read_ptr->set_tip();
+            }
         }
     }
     if (program_settings.verbose) {
