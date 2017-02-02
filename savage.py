@@ -196,12 +196,13 @@ def main():
         print "\rDone!" + " " * 60
         sys.stdout.flush()
     elif args.stage_a:
-        # check if overlaps file already exists
-        if not os.path.exists('original_overlaps.txt'):
-            sys.stderr.write("""Assuming existing overlaps file 'original_overlaps.txt'.
-                     Please make sure this file exists, or set --preprocessing=True\n""")
-            sys.stderr.flush()
-            sys.exit(1)
+        # check if overlaps file already exists for every patch
+        for patch_num in range(args.split_num):
+            if not os.path.exists('stage_a/patch%d/original_overlaps.txt' % patch_num):
+                sys.stderr.write("""Assuming existing overlaps file 'stage_a/patch%d/original_overlaps.txt'.
+                         Please make sure this file exists, or run overlap computations first\n""" % patch_num)
+                sys.stderr.flush()
+                sys.exit(1)
 
     # Run SAVAGE Stage a: error correction and initial contig formation
     if args.stage_a:
@@ -239,7 +240,7 @@ def main():
             print """Contigs file from Stage a not found. Please make sure that both
                      'stage_a/singles.fastq' and 'contigs_stage_a.fasta' exist. If
                      absent, please rerun Stage a."""
-            return -1
+            sys.exit(1)
         subprocess.call(['cp', 'stage_a/singles.fastq', 'stage_b/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
         overlaps = run_blast('a', pident, base_path, args.min_overlap_len)
@@ -277,7 +278,7 @@ def main():
             print """Contigs file from Stage b not found. Please make sure that both
                      'stage_b/singles.fastq' and 'contigs_stage_b.fasta' exist. If
                      absent, please rerun Stage b."""
-            return -1
+            sys.exit(1)
         subprocess.call(['cp', 'stage_b/singles.fastq', 'stage_c/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 100*(0.99-args.merge_contigs)
         overlaps = run_blast('b', pident, base_path, min_overlap_len)
@@ -308,7 +309,7 @@ def main():
             print """Contigs file from Stage c not found. Please make sure that both
                      'stage_c/singles.fastq' and 'contigs_stage_c.fasta' exist. If
                      absent, please rerun Stage c."""
-            return -1
+            sys.exit(1)
         subprocess.call(['cp', 'stage_c/singles.fastq', 'diploid/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
         overlaps = run_blast('c', pident, base_path, min_overlap_len)
