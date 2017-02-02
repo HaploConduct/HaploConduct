@@ -43,6 +43,7 @@ private:
     std::deque<Read> single_SR_vec;
     std::deque<Read> paired_SR_vec;
     std::deque<Read> trivial_SR_vec;
+    std::deque<Read> tips_vec;
     std::map<unsigned int, read_id_t> nodes_to_new_IDs; // dictionary to get from nodes to new IDs
     std::string PATH;
     ProgramSettings program_settings;
@@ -110,6 +111,7 @@ public:
     }
 
     void writeTrivialsToFile();
+    void writeTipsToFile();
     void writeSinglesToFile(std::vector<Read>& singles, read_id_t& count);
     void writePairsToFile(std::vector<Read>& pairs, read_id_t& count);
 

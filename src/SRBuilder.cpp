@@ -977,9 +977,13 @@ bool SRBuilder::test_N_rate(Read read) {
     else {
         seq = read.get_seq(0);
     }
+    // // test sequence length
+    // if (seq.length() < ps.min_read_len) {
+    //     return false;
+    // }
     int N_count = std::count(seq.begin(), seq.end(), 'N');
     bool pass;
-    if (N_count < 0.3*seq.length()) {
+    if (N_count < 0.05*seq.length()) {
         pass = true;
     }
     else {
@@ -1030,7 +1034,7 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
                 }
             }
             else {
-                if (superread.get_seq(0) != "") {
+                if (superread.get_seq(0) != "" && test_N_rate(superread) == true) {
                     singles_this_thread.push_back(superread);
                 }
             }
@@ -1278,7 +1282,6 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
     // Save bitvec as visited of class
     visited = bitvec;
     // Run through bitvector of nodes: if not visited, add to trivial_SR_vec
-//        if (!FIRST_IT) { // at first iteration skip this step in order to remove singletons
     for (unsigned int v = 0; v < (overlap_graph->getVertexCount()); v++) {
         if (visited[v] == 0) {
             read_id_t ID = (overlap_graph->vertex_to_read).at(v);
@@ -1287,6 +1290,13 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                 visited[v] = 1; // by marking as visited we avoid further processing:
                                    // its superreads will be considered for new overlaps,
                                    // but since there are none also no overlaps will be added.
+                continue;
+            }
+            else if (read->is_tip()) {
+                // corresponds to tip node in overlap graph
+                // store separately and eventually write sequences to fastq
+                visited[v] = 1;
+                tips_vec.push_back(*read);
                 continue;
             }
             std::unordered_map< read_id_t, OriginalIndex > subreads;
@@ -1335,12 +1345,31 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
         std::cout << "Number of trivial superreads: " << trivial_SR_vec.size() << "\n";
     }
     writeTrivialsToFile();
+    writeTipsToFile();
     new_read_count = count;
     SR_singles_count = single_SR_vec.size();
     SR_paired_count = paired_SR_vec.size();
     SR_trivials_count = trivial_SR_vec.size();
 }
 
+void SRBuilder::writeTipsToFile() {
+    std::string tips_filename = PATH + "removed_tip_sequences.fastq";
+    std::ofstream tips_file(tips_filename, std::fstream::app);
+    read_id_t new_ID = 0;
+    for (auto read : tips_vec) {
+        if (read.is_paired()) {
+            continue;
+        }
+        else {
+            tips_file << "@" << new_ID << "\n";
+            tips_file << read.get_seq(0) << "\n";
+            tips_file << "+\n";
+            tips_file << read.get_phred(0) << "\n";
+            new_ID++;
+        }
+    }
+    tips_file.close();
+}
 
 void SRBuilder::writeTrivialsToFile() { // note that the trivial superreads have already been given new read IDs
 //    std::cout << "writetrivials\n";

@@ -53,6 +53,7 @@ iteration = 0
 verbose = False
 stage_a = False
 min_read_len = 0
+diploid = "false"
 
 
 def main():
@@ -73,12 +74,15 @@ def main():
     parser.add_argument('--num_threads', dest='num_threads', type=int, default=1)
     parser.add_argument('--remove_branches', dest='remove_branches', type=str, default='false')
     parser.add_argument('--min_read_len', dest='min_read_len', type=int, default=0)
+    parser.add_argument('--diploid', dest='diploid', action='store_true')
     parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
 
     FNULL = open(os.devnull, 'w')
 
-    global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts, threads, verbose, stage_a, min_read_len
+    global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts
+    global edge_counts, read_counts, threads, verbose, stage_a, min_read_len, diploid
+
     if args.use_subreads:
         original_readcount = get_max_subread_id("subreads.txt") + 1
     elif args.stage == 'a':
@@ -100,6 +104,7 @@ def main():
     verbose = 'true' if args.verbose else 'false'
     stage_a = True if args.stage == 'a' else False
     min_read_len = args.min_read_len
+    diploid = "true" if args.diploid else "false"
 
     # create a global log file; after every iteration the log file is appended to this global log file
     subprocess.call(["rm", "pipeline.log"], stdout=FNULL, stderr=FNULL)
@@ -107,6 +112,9 @@ def main():
     # remove existing stats file
     subprocess.call(["rm", "stats.txt"], stdout=FNULL, stderr=FNULL)
     subprocess.call(["touch", "stats.txt"])
+    # remove existing tips file
+    subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
+    subprocess.call(["touch", "removed_tip_sequences.fastq"])
 
     min_overlap_len_EC = args.min_overlap_len
     min_overlap_len = args.min_overlap_len
@@ -195,6 +203,7 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" % verbose,
+        "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len
     ])
@@ -246,6 +255,7 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" % verbose,
+        "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len
     ])
@@ -339,6 +349,7 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
         "--remove_trans=1",
         "--optimize=false",
         "--verbose=%s" %verbose,
+        "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len
     ])

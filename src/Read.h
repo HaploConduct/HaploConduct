@@ -31,6 +31,7 @@ private:
 	std::string m_phred1, m_phred2; // Phred scores (/1 and /2, respectively)
 	bool node_N_set;
 	bool node_R_set;
+    bool m_is_tip;
 
     // only for superreads:
     std::list< unsigned int > sorted_vertices1; // list of clique nodes ordered by index in superread for /1 seq
@@ -62,10 +63,19 @@ public:
         {
             node_N_set = false;
             node_R_set = false;
+            m_is_tip = false;
 //            clique0_set = false;
 //	        clique1_set = false;
 //	        clique2_set = false;
         }
+
+    bool is_tip() {
+        return m_is_tip;
+    }
+
+    void set_tip() {
+        m_is_tip = true;
+    }
 
     void set_vertex_id(bool normal, unsigned int id) {
         if (normal) {
