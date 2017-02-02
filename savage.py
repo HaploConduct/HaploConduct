@@ -61,6 +61,9 @@ def main():
     advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=500, help='minimum contig length required for stage c input contigs')
 #    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
     advanced.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=SFO_MM for sfo: maximal mismatch rate 1/SFO_MM')
+    advanced.add_argument('--diploid', dest='diploid', action='store_true', help='use this option for diploid genome assembly')
+    advanced.add_argument('--diploid_contig_len', dest='diploid_contig_len', type=int, default=200, help='minimum contig length required for diploid step contigs')
+    advanced.add_argument('--diploid_overlap_len', dest='diploid_overlap_len', type=int, default=30, help='min_overlap_len used in diploid assembly step')
 
     # store the path to the SAVAGE root directory
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -276,7 +279,7 @@ def main():
                      absent, please rerun Stage b."""
             return -1
         subprocess.call(['cp', 'stage_b/singles.fastq', 'stage_c/singles.fastq'], stdout=FNULL, stderr=FNULL)
-        pident = 100*(1-args.merge_contigs)
+        pident = 100*(0.99-args.merge_contigs)
         overlaps = run_blast('b', pident, base_path, min_overlap_len)
         sys.stdout.flush()
         # run SAVAGE
@@ -292,6 +295,36 @@ def main():
         print "Done!"
     # else:
     #     print "Stage c skipped"
+    if args.diploid:
+        # final diploid contig merging
+        print "**************"
+        print "SAVAGE diploid"
+        # parameters
+        min_overlap_len = args.diploid_overlap_len
+        min_contig_len = args.diploid_contig_len
+        # prepare input files
+        overwrite_dir('diploid')
+        if not (os.path.exists('stage_c/singles.fastq') and os.path.exists('contigs_stage_c.fasta')):
+            print """Contigs file from Stage c not found. Please make sure that both
+                     'stage_c/singles.fastq' and 'contigs_stage_c.fasta' exist. If
+                     absent, please rerun Stage c."""
+            return -1
+        subprocess.call(['cp', 'stage_c/singles.fastq', 'diploid/singles.fastq'], stdout=FNULL, stderr=FNULL)
+        pident = 98
+        overlaps = run_blast('c', pident, base_path, min_overlap_len)
+        sys.stdout.flush()
+        # run SAVAGE
+        os.chdir('diploid')
+        if args.use_subreads:
+            subprocess.check_call("cp ../stage_c/subreads.txt subreads.txt", shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --diploid" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+        else:
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --diploid" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+        os.chdir('..')
+        subprocess.check_call("%s/scripts/fastq2fasta.py diploid/singles.fastq diploid_contigs.fasta" % base_path, shell=True)
+        subprocess.call("rm blastout* contigs_db*", shell=True)
+        print "Done!"
+
 
 # ------------------------------
 
