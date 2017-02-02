@@ -417,9 +417,10 @@ def combine_contigs(split_num):
             subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
             singles_count = round(file_len('stage_a/patch%d/stage_a/singles.fastq' % patch_num)/4)
             renamed2originals = {}
-            with open('stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[0], patch_num), 'r') as f1:
-                with open('stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[1], patch_num), 'r') as f2:
-                    i = 0
+            i = 0
+            original_singles = 'stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[0], patch_num)
+            if os.path.isfile(original_singles):
+                with open(original_singles, 'r') as f1:
                     for line in f1:
                         if i%4 == 0:
 #                            old_id = line.strip('\n')[1:]
@@ -429,6 +430,9 @@ def combine_contigs(split_num):
                             renamed2originals[new_id] = old_id
                         i += 1
                     assert i%4 == 0
+            original_pairs = 'stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[1], patch_num)
+            if os.path.isfile(original_pairs):
+                with open(original_pairs, 'r') as f2:
                     for line in f2:
                         if i%4 == 0:
 #                            old_id = line.strip('\n')[1:]
