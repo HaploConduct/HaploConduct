@@ -143,20 +143,16 @@ def main():
             # rename or create single-end reads file
             if args.input_s:
                 singles_count = int(file_len('stage_a/singles.%d.fastq' % patch_num)/4)
-                if args.revcomp:
-                    subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
-                else:
-                    subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
+                subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/singles.%d.fastq --out stage_a/patch%d/input_fas/singles.fastq" % (base_path, patch_num, patch_num), shell=True)
             else:
                 singles_count = 0
                 subprocess.check_call("touch stage_a/patch%d/input_fas/singles.fastq" % patch_num, shell=True)
             # rename or create paired-end reads files
             if args.input_p1 and args.input_p2:
+                subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
                 if args.revcomp:
-                    subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
                     subprocess.check_call("%s/scripts/rename_fas.py --revcomp --in stage_a/paired2.%d.fastq --out stage_a/patch%d/input_fas/paired2.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
                 else:
-                    subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired1.%d.fastq --out stage_a/patch%d/input_fas/paired1.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
                     subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/paired2.%d.fastq --out stage_a/patch%d/input_fas/paired2.fastq --id_start %d" % (base_path, patch_num, patch_num, singles_count), shell=True)
             else:
                 subprocess.check_call("touch stage_a/patch%d/input_fas/paired1.fastq stage_a/patch%d/input_fas/paired2.fastq" % (patch_num, patch_num), shell=True)
@@ -391,7 +387,7 @@ def preprocessing_ref(min_overlap_len, reference, base_path, paired):
     if paired:
         subprocess.check_call("%s/scripts/sam2overlaps.py --sam_p input_fas/paired.sam --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, min_overlap_len/2), shell=True)
     else:
-        subprocess.check_call("%s/scripts/sam2overlaps.py --sam_p input_fas/paired.sam --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, min_overlap_len), shell=True)
+        subprocess.check_call("%s/scripts/sam2overlaps.py --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, min_overlap_len), shell=True)
     # if singles and paired:
     #     subprocess.check_call("%s/scripts/sam2overlaps.py --sam_p %s --sam_s %s --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, paired, singles, reference, min_overlap_len/2), shell=True)
     # elif singles:
