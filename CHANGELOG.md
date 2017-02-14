@@ -1,5 +1,12 @@
 # Change log
 
+## [0.2.2] - 2017-02-14
+### Changed
+- Fixed bug when using only paired-end reads OR single-end reads
+- Allow for non-integer read identifiers
+- Disregard contigs with more than 5% uncalled bases (N's)
+- Write contig sequences corresponding to tips in the overlap graph to a separate fastq file
+
 ## [0.2.1] - 2017-01-25
 ### Added
 - Option --revcomp to enable processing of forward-reverse paired-end reads instead

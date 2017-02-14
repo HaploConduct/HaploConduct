@@ -1,5 +1,7 @@
 # SAVAGE: Strain Aware VirAl GEnome assembly
 
+[![license](https://img.shields.io/badge/license-GPL%20v3.0-blue.svg)](http://www.gnu.org/licenses/)
+
 ## Synopsis
 
 SAVAGE is a computational tool for reconstructing individual
@@ -14,6 +16,8 @@ Following an iterative scheme, a new overlap assembly algorithm that
 is based on the enumeration of statistically well-calibrated groups
 of reads/contigs then efficiently reconstructs the individual
 haplotypes from this overlap graph.
+
+For a more detailed description, please see the [SAVAGE preprint](http://biorxiv.org/content/early/2017/01/21/080341).
 
 ## Motivation
 
@@ -105,6 +109,11 @@ Input fastq file containing /2 paired-end reads.
 * `--ref` (optional)
 Fasta file containing the reference genome to be used for reference-guided mode.
 *Please make sure to enter the full path to this fasta file*
+
+The algorithm has a built-in error correction step, but it does assume the input
+data to be cleaned (i.e., adapter sequences should be removed and low quality
+bases should be trimmed). This can be done using [cutadapt](https://pypi.python.org/pypi/cutadapt).
+
 
 ### Assembly parameters
 
@@ -288,9 +297,15 @@ for which the input has actually changed, thus avoiding unnecessary computations
 
 SAVAGE expects as input single- and/or paired-end reads. For the
 paired-end reads, it assumes they are stored both on the same strand
-(hence resulting in F-F alignments) as output by [PEAR](http://sco.h-its.org/exelixis/web/software/pear/). If your reads are
-stored in forward-reverse orientations, this means you first need to take
-reverse complements of your /2 sequences.
+(hence resulting in F-F alignments) as output by [PEAR](http://sco.h-its.org/exelixis/web/software/pear/), unless specified otherwise. If your reads are
+stored in forward-reverse orientations, make sure to use the option `--revcomp` when calling SAVAGE.
+
+
+## Citation
+
+If you are using SAVAGE, please cite our paper: *De novo viral quasispecies assembly using overlap graphs*,  
+**J. Baaijens, A. Zine El Aabidine, E. Rivals, and A. Schoenhuth**,  
+[doi:10.1101/080341](https://doi.org/10.1101/080341)
 
 
 ## Contact   

@@ -1,8 +1,8 @@
 # please enter the command for calling SAVAGE:
 #  --> 'savage' if the tool was installed through bioconda
-#  --> 'python2 /path/to/savage/dir/savage.py' when using the git repository
+#  --> '/path/to/savage/dir/savage' when using the git repository
 SAVAGE_EXE:
-    'python2 ~/git_repos/private-savage/savage.py'
+    '~/git_repos/savage/savage'
 
 # Choose the mode in which you want to run SAVAGE: de novo or reference guided?
 DE_NOVO:
