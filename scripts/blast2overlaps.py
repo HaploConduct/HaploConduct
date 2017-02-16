@@ -14,7 +14,7 @@ __license__ = "GPL"
 usage = """
 
 Create an overlaps file for viral quasispecies assembly
-based on the alignments found by running blast 
+based on the alignments found by running blast
 (single-end reads only)
 
 """
@@ -30,7 +30,8 @@ def main():
     if not (args.infile and args.outfile):
         print "Specify input and output files."
         parser.print_help()
-        
+        sys.exit(1)
+
     with open(args.outfile, 'w') as f1:
         with open(args.infile, 'r') as f2:
             rev_comp_count = 0

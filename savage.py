@@ -17,7 +17,7 @@ __license__ = "GPL"
 
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
-Version: 0.2.1
+Version: 0.2.2
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
@@ -322,6 +322,8 @@ def main():
         subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
 
+    FNULL.close()
+
 
 # ------------------------------
 
@@ -354,7 +356,8 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
     print "- De novo overlap computations",
     sys.stdout.flush()
     # prepare fasta
-    subprocess.check_call("cat input_fas/singles.fastq input_fas/paired1.fastq input_fas/paired2.fastq > s_p1_p2.fastq", shell=True)
+    subprocess.check_call("cat input_fas/singles.fastq input_fas/paired1.fastq input_fas/paired2.fastq > tmp.fastq", shell=True)
+    subprocess.check_call("%s/scripts/rename_fas.py --in tmp.fastq --out s_p1_p2.fastq" % base_path, shell=True)
     subprocess.check_call("%s/scripts/fastq2fasta.py s_p1_p2.fastq s_p1_p2.fasta" % base_path, shell=True)
     singles_count = int(file_len('input_fas/singles.fastq')/4.0)
     paired_count = int(file_len('input_fas/paired1.fastq')/4.0)
@@ -367,12 +370,23 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
         sfo_len = round(min_overlap_len / 2)
     else:
         sfo_len = min_overlap_len
-    subprocess.check_call("%s/sfo_2011_5/sfoverlap --parallel %d --indels -e %d -t %d s_p1_p2.fasta | %s/sfo_2011_5/maxoverlaps > sfoverlaps.out" % (base_path, threads, sfo_mm, sfo_len, base_path), shell=True)
+    # run sfoverlap
+    try:
+        subprocess.check_call("%s/sfo_2011_5/sfoverlap --parallel %d --indels -e %d -t %d s_p1_p2.fasta > tmp_overlaps.out 2>/dev/null" % (base_path, threads, sfo_mm, sfo_len), shell=True)
+        subprocess.check_call("%s/sfo_2011_5/maxoverlaps < tmp_overlaps.out > sfoverlaps.out" % (base_path), shell=True)
+        subprocess.check_call("rm tmp_overlaps.out", shell=True)
+    except subprocess.CalledProcessError as e:
+        print "-> sfoverlap failed, running blast instead"
+        subprocess.check_call("makeblastdb -in s_p1_p2.fasta -dbtype nucl -out s_p1_p2.db 1>/dev/null 2>&1", shell=True)
+        subprocess.check_call("blastn -db s_p1_p2.db -query s_p1_p2.fasta -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send qlen slen' -out blastout.tsv -perc_identity 98", shell=True)
+        subprocess.check_call("%s/scripts/blast2sfo.py --in blastout.tsv --out sfoverlaps.out -m %s" % (base_path, sfo_len), shell=True)
+        subprocess.check_call("rm blastout.tsv", shell=True)
     # run postprocessing scripts
     print "\b" * 12 + "Processing output",
     sys.stdout.flush()
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out original_overlaps.txt --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, singles_count, paired_count), shell=True)
 #    print "Overlaps are ready!"
+    subprocess.check_call("rm tmp.fastq s_p1_p2.* sfoverlaps.out", shell=True)
     return
 
 def preprocessing_ref(min_overlap_len, reference, base_path, paired):
