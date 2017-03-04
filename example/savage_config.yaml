@@ -45,3 +45,22 @@ REMOVE_BRANCHES: # default = 1 (recommended)
 # Choose this number such that coverage/SPLIT_NUM is between 500x and 1000x
 SPLIT_NUM:
     1
+    
+############# Frequency estimation #############
+
+# For frequency estimation we offer two modes; most accurate is Kallisto-mode,
+# but this requires Kallisto to be installed (see the SAVAGE manual).
+KALLISTO:
+    1 # default = 1 (recommended); set to 0 if Kallisto is not installed
+KALLISTO_PATH:
+    "/home/jasmijn/Software/kallisto_linux-v0.43.0/kallisto" # only needed in kallisto-mode
+
+# Choose the minimum contig length to be considered for frequency estimation
+MIN_LEN_FREQ_EST:
+    1000 # default = 1000
+
+# Original read files (before merging self-overlapping reads with PEAR)
+FORWARD:
+    "~/git_repos/savage/example/input_fas/paired1.fastq" # only needed in kallisto-mode
+REVERSE:
+    "~/git_repos/savage/example/input_fas/paired2.fastq" # only needed in kallisto-mode
