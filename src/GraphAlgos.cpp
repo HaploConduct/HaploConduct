@@ -510,7 +510,7 @@ void OverlapGraph::removeTips() {
         std::cout << "removeTips..." << std::endl;
     }
     unsigned int tip_count = 0;
-    unsigned int max_tip_len = program_settings.min_overlap_len;
+    unsigned int max_tip_len = program_settings.max_tip_len;
     std::set< std::pair<node_id_t, node_id_t> > edges_to_remove;
     // find all outgoing tips
     for (node_id_t i = 0; i < vertex_count; i++) {
@@ -526,7 +526,12 @@ void OverlapGraph::removeTips() {
             node_id_t v1 = edge1->get_vertex(2);
             // check if i->v1 is a dead end ('tip')
             if (adj_out.at(v1).empty()) {
-                if (edge1->ext_len(1) < max_tip_len) {
+                if (edge1->ext_len(1) == 0) { // inclusion edge -> always a tip
+                    tip_count += 1;
+                    edges_to_remove.insert( std::make_pair(i, v1)); // make sure read is removed
+                    edge1->get_read(2)->set_tip(); // mark read as tip
+                }
+                else if (edge1->ext_len(1) < max_tip_len) {
                     tip_count += 1;
                     local_tips.push_back( std::make_pair(i, v1) );
                     local_tip_reads.push_back( edge1->get_read(2) );
@@ -561,7 +566,12 @@ void OverlapGraph::removeTips() {
             // check if i->v1 is a dead end ('tip')
             if (adj_in.at(*v1).empty()) {
                 Edge* edge = getEdgeInfo(*v1, i, false);
-                if (edge->ext_len(0) < max_tip_len) {
+                if (edge->ext_len(0) == 0) { // inclusion edge -> always a tip
+                    tip_count += 1;
+                    edges_to_remove.insert( std::make_pair(*v1, i)); // make sure read is removed
+                    edge->get_read(1)->set_tip(); // mark read as tip
+                }
+                else if (edge->ext_len(0) < max_tip_len) {
                     tip_count += 1;
                     local_tips.push_back( std::make_pair(*v1, i) );
                     local_tip_reads.push_back( edge->get_read(1) );
