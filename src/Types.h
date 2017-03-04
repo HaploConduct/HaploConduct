@@ -55,6 +55,8 @@ struct ProgramSettings {
     std::string base_path;
     bool verbose;
     bool diploid;
+    unsigned int max_tip_len;
+    bool store_tips_separately;
 };
 
 struct IterationStats {
