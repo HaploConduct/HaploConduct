@@ -432,7 +432,7 @@ bool SRBuilder::consensus_pos(std::string nucleotides, std::string qualities, st
     }
     else {
         double p_incorrect = 1 - (max_prob / total_prob);
-        if (nucleotides.length() > 1 && (1-p_incorrect) < minQual) {
+        if (nucleotides.length() > 1 && (1-p_incorrect) < minQual) { //default minQual = 0.99
 //            std::cout << "p_incorrect = " << p_incorrect << "\n";
 //            return 0;
             cons_seq.push_back('N');
@@ -569,18 +569,21 @@ int SRBuilder::consensus(int total_len, std::list<int> &pos_list, std::list<std:
             qual_it++;
         }
         if (nucleotides.length() == 0) {
-            assert (trim_pos == 0);
-            std::cout << "current_pos, total_len, pos_it: " << current_pos << " " << total_len << " " << *pos_it << "\n";
-            std::cout << "sequence lengths: ";
-            for (std::list<std::string>::const_iterator seqit = seq_list.begin(); seqit != seq_list.end(); seqit++) {
-                std::cout << seqit->length() << " ";
-            }
-            std::cout << "\n";
-            std::cout << "pos_list: ";
-            for (std::list<int>::const_iterator posit = pos_list.begin(); posit != pos_list.end(); posit++) {
-                std::cout << *posit << " ";
-            }
-            std::cout << "\n";
+            cons_seq = "";
+            cons_qual = "";
+            return 0;
+            // assert (trim_pos == 0);
+            // std::cout << "current_pos, total_len, pos_it: " << current_pos << " " << total_len << " " << *pos_it << "\n";
+            // std::cout << "sequence lengths: ";
+            // for (std::list<std::string>::const_iterator seqit = seq_list.begin(); seqit != seq_list.end(); seqit++) {
+            //     std::cout << seqit->length() << " ";
+            // }
+            // std::cout << "\n";
+            // std::cout << "pos_list: ";
+            // for (std::list<int>::const_iterator posit = pos_list.begin(); posit != pos_list.end(); posit++) {
+            //     std::cout << *posit << " ";
+            // }
+            // std::cout << "\n";
         }
         bool result = consensus_pos(nucleotides, qualities, cons_seq, cons_qual);
         if (!result) {
@@ -1292,7 +1295,7 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                                    // but since there are none also no overlaps will be added.
                 continue;
             }
-            else if (read->is_tip()) {
+            else if (read->is_tip() && program_settings.store_tips_separately) {
                 // corresponds to tip node in overlap graph
                 // store separately and eventually write sequences to fastq
                 visited[v] = 1;
@@ -1353,6 +1356,9 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
 }
 
 void SRBuilder::writeTipsToFile() {
+    if (tips_vec.empty()) { // nothing to be done
+        return;
+    }
     std::string tips_filename = PATH + "removed_tip_sequences.fastq";
     std::ofstream tips_file(tips_filename, std::fstream::app);
     read_id_t new_ID = 0;
