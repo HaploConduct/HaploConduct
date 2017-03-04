@@ -10,7 +10,7 @@ from time import clock
 
 __author__ = "Jasmijn Baaijens"
 
-usage = """%prog [options]
+usage = """
 
 Pipeline for de novo viralquasispecies assembly.
 
@@ -54,6 +54,8 @@ verbose = False
 stage_a = False
 min_read_len = 0
 diploid = "false"
+max_tip_len = 150
+separate_tips = "true"
 
 
 def main():
@@ -75,6 +77,7 @@ def main():
     parser.add_argument('--remove_branches', dest='remove_branches', type=str, default='false')
     parser.add_argument('--min_read_len', dest='min_read_len', type=int, default=0)
     parser.add_argument('--diploid', dest='diploid', action='store_true')
+    parser.add_argument('--max_tip_len', dest='max_tip_len', type=int, required=True)
     parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
 
@@ -82,6 +85,7 @@ def main():
 
     global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts
     global edge_counts, read_counts, threads, verbose, stage_a, min_read_len, diploid
+    global max_tip_len, separate_tips
 
     if args.use_subreads:
         original_readcount = get_max_subread_id("subreads.txt") + 1
@@ -105,6 +109,8 @@ def main():
     stage_a = True if args.stage == 'a' else False
     min_read_len = args.min_read_len
     diploid = "true" if args.diploid else "false"
+    max_tip_len = args.max_tip_len
+    separate_tips = "false" if stage_a else "true"
 
     # create a global log file; after every iteration the log file is appended to this global log file
     subprocess.call(["rm", "pipeline.log"], stdout=FNULL, stderr=FNULL)
@@ -113,8 +119,9 @@ def main():
     subprocess.call(["rm", "stats.txt"], stdout=FNULL, stderr=FNULL)
     subprocess.call(["touch", "stats.txt"])
     # remove existing tips file
-    subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
-    subprocess.call(["touch", "removed_tip_sequences.fastq"])
+    if not stage_a:
+        subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
+        subprocess.call(["touch", "removed_tip_sequences.fastq"])
 
     min_overlap_len_EC = args.min_overlap_len
     min_overlap_len = args.min_overlap_len
@@ -205,7 +212,9 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--verbose=%s" % verbose,
         "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
-        "--min_read_len=%s" % min_read_len
+        "--min_read_len=%s" % min_read_len,
+        "--max_tip_len=%s" % max_tip_len,
+        "--separate_tips=%s" % separate_tips
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -257,7 +266,9 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--verbose=%s" % verbose,
         "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
-        "--min_read_len=%s" % min_read_len
+        "--min_read_len=%s" % min_read_len,
+        "--max_tip_len=%s" % max_tip_len,
+        "--separate_tips=%s" % separate_tips
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -300,7 +311,9 @@ def run_error_correction(fastq, overlaps, edge_threshold, error_correction, min_
         "--optimize=false",
         "--verbose=%s" %verbose,
         "--base_path=%s" % selfpath,
-        "--min_read_len=%s" % min_read_len
+        "--min_read_len=%s" % min_read_len,
+        "--max_tip_len=%s" % max_tip_len,
+        "--separate_tips=%s" % separate_tips
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -351,7 +364,9 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
         "--verbose=%s" %verbose,
         "--diploid=%s" % diploid,
         "--base_path=%s" % selfpath,
-        "--min_read_len=%s" % min_read_len
+        "--min_read_len=%s" % min_read_len,
+        "--max_tip_len=%s" % max_tip_len,
+        "--separate_tips=%s" % separate_tips
     ])
     if COPYFILES:
         copy_files(iteration)
