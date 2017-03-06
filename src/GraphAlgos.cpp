@@ -17,6 +17,28 @@
 
 #include "OverlapGraph.h"
 
+void OverlapGraph::removeInclusions() {
+    // remove all in- and outgoing edges from nodes marked as inclusions
+    std::set< std::pair< node_id_t, node_id_t > > edges_to_remove;
+    for (node_id_t v=0; v < vertex_count; v++) {
+        if (inclusions[v] == 0) {
+            continue;
+        }
+        for (auto edge : adj_out.at(v)) {
+            node_id_t outneighbor = edge.get_vertex(2);
+            edges_to_remove.insert( std::make_pair(v, outneighbor) );
+        }
+        for (auto inneighbor : adj_in.at(v)) {
+            edges_to_remove.insert( std::make_pair(inneighbor, v) );
+        }
+    }
+    for (auto node_pair : edges_to_remove) {
+//        std::cout << "edge " << node_pair.first << " " << node_pair.second << std::endl;
+        removeEdge(node_pair.first, node_pair.second);
+    }
+//    std::cout << "Inclusions removed = " << edges_to_remove.size() << std::endl;
+}
+
 void OverlapGraph::reduceDiploidBranching() {
     /* Reduce the number of branches in the overlap graph using the fact that
        the assembly should be diploid. */

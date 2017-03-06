@@ -34,7 +34,7 @@ double EdgeCalculator::score(char nt1, char nt2, double p1, double p2, int & mis
 	double p;
 	if (nt1=='N' || nt2=='N') {
 	    p = 0.25;
-        mismatch_count++;
+//        mismatch_count++;
 	}
     else if (nt1==nt2) {
         p = (1-p1)*(1-p2) + (p1*p2)/3.0;
@@ -447,7 +447,7 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     // edge does not yet exist, so add it now
                     overlap_graph->addEdge(*it1);
                     count++;
-                    if (program_settings.ignore_inclusions && it1->get_perc() == 100) {
+                    if (program_settings.ignore_inclusions && it1->get_perc() == 100 && it1->get_mismatch_rate() < 0.0001) {
                         if (it1->get_extra_pos(1) < 0) {
                             assert (it1->get_pos(1) == 0);
                             overlap_graph->inclusions[v1] = 1;

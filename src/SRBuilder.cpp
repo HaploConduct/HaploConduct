@@ -1302,6 +1302,13 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                 tips_vec.push_back(*read);
                 continue;
             }
+            else if (program_settings.ignore_inclusions && overlap_graph->inclusions[v] == 1) {
+                // corresponds to tip node in overlap graph
+                // store separately and eventually write sequences to fastq
+                visited[v] = 1;
+                tips_vec.push_back(*read);
+                continue;
+            }
             std::unordered_map< read_id_t, OriginalIndex > subreads;
             if (program_settings.first_it) {
                 OriginalIndex original_index;

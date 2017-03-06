@@ -273,6 +273,9 @@ int main(int argc, char *argv[])
     }
 //    overlap_graph->getGraphStats();
     overlap_graph->checkDuplicateEdges();
+    if (program_settings.ignore_inclusions) {
+        overlap_graph->removeInclusions();
+    }
 
     // Add vertex labels indicating read orientations
     overlap_graph->sortEdges(); // sort edges
