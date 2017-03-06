@@ -449,12 +449,9 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     count++;
                     if (program_settings.ignore_inclusions && it1->get_perc() == 100 && it1->get_mismatch_rate() < 0.0001 && it1->get_mismatch_rate() >= 0) {
                         if (it1->get_extra_pos(1) < 0) {
-                            if (it1->get_pos(1) != 0) {
-                                std::cout << "pos1: " << it1->get_pos(1) << std::endl;
-                                std::cout << "extrapos1: " << it1->get_extra_pos(1) << std::endl;
+                            if (it1->get_pos(1) == 0) { // otherwise not a true inclusion but simply the effect of rounding the overlap percentage
+                                overlap_graph->inclusions[v1] = 1;
                             }
-                            assert (it1->get_pos(1) == 0);
-                            overlap_graph->inclusions[v1] = 1;
                         }
                         else {
                             overlap_graph->inclusions[v2] = 1;
