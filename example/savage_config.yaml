@@ -68,7 +68,7 @@ DIPLOID:
 # For frequency estimation we offer two modes; most accurate is Kallisto-mode,
 # but this requires Kallisto to be installed (see the SAVAGE manual).
 KALLISTO:
-    0 # default = 1 (recommended); set to 0 if Kallisto is not installed
+    1 # default = 1 (recommended); set to 0 if Kallisto is not installed
 KALLISTO_PATH:
     "/home/jasmijn/Software/kallisto_linux-v0.43.0/kallisto" # only needed in kallisto-mode
 
