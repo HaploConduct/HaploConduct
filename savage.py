@@ -17,7 +17,7 @@ __license__ = "GPL"
 
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
-Version: 0.2.2
+Version: 0.3.0
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
@@ -38,7 +38,7 @@ def main():
     basic.add_argument('-s', dest='input_s', type=str, help='path to input fastq containing single-end reads')
     basic.add_argument('-p1', dest='input_p1', type=str, help='path to input fastq containing paired-end reads (/1)')
     basic.add_argument('-p2', dest='input_p2', type=str, help='path to input fastq containing paired-end reads (/2)')
-    basic.add_argument('-m', '--min_overlap_len', dest='min_overlap_len', type=int, required=True, help='minimum overlap length required between reads')
+    basic.add_argument('-m', '--min_overlap_len', dest='min_overlap_len', type=int, help='minimum overlap length required between reads')
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--split', dest='split_num', type=int, required=True, help='split the data set into patches s.t. 500 < coverage/split_num < 1000')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
@@ -56,14 +56,15 @@ def main():
 #    advanced.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; please make sure \nto enter the full path!')
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
-    advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.01, help='specify maximal distance between contigs for merging into master strains (stage c)')
-    advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, help='min_overlap_len used in stage c')
-    advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=500, help='minimum contig length required for stage c input contigs')
-#    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
+    advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.0, help='specify maximal distance between contigs for merging into master strains (stage c)')
+    advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, default=100, help='min_overlap_len used in stage c')
+    advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=100, help='minimum contig length required for stage c input contigs')
+    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
     advanced.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=SFO_MM for sfo: maximal mismatch rate 1/SFO_MM')
     advanced.add_argument('--diploid', dest='diploid', action='store_true', help='use this option for diploid genome assembly')
     advanced.add_argument('--diploid_contig_len', dest='diploid_contig_len', type=int, default=200, help='minimum contig length required for diploid step contigs')
     advanced.add_argument('--diploid_overlap_len', dest='diploid_overlap_len', type=int, default=30, help='min_overlap_len used in diploid assembly step')
+    advanced.add_argument('--average_read_len', dest='average_read_len', type=float, help='average length of the input reads; will be computed from the input if not specified')
 
     # store the path to the SAVAGE root directory
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -84,8 +85,8 @@ def main():
     args = parser.parse_args()
 
     FNULL = open(os.devnull, 'w')
-#    remove_branches = 'true' if args.remove_branches else 'false'
-    remove_branches = 'true'
+    remove_branches = 'true' if args.remove_branches else 'false'
+#    remove_branches = 'true'
 
     if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps):
         sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
@@ -124,6 +125,33 @@ def main():
         subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
     else:
         denovo = True
+
+    # analyze input reads
+    if args.average_read_len > 0:
+        average_read_len = args.average_read_len
+    else:
+        if args.input_s:
+            [seq_count, total_len, longest_seq] = analyze_input(args.input_s)
+        else:
+            [seq_count, total_len_1, longest_seq_1] = analyze_input(args.input_p1)
+            total_len = 2*total_len_1 # approximately
+            longest_seq = 2*longest_seq_1 # approximately
+        average_read_len = total_len/seq_count
+
+    max_tip_len = int(round(average_read_len)) # average input read length
+
+    if not args.min_overlap_len:
+        m = 0.6*average_read_len # 60% of average input read length
+        min_overlap_len = int(round(m))
+        assert min_overlap_len > 0
+    else:
+        min_overlap_len = args.min_overlap_len
+
+    if min_overlap_len < 100:
+        print "----------------------------------------------------------------"
+        print "WARNING: min_overlap_len = %s" % min_overlap_len
+        print "For more accurate error correction, increase the minimal overlap length using --min_overlap_len"
+        print "----------------------------------------------------------------"
 
     # Preprocessing: split data into patches
     if preprocessing:
@@ -212,7 +240,8 @@ def main():
             # create stage_a directory FOR THIS PATCH
             overwrite_dir('stage_a')
             os.chdir('stage_a')
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches), shell=True)
+            edge_threshold = 0.97
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s --edge_threshold %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len, edge_threshold), shell=True)
             os.chdir('../..')
         os.chdir('..')
         # combine contigs from all patches
@@ -245,9 +274,9 @@ def main():
         os.chdir('stage_b')
         if args.use_subreads:
             subprocess.check_call("cp ../stage_a/subreads.txt subreads.txt", shell=True)
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s" % (base_path, overlaps, args.min_overlap_len, args.threads, remove_branches), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
         else:
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s" % (base_path, overlaps, args.min_overlap_len, args.threads, remove_branches), shell=True) # note: not using stage a subreads
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True) # note: not using stage a subreads
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
         print "Done!"
@@ -261,13 +290,13 @@ def main():
         # parameters
         if args.overlap_stage_c:
             min_overlap_len = args.overlap_stage_c
-        else:
-            min_overlap_len = args.min_overlap_len
+#        else:
+#            min_overlap_len = args.min_overlap_len
 
         if args.contig_len_stage_c:
             min_contig_len = args.contig_len_stage_c
-        else:
-            min_contig_len = 0
+#        else:
+#            min_contig_len = int(round(average_read_len)) # average input read length
         # prepare input files
         overwrite_dir('stage_c')
         if not (os.path.exists('stage_b/singles.fastq') and os.path.exists('contigs_stage_b.fasta')):
@@ -283,9 +312,9 @@ def main():
         os.chdir('stage_c')
         if args.use_subreads:
             subprocess.check_call("cp ../stage_b/subreads.txt subreads.txt", shell=True)
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         else:
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_c/singles.fastq contigs_stage_c.fasta" % base_path, shell=True)
         subprocess.call("rm blastout* contigs_db*", shell=True)
@@ -314,9 +343,9 @@ def main():
         os.chdir('diploid')
         if args.use_subreads:
             subprocess.check_call("cp ../stage_c/subreads.txt subreads.txt", shell=True)
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --diploid" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         else:
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --diploid" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py diploid/singles.fastq diploid_contigs.fasta" % base_path, shell=True)
         subprocess.call("rm blastout* contigs_db*", shell=True)
@@ -352,6 +381,22 @@ def remove_file(filename):
         os.remove(filename)
     return
 
+def analyze_input(filename):
+    total_len = 0
+    longest_seq = 0
+    i = 0
+    with open(filename) as f:
+        for line in f:
+            if i%4 == 1: # sequence line in fastq
+                l = len(line.strip('\n'))
+                total_len += l
+                if l > longest_seq:
+                    longest_seq = l
+            i += 1
+        assert i % 4 == 0 # fastq
+    seq_count = i/4
+    return [seq_count, total_len, longest_seq]
+
 def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
     print "- De novo overlap computations",
     sys.stdout.flush()
@@ -367,7 +412,7 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
     sys.stdout.flush()
     subprocess.check_call("%s/sfo_2011_5/builder s_p1_p2.fasta" % base_path, shell=True)
     if paired_count > 0:
-        sfo_len = round(min_overlap_len / 2)
+        sfo_len = int(round(min_overlap_len / 2))
     else:
         sfo_len = min_overlap_len
     # run sfoverlap

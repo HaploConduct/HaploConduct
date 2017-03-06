@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : OverlapGraph.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.2.1
+// Version     : 0.3.0
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Construct an overlap graph for viral quasispecies assembly
@@ -229,6 +229,11 @@ void OverlapGraph::writeGraphToFile() {
     }
 	for (it2 = adj_out.begin(); it2 != adj_out.end(); it2++) {
 	    if (inclusions[i] == 1) {
+            if (! it2->empty()) {
+                std::cout << i << " " << (it2->front()).get_vertex(1) << " " << (it2->front()).get_vertex(2) << std::endl;
+            }
+            assert( it2->empty() );
+            i++;
 	        continue;
 	    }
 	    for (it1 = it2->begin(); it1 != it2->end(); it1++) {

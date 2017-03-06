@@ -7,9 +7,50 @@ import sys
 # path to config file
 configfile: "savage_config.yaml"
 
+#------------------
+
+def file_len(fname):
+    with open(fname) as f:
+        i = 0
+        for i, l in enumerate(f):
+            pass
+    if i > 0:
+        linecount = i + 1
+    else:
+        linecount = 0
+    assert linecount % 4 == 0
+    return linecount
+
+def analyze_input(filename):
+    total_len = 0
+    longest_seq = 0
+    i = 0
+    with open(filename) as f:
+        for line in f:
+            if i%4 == 1: # sequence line in fastq
+                l = len(line.strip('\n'))
+                total_len += l
+                if l > longest_seq:
+                    longest_seq = l
+            i += 1
+        assert i % 4 == 0 # fastq
+    seq_count = i/4
+    return [seq_count, total_len, longest_seq]
+
+#------------------
+
 ALL_TYPES = ["singles", "paired1", "paired2"]
 SPLIT_RANGE = range(config["SPLIT_NUM"])
 PATH = os.getcwd()
+
+if config["SINGLES_FILE"] != "":
+    [seq_count, total_len, longest_seq] = analyze_input(config["SINGLES_FILE"])
+else:
+    [seq_count_1, total_len_1, longest_seq_1] = analyze_input(config["PAIRED1_FILE"])
+    total_len = 2*total_len_1 # approximately
+    longest_seq = 2*longest_seq_1 # approximately
+AV_READ_LEN = total_len/seq_count
+SAVAGE = config["SAVAGE_EXE"] + " --average_read_len %s" % AV_READ_LEN
 
 if config["SINGLES_FILE"] != "" and config["PAIRED1_FILE"] != "" and config["PAIRED2_FILE"] != "":
     INPUT_FILES = [config["SINGLES_FILE"], config["PAIRED1_FILE"], config["PAIRED2_FILE"]]
@@ -32,20 +73,6 @@ else:
 
 #------------------
 
-def file_len(fname):
-    with open(fname) as f:
-        i = 0
-        for i, l in enumerate(f):
-            pass
-    if i > 0:
-        linecount = i + 1
-    else:
-        linecount = 0
-    assert linecount % 4 == 0
-    return linecount
-
-#------------------
-
 rule all:
     input:
         expand("contigs_stage_{x}.fasta", x=["a", "b", "c"]),
@@ -62,7 +89,7 @@ rule savage_preprocessing:
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
-        savage_exe=config["SAVAGE_EXE"] + savage_input
+        savage_exe=SAVAGE + savage_input
     run:
         if params.de_novo: # de novo mode
             shell("%s --split %s --no_overlaps --no_stage_a --no_stage_b --no_stage_c --min_overlap_len %s --num_threads %s" % (params.savage_exe, params.split_num, params.min_overlap_len, config["NUM_THREADS"]))
@@ -81,7 +108,7 @@ rule savage_overlaps:
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
-        savage_exe=config["SAVAGE_EXE"]
+        savage_exe=SAVAGE
     benchmark:
         "benchmarks/stage_a_overlaps.txt"
     run:
@@ -106,7 +133,7 @@ rule savage_stage_a:
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
-        savage_exe=config["SAVAGE_EXE"]
+        savage_exe=SAVAGE
     benchmark:
         "benchmarks/stage_a_main.txt"
     run:
@@ -133,7 +160,7 @@ rule savage_stage_b:
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
-        savage_exe=config["SAVAGE_EXE"]
+        savage_exe=SAVAGE
     benchmark:
         "benchmarks/stage_b.txt"
     run:
@@ -160,15 +187,31 @@ rule savage_stage_c:
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
-        savage_exe=config["SAVAGE_EXE"],
-        merge_contigs=config["MERGE_CONTIGS"]
+        savage_exe=SAVAGE,
+        merge_contigs=config["MERGE_CONTIGS"],
+        contig_len_stage_c=config["CONTIG_LEN_STAGE_C"],
+        overlap_len_stage_c=config["OVERLAP_LEN_STAGE_C"]
     benchmark:
         "benchmarks/stage_c.txt"
     run:
+        parameters = []
+        parameters.append("--split %s" % params.split_num)
+        parameters.append("--min_overlap_len %s" % params.min_overlap_len)
+        parameters.append("--num_threads %s" % config["NUM_THREADS"])
+        parameters.append("--merge_contigs %s" % params.merge_contigs)
+        parameters.append("--contig_len_stage_c %s" % params.contig_len_stage_c)
+        parameters.append("--overlap_len_stage_c %s" % params.overlap_len_stage_c)
+        param_string = ' '.join(parameters)
         if config["REMOVE_BRANCHES"] == 0:
-            shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s --split %s --no_overlaps --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s --keep_branches" % (params.savage_exe, params.split_num, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+            if config["DIPLOID"] == 0:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --keep_branches" % (params.savage_exe, param_string))
+            else:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --keep_branches --diploid" % (params.savage_exe, param_string))
         elif config["REMOVE_BRANCHES"] == 1:
-            shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s --split %s --no_overlaps --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s" % (params.savage_exe, params.split_num, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+            if config["DIPLOID"] == 0:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b" % (params.savage_exe, param_string))
+            else:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --diploid" % (params.savage_exe, param_string))
         else:
             print("REMOVE_BRANCHES must be either 0 or 1")
 
@@ -176,17 +219,23 @@ rule savage_stage_c:
 rule frequency_estimation:
     input:
         fastq="stage_{x}/singles.fastq",
+        fasta="contigs_stage_{x}.fasta",
         subreads="stage_{x}/subreads.txt"
     params:
+        kallisto=config["KALLISTO"],
+        kallisto_path=config["KALLISTO_PATH"],
         savage_exe=config["SAVAGE_EXE"],
         min_overlap_len=config["MIN_OVERLAP_LEN"],
         min_len=config["MIN_LEN_FREQ_EST"]
     output:
         "frequencies_stage_{x, [a-c]}.txt"
     run:
-        correction = max(0, 500 - 2*params.min_overlap_len)
+        correction = max(0, 500 - 2*params.min_overlap_len) # assuming a fragment size of 500
         freq_est_exe = '/'.join((params.savage_exe).split('/')[:-1] + ["freq_est"])
-        shell("%s -c {input.fastq} -s {input.subreads} -m {params.min_len} -k %s -o {output}" % (freq_est_exe, correction))
+        if params.kallisto == 1:
+            shell("%s --kallisto -c {input.fasta} -m {params.min_len} -f %s -r %s --kallisto_path {params.kallisto_path} -o {output}" % (freq_est_exe, config["FORWARD"], config["REVERSE"]))
+        else:
+            shell("%s -c {input.fastq} -s {input.subreads} -m {params.min_len} -k %s -o {output}" % (freq_est_exe, correction))
 
 
 # rule prepare_input_fastq:

@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : Types.h
 // Author      : Jasmijn Baaijens
-// Version     : 0.2.1
+// Version     : 0.3.0
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : Types used for ViralQuasispecies program
@@ -55,6 +55,8 @@ struct ProgramSettings {
     std::string base_path;
     bool verbose;
     bool diploid;
+    unsigned int max_tip_len;
+    bool store_tips_separately;
 };
 
 struct IterationStats {
