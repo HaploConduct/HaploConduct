@@ -188,14 +188,30 @@ rule savage_stage_c:
         ref=config["REF"],
         split_num=config["SPLIT_NUM"],
         savage_exe=SAVAGE,
-        merge_contigs=config["MERGE_CONTIGS"]
+        merge_contigs=config["MERGE_CONTIGS"],
+        contig_len_stage_c=config["CONTIG_LEN_STAGE_C"],
+        overlap_len_stage_c=config["OVERLAP_LEN_STAGE_C"]
     benchmark:
         "benchmarks/stage_c.txt"
     run:
+        parameters = []
+        parameters.append("--split %s" % params.split_num)
+        parameters.append("--min_overlap_len %s" % params.min_overlap_len)
+        parameters.append("--num_threads %s" % config["NUM_THREADS"])
+        parameters.append("--merge_contigs %s" % params.merge_contigs)
+        parameters.append("--contig_len_stage_c %s" % params.contig_len_stage_c)
+        parameters.append("--overlap_len_stage_c %s" % params.overlap_len_stage_c)
+        param_string = ' '.join(parameters)
         if config["REMOVE_BRANCHES"] == 0:
-            shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s --split %s --no_overlaps --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s --keep_branches" % (params.savage_exe, params.split_num, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+            if config["DIPLOID"] == 0:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --keep_branches" % (params.savage_exe, param_string))
+            else:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --keep_branches --diploid" % (params.savage_exe, param_string))
         elif config["REMOVE_BRANCHES"] == 1:
-            shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s --split %s --no_overlaps --no_stage_a --no_stage_b --min_overlap_len %s --num_threads %s --merge_contigs %s" % (params.savage_exe, params.split_num, params.min_overlap_len, config["NUM_THREADS"], params.merge_contigs))
+            if config["DIPLOID"] == 0:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b" % (params.savage_exe, param_string))
+            else:
+                shell("/usr/bin/time -v -o benchmarks/stage_c.time.txt %s %s --no_overlaps --no_stage_a --no_stage_b --diploid" % (params.savage_exe, param_string))
         else:
             print("REMOVE_BRANCHES must be either 0 or 1")
 

@@ -26,27 +26,27 @@ REF: # fasta file containing reference genome; only used in reference guided mod
 MIN_OVERLAP_LEN:
     200 # We recommend 60% of the average length of the input reads
 
-# Set the number of threads allowed for parallel computations
-NUM_THREADS:
-    4
-
 # If the data set is of coverage > 1000x, we recommend to split the data into
 # smaller subsets for error correction. After stage a the resulting contigs
 # will be combined in stage b for the remaining stages of the algorithm.
 # Choose this number such that total coverage/SPLIT_NUM is between 500x and 1000x
 SPLIT_NUM:
-    6
+    10 # IMPORTANT - don't forget to adjust this parameter to your data set!
+
+# Set the number of threads allowed for parallel computations
+NUM_THREADS:
+    8
 
 
 ############# Advanced parameters #############
 
 # Set a threshold for the mismatch rate allowed when building master strains (stage c)
 MERGE_CONTIGS:
-    0.0
+    0.0 # Default = 0.0
 
-# Set a minimal contig length for building master strains (stage c)
+# Set a minimal contig length for stage c input; shorter contigs will be removed and ignored
 CONTIG_LEN_STAGE_C:
-    300 # We recommend to choose this parameter equal to the size of the original read fragments
+    100 # Default = 100
 
 # Set the minimal overlap length for building master strains (stage c)
 OVERLAP_LEN_STAGE_C:
@@ -56,25 +56,25 @@ OVERLAP_LEN_STAGE_C:
 # Not removing branches may lead to longer contigs, but if the diversity in the
 # sample is too low, it will result in too many haplotypes (all possible combinations)
 REMOVE_BRANCHES:
-    1 # default = 1 (recommended); set to 0 to allow merging along branching edges
+    1 # Default = 1 (recommended); set to 0 to allow merging along branching edges
 
 # For diploid genomes, we offer a final merging round making use of the knowledge
 # that there are only 2 haplotypes.
 DIPLOID:
-    0 # default = 0; only set to 1 when the sample is known to be diploid (e.g. human)
+    0 # Default = 0; only set to 1 when the sample is known to be diploid (e.g. human)
 
 ############# Frequency estimation #############
 
 # For frequency estimation we offer two modes; most accurate is Kallisto-mode,
 # but this requires Kallisto to be installed (see the SAVAGE manual).
 KALLISTO:
-    1 # default = 1 (recommended); set to 0 if Kallisto is not installed
+    1 # Default = 1 (recommended); set to 0 if Kallisto is not installed
 KALLISTO_PATH:
     "/path/to/kallisto/executable/" # only needed in kallisto-mode
 
 # Choose the minimum contig length to be considered for frequency estimation
 MIN_LEN_FREQ_EST:
-1000 # default = 1000
+1000 # Default = 1000
 
 # Original read files (before merging self-overlapping reads with PEAR)
 FORWARD:
