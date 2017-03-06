@@ -1,5 +1,15 @@
 # Change log
 
+## [0.3.0] - 2017-03-06
+### Added
+- Remove contigs which are fully included in another contig without any mismatches
+- Remove all tip sequences from the read set and store them, together with all inclusions, in a separate fastq file `removed_tip_sequences.fastq` per stage
+- More parameter options in the config file when using Snakemake
+### Changed
+- Increase edge threshold (overlap score) in stages b and c
+- Higher threshold for placing 'N's in contigs: phred < 20
+- Improved default settings and small bug fixes
+
 ## [0.2.2] - 2017-02-14
 ### Changed
 - Fixed bug when using only paired-end reads OR single-end reads
