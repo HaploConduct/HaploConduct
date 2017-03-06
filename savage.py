@@ -59,7 +59,7 @@ def main():
     advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.0, help='specify maximal distance between contigs for merging into master strains (stage c)')
     advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, default=80, help='min_overlap_len used in stage c')
     advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, help='minimum contig length required for stage c input contigs')
-#    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
+    advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
     advanced.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=SFO_MM for sfo: maximal mismatch rate 1/SFO_MM')
     advanced.add_argument('--diploid', dest='diploid', action='store_true', help='use this option for diploid genome assembly')
     advanced.add_argument('--diploid_contig_len', dest='diploid_contig_len', type=int, default=200, help='minimum contig length required for diploid step contigs')
@@ -85,8 +85,8 @@ def main():
     args = parser.parse_args()
 
     FNULL = open(os.devnull, 'w')
-#    remove_branches = 'true' if args.remove_branches else 'false'
-    remove_branches = 'true'
+    remove_branches = 'true' if args.remove_branches else 'false'
+#    remove_branches = 'true'
 
     if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps):
         sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
@@ -240,7 +240,8 @@ def main():
             # create stage_a directory FOR THIS PATCH
             overwrite_dir('stage_a')
             os.chdir('stage_a')
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
+            edge_threshold = 0.97
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s --edge_threshold %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len, edge_threshold), shell=True)
             os.chdir('../..')
         os.chdir('..')
         # combine contigs from all patches
