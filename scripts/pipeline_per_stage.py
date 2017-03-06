@@ -56,6 +56,7 @@ min_read_len = 0
 diploid = "false"
 max_tip_len = 150
 separate_tips = "true"
+remove_inclusions = "true"
 
 
 def main():
@@ -66,7 +67,7 @@ def main():
                             help='specify the algorithm stage (a/b/c)')
     parser.add_argument('--min_overlap_len', dest='min_overlap_len', type=int, default=150)
     parser.add_argument('--min_overlap_perc', dest='min_overlap_perc', type=int, default=0)
-    parser.add_argument('--edge_threshold', dest='edge_threshold', type=float, default=0.97)
+    parser.add_argument('--edge_threshold', dest='edge_threshold', type=float, default=0.995)
     parser.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0)
     parser.add_argument('--fastq', dest='fastq', required=True, type=str)
     parser.add_argument('--overlaps', dest='overlaps', required=True, type=str)
@@ -85,7 +86,7 @@ def main():
 
     global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts
     global edge_counts, read_counts, threads, verbose, stage_a, min_read_len, diploid
-    global max_tip_len, separate_tips
+    global max_tip_len, separate_tips, remove_inclusions
 
     if args.use_subreads:
         original_readcount = get_max_subread_id("subreads.txt") + 1
@@ -111,6 +112,7 @@ def main():
     diploid = "true" if args.diploid else "false"
     max_tip_len = args.max_tip_len
     separate_tips = "false" if stage_a else "true"
+    remove_inclusions = "false" if stage_a else "true"
 
     # create a global log file; after every iteration the log file is appended to this global log file
     subprocess.call(["rm", "pipeline.log"], stdout=FNULL, stderr=FNULL)
@@ -136,11 +138,15 @@ def main():
                 run_merging_it(args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, 0)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
             # build super-reads from cliques
             if args.remove_branches == 'false':
                 run_clique_it(args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, 0)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
     #
     elif args.stage == 'b':
         # Stage b
@@ -151,11 +157,15 @@ def main():
                 run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, 0)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
             # merge along branches
             if args.remove_branches == 'false':
                 run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, 0)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
     #
     elif args.stage == 'c':
         # Stage c
@@ -166,11 +176,15 @@ def main():
                 run_merging_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
             # merge along branches
             if args.remove_branches == 'false':
                 run_clique_it(args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs)
                 if read_counts[-1] == read_counts[-2]:
                     const_read_its += 1
+                else:
+                    const_read_its = 0
     #
     else:
         sys.stderr.write("ERROR: algorithm stage not properly specified; choose stage a, b, or c.\n")
@@ -214,7 +228,8 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len,
         "--max_tip_len=%s" % max_tip_len,
-        "--separate_tips=%s" % separate_tips
+        "--separate_tips=%s" % separate_tips,
+        "--ignore_inclusions=%s" % remove_inclusions
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -268,7 +283,8 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len,
         "--max_tip_len=%s" % max_tip_len,
-        "--separate_tips=%s" % separate_tips
+        "--separate_tips=%s" % separate_tips,
+        "--ignore_inclusions=%s" % remove_inclusions
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -313,7 +329,8 @@ def run_error_correction(fastq, overlaps, edge_threshold, error_correction, min_
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len,
         "--max_tip_len=%s" % max_tip_len,
-        "--separate_tips=%s" % separate_tips
+        "--separate_tips=%s" % separate_tips,
+        "--ignore_inclusions=%s" % remove_inclusions
     ])
     if COPYFILES:
         copy_files(iteration)
@@ -366,7 +383,8 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
         "--base_path=%s" % selfpath,
         "--min_read_len=%s" % min_read_len,
         "--max_tip_len=%s" % max_tip_len,
-        "--separate_tips=%s" % separate_tips
+        "--separate_tips=%s" % separate_tips,
+        "--ignore_inclusions=%s" % remove_inclusions
     ])
     if COPYFILES:
         copy_files(iteration)
