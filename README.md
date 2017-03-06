@@ -118,11 +118,13 @@ bases should be trimmed). This can be done using [cutadapt](https://pypi.python.
 ### Assembly parameters
 
 * `--min_overlap_len`
-By default this is set to 150bp, which has proven to work well for Illumina
-miseq (2x250bp) reads. Increasing this threshold speeds up the algorithm and
-leads to a lower mismatch rate in the final contigs. It is recommended to set
-the minimal overlap length to be larger than the (expected) largest repetitive
-element in the target genomes.
+By default this parameter is set to 60% of the average length of the sequencing
+reads used as input for SAVAGE. The user can manually change this threshold
+using the `-m` or `--min_overlap_len` parameter.
+Increasing the minimal overlap length speeds up the algorithm and leads to a
+lower mismatch rate in the final contigs. It is recommended to set the minimal
+overlap length to be larger than the (expected) largest repetitive element in
+the target genomes.
 However, it also results in a lower fraction of the target genomes being
 reconstructed. We advise you to consider this trade-off when setting this
 parameter. We have been working with a minimal overlap length of 100-300bp,
@@ -134,10 +136,11 @@ In case of (ultra-)deep sequencing data, exceeding a coverage of
 number of patches, SAVAGE takes care of the splitting and recombining. Choose
 the number of patches using such that 500 < read_coverage/patch_num < 1000.
 * `--merge_contigs`
-By default this is set to 0.01, meaning that in stage c (master strain assembly)
-we allow overlaps with a mismatch rate up to 1%. By increasing this threshold,
-you are likely to collapse several strains into one or more master strains, but
-possibly leading to longer contigs and hence a higher N50.
+By default this is set to 0, meaning that in stage c, the final assembly step,
+we allow overlaps with a mismatch rate of 0% (i.e. exact overlaps). By
+increasing this threshold, e.g. to 0.01, virus strains which differ by less
+than 1% will be merged into one or more master strains, possibly leading to
+longer contigs and a less fragmented assembly (higher N50).
 * `--ignore_subreads`
 By default this is set to False. When using the ignore_subreads flag, you choose
 not to use subread information from previous stages in the current stage(s).
@@ -150,12 +153,13 @@ the overlaps output by SFO allow up to 2% mismatches. This accounts for 1%
 sequencing errors. Increasing this parameter will slow down the algorithm, while
 decreasing will lead to a possibly incomplete overlap graph.
 * `--overlap_len_stage_c`
-For Stage c of the algorithm (master strain assembly), it is possible to specify
+For Stage c of the algorithm, the final assembly step, it is possible to specify
 a different minimum overlap length using this option.
 * `--contig_len_stage_c`
-By default, only contigs of at least 500 bp in length are considered for master
-strain assembly. The user can adjust this threshold by setting the
-`contig_len_stage_c` parameter.
+By default, only contigs of at least 100 bp in length are considered for stage c
+assembly. The user can adjust this threshold by setting the
+`contig_len_stage_c` parameter. From the final stage c output, it is usually a
+good idea to consider only contigs of sufficient length, e.g. 500 bp.
 
 
 ### SAVAGE-ref
