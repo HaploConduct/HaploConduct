@@ -17,7 +17,7 @@ __license__ = "GPL"
 
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
-Version: 0.2.2
+Version: 0.3.0
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
