@@ -57,8 +57,8 @@ def main():
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
     advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.0, help='specify maximal distance between contigs for merging into master strains (stage c)')
-    advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, default=80, help='min_overlap_len used in stage c')
-    advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, help='minimum contig length required for stage c input contigs')
+    advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, default=100, help='min_overlap_len used in stage c')
+    advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=100, help='minimum contig length required for stage c input contigs')
     advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
     advanced.add_argument('--sfo_mm', dest='sfo_mm', type=int, default=50, help='input parameter -e=SFO_MM for sfo: maximal mismatch rate 1/SFO_MM')
     advanced.add_argument('--diploid', dest='diploid', action='store_true', help='use this option for diploid genome assembly')
@@ -295,8 +295,8 @@ def main():
 
         if args.contig_len_stage_c:
             min_contig_len = args.contig_len_stage_c
-        else:
-            min_contig_len = int(round(average_read_len)) # average input read length
+#        else:
+#            min_contig_len = int(round(average_read_len)) # average input read length
         # prepare input files
         overwrite_dir('stage_c')
         if not (os.path.exists('stage_b/singles.fastq') and os.path.exists('contigs_stage_b.fasta')):
