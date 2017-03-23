@@ -444,7 +444,8 @@ def preprocessing_ref(min_overlap_len, reference, base_path, paired):
         sys.exit(1)
     # Induce overlaps from alignment
     if paired:
-        subprocess.check_call("%s/scripts/sam2overlaps.py --sam_p input_fas/paired.sam --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, min_overlap_len/2), shell=True)
+        paired_overlap_len = int(round(min_overlap_len / 2))
+        subprocess.check_call("%s/scripts/sam2overlaps.py --sam_p input_fas/paired.sam --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, paired_overlap_len), shell=True)
     else:
         subprocess.check_call("%s/scripts/sam2overlaps.py --sam_s input_fas/singles.sam --ref %s --min_overlap_len %d --out original_overlaps.txt" %(base_path, reference, min_overlap_len), shell=True)
     # if singles and paired:
