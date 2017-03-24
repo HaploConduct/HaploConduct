@@ -1059,8 +1059,8 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
 //    std::cout << "m_largest_read_id " << fastq_storage->m_largest_read_id << "\n";
     unsigned int size_singles = singles.size();
     unsigned int size_pairs = pairs.size();
-    writeSinglesToFile(singles, count);
-    writePairsToFile(pairs, count);
+//    writeSinglesToFile(singles, count);
+//    writePairsToFile(pairs, count);
     single_SR_vec.insert(single_SR_vec.end(), singles.begin(), singles.end());
     paired_SR_vec.insert(paired_SR_vec.end(), pairs.begin(), pairs.end());
     if (program_settings.verbose) {
@@ -1178,6 +1178,10 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
         // Save bitvec as visited of class
         visited = bitvec;
 
+        // Write single-end super-reads to file
+        count = 0;
+        writeSinglesToFile(single_SR_vec, count);
+
         // Run through bitvector of nodes: if not visited, add to trivial_SR_vec
         for (unsigned int v = 0; v < (overlap_graph->getVertexCount()); v++) {
             if (visited[v] == 0) {
@@ -1240,6 +1244,8 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
         std::cout << "Number of trivial superreads: " << trivial_SR_vec.size() << "\n";
     }
     writeTrivialsToFile();
+    // finally write paired-end super-reads to file
+    writePairsToFile(paired_SR_vec, count);
     new_read_count = count;
 }
 
@@ -1284,6 +1290,9 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
     }
     // Save bitvec as visited of class
     visited = bitvec;
+    // write single-end super-reads to file
+    count = 0;
+    writeSinglesToFile(single_SR_vec, count);
     // Run through bitvector of nodes: if not visited, add to trivial_SR_vec
     for (unsigned int v = 0; v < (overlap_graph->getVertexCount()); v++) {
         if (visited[v] == 0) {
@@ -1355,6 +1364,7 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
         std::cout << "Number of trivial superreads: " << trivial_SR_vec.size() << "\n";
     }
     writeTrivialsToFile();
+    writePairsToFile(paired_SR_vec, count);
     writeTipsToFile();
     new_read_count = count;
     SR_singles_count = single_SR_vec.size();
@@ -1396,6 +1406,7 @@ void SRBuilder::writeTrivialsToFile() { // note that the trivial superreads have
     std::ofstream originals(originals_file, std::fstream::app);
 
     std::deque<Read>::const_iterator it;
+    std::deque<Read> paired_trivials;
     for (it = trivial_SR_vec.begin(); it != trivial_SR_vec.end(); it++) {
         read_id_t ID = it->get_read_id();
         if (it->is_paired()) {
@@ -1431,13 +1442,13 @@ void SRBuilder::writeTrivialsToFile() { // note that the trivial superreads have
     originals.close();
 }
 
-void SRBuilder::writeSinglesToFile(std::vector<Read>& singles, read_id_t& count) {
+void SRBuilder::writeSinglesToFile(std::deque<Read>& singles, read_id_t& count) {
 //    std::cout << "writesingles\n";
     std::string filename = PATH + "singles.fastq";
     std::string originals_file = PATH + "subreads.txt";
     std::ofstream outfile(filename, std::fstream::app);
     std::ofstream originals(originals_file, std::fstream::app);
-    std::vector<Read>::iterator it;
+    std::deque<Read>::iterator it;
 //    for (it = single_SR_vec.begin(); it != single_SR_vec.end(); it++) {
     for (it = singles.begin(); it != singles.end(); it++) {
         read_id_t ID = count++;
@@ -1462,7 +1473,7 @@ void SRBuilder::writeSinglesToFile(std::vector<Read>& singles, read_id_t& count)
     originals.close();
 }
 
-void SRBuilder::writePairsToFile(std::vector<Read>& pairs, read_id_t& count) {
+void SRBuilder::writePairsToFile(std::deque<Read>& pairs, read_id_t& count) {
 //    std::cout << "writepairs\n";
     std::string filename1 = PATH + "paired1.fastq";
     std::string filename2 = PATH + "paired2.fastq";
@@ -1470,7 +1481,7 @@ void SRBuilder::writePairsToFile(std::vector<Read>& pairs, read_id_t& count) {
     std::ofstream outfile1(filename1, std::fstream::app);
     std::ofstream outfile2(filename2, std::fstream::app);
     std::ofstream originals(originals_file, std::fstream::app);
-    std::vector<Read>::iterator it;
+    std::deque<Read>::iterator it;
 //    for (it = paired_SR_vec.begin(); it != paired_SR_vec.end(); it++) {
     for (it = pairs.begin(); it != pairs.end(); it++) {
         read_id_t ID = count++;

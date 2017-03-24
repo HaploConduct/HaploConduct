@@ -119,6 +119,7 @@ public:
 //            std::cout << s.length() << " ";
             assert (s.length() == 1);
 	    }
+		assert (s == "1" || s == "2" || s == "-");
 	    if (m_type1 == "s" || m_type2 == "s") { assert (s == "-"); }
 	    else { assert (s == "1" || s == "2"); }
 	}

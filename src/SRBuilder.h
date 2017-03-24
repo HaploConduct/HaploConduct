@@ -112,8 +112,8 @@ public:
 
     void writeTrivialsToFile();
     void writeTipsToFile();
-    void writeSinglesToFile(std::vector<Read>& singles, read_id_t& count);
-    void writePairsToFile(std::vector<Read>& pairs, read_id_t& count);
+    void writeSinglesToFile(std::deque<Read>& singles, read_id_t& count);
+    void writePairsToFile(std::deque<Read>& pairs, read_id_t& count);
 
     void cliquesToSuperreads();
     void mergeAlongEdges();

@@ -247,7 +247,8 @@ def main():
         # combine contigs from all patches
         remove_file('stage_a/combined_singles.fastq')
         remove_file('stage_a/subreads.txt')
-        combine_contigs(args.split_num)
+#        combine_contigs(args.split_num)
+        subprocess.check_call("%s/scripts/combine_contigs.py --split %s --paired_to_single" % (base_path, args.split_num), shell=True)
         # now rename the merged fastq and convert to fasta
         subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/combined_singles.fastq --out stage_a/singles.fastq" % base_path, shell=True)
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
