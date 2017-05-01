@@ -71,8 +71,8 @@ def main():
     parser.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0)
     parser.add_argument('--fastq', dest='fastq', required=True, type=str)
     parser.add_argument('--overlaps', dest='overlaps', required=True, type=str)
-    parser.add_argument('--error_correction', dest='error_correction', action='store_false',
-                            help='apply error correction in stage a (default=true)')
+    parser.add_argument('--no_error_correction', dest='error_correction', action='store_false',
+                            help='skip error correction in stage a')
     parser.add_argument('--use_subreads', dest='use_subreads', action='store_true')
     parser.add_argument('--num_threads', dest='num_threads', type=int, default=1)
     parser.add_argument('--remove_branches', dest='remove_branches', type=str, default='false')
@@ -125,15 +125,17 @@ def main():
         subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
         subprocess.call(["touch", "removed_tip_sequences.fastq"])
 
-    min_overlap_len_EC = args.min_overlap_len
     min_overlap_len = args.min_overlap_len
     const_read_its = 0
 
     if args.stage == 'a':
         # Stage a
-        run_error_correction(args.fastq, args.overlaps, args.edge_threshold, args.error_correction, args.min_overlap_perc, min_overlap_len_EC, args.merge_contigs, first_it)
-        while overlap_counts[-1] > 0 and edge_counts[-1] > 0:
-            while overlap_counts[-1] > 0 and edge_counts[-1] > 0:
+        if args.error_correction:
+            run_error_correction(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len_EC, args.merge_contigs, first_it)
+        else:
+            run_first_it_noEC(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
+        while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
+            while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
                 # merge simple paths
                 run_merging_it(args.edge_threshold, args.min_overlap_perc, args.min_overlap_len, 0)
                 if read_counts[-1] == read_counts[-2]:
@@ -243,6 +245,53 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
         print "***"
 
 
+def run_first_it_noEC(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, remove_branches='true'):
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    iteration += 1
+    keep_singletons = max(min_overlap_len, min_read_len)
+    if verbose == 'true':
+        print "\n**************************************"
+        print "**** Iteration %d = first_it_merge ****" %iteration
+        print "**************************************"
+    subprocess.check_call([viralquasispecies,
+        "--singles=%s/singles.fastq" %fastq,
+        "--paired1=%s/paired1.fastq" %fastq,
+        "--paired2=%s/paired2.fastq" %fastq,
+        "--overlaps=%s" %overlaps,
+        "--threads=%d" %threads,
+        "--edge_threshold=%f" %edge_threshold,
+        "--first_it=%s" %first_it,
+        "--min_clique_size=2",
+        "--keep_singletons=0",
+        "--remove_branches=%s" %remove_branches,
+        "--min_overlap_perc=%d" %min_overlap_perc,
+        "--min_overlap_len=%d" %min_overlap_len,
+        "--merge_contigs=%f" %error_rate,
+        "--FNO=1",
+        "--original_readcount=%d" %original_readcount,
+        "--error_correction=false",
+        "--remove_trans=1",
+        "--optimize=false",
+        "--verbose=%s" % verbose,
+        "--diploid=%s" % diploid,
+        "--base_path=%s" % selfpath,
+        "--min_read_len=%s" % min_read_len,
+        "--max_tip_len=%s" % max_tip_len,
+        "--separate_tips=%s" % separate_tips,
+        "--ignore_inclusions=%s" % remove_inclusions
+    ])
+    if COPYFILES:
+        copy_files(iteration)
+    copy_log()
+    [readcount, n_overlaps] = analyze_results()
+    read_counts.append(readcount)
+    overlap_counts.append(n_overlaps)
+    n_edges = get_edge_count()
+    edge_counts.append(n_edges)
+    if verbose == 'true':
+        print "***"
+
+
 def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate, remove_branches='true'):
     global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
     iteration += 1
@@ -298,7 +347,7 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         print "***"
 
 
-def run_error_correction(fastq, overlaps, edge_threshold, error_correction, min_overlap_perc, min_overlap_len, error_rate, first_it):
+def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it):
     global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
     iteration += 1
     if verbose == 'true':
@@ -314,7 +363,7 @@ def run_error_correction(fastq, overlaps, edge_threshold, error_correction, min_
         "--edge_threshold=%f" %edge_threshold,
         "--first_it=%s" %first_it,
         "--cliques=true",
-        "--error_correction=%s" %error_correction,
+        "--error_correction=true",
         "--keep_singletons=1000",
         "--min_clique_size=4",
         "--remove_branches=false",
