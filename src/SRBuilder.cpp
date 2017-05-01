@@ -972,29 +972,6 @@ Read SRBuilder::merge_self_overlap(Read superread, EdgeCalculator & edge_calcula
     return superread;
 }
 
-bool SRBuilder::test_N_rate(Read read) {
-    std::string seq;
-    if (read.is_paired()) {
-        seq = read.get_seq(1) + read.get_seq(2);
-    }
-    else {
-        seq = read.get_seq(0);
-    }
-    // // test sequence length
-    // if (seq.length() < ps.min_read_len) {
-    //     return false;
-    // }
-    int N_count = std::count(seq.begin(), seq.end(), 'N');
-    bool pass;
-    if (N_count < 0.05*seq.length()) {
-        pass = true;
-    }
-    else {
-        pass = false;
-    }
-    return pass;
-}
-
 
 unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned int> >& clique_vec, read_id_t& count)
 {
@@ -1024,7 +1001,7 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
                 if (superread.get_seq(1) != "" && superread.get_seq(2) != "") {
                     // test for self-overlap
                     Read new_superread = merge_self_overlap(superread, edge_calculator);
-                    if (test_N_rate(new_superread) == false) {
+                    if (new_superread.test_N_rate() == false) {
                         // percentage of ambiguous base calls ('N's) too high
                         continue;
                     }
@@ -1037,7 +1014,7 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
                 }
             }
             else {
-                if (superread.get_seq(0) != "" && test_N_rate(superread) == true) {
+                if (superread.get_seq(0) != "" && superread.test_N_rate() == true) {
                     singles_this_thread.push_back(superread);
                 }
             }
@@ -1193,6 +1170,12 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
                                        // but since there are none also no overlaps will be added.
                     continue;
                 }
+                else if (read->test_N_rate() == false) { // too much N's in this read
+                    visited[v] = 1; // by marking as visited we avoid further processing:
+                                       // its superreads will be considered for new overlaps,
+                                       // but since there are none also no overlaps will be added.
+                    continue;
+                }
                 std::unordered_map< read_id_t, OriginalIndex > subreads;
                 if (program_settings.first_it) {
                     OriginalIndex original_index;
@@ -1299,6 +1282,12 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
             read_id_t ID = (overlap_graph->vertex_to_read).at(v);
             Read* read = fastq_storage->get_read(ID);
             if (read->get_len() < program_settings.keep_singletons) { // too short to add as a trivial superread
+                visited[v] = 1; // by marking as visited we avoid further processing:
+                                   // its superreads will be considered for new overlaps,
+                                   // but since there are none also no overlaps will be added.
+                continue;
+            }
+            else if (read->test_N_rate() == false) { // too much N's in this read
                 visited[v] = 1; // by marking as visited we avoid further processing:
                                    // its superreads will be considered for new overlaps,
                                    // but since there are none also no overlaps will be added.

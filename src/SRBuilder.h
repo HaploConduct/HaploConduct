@@ -62,7 +62,6 @@ private:
     void filter_subreads(int num, node_id_t base_node, std::list< node_id_t > & sorted_vertices, std::list<int> & pos_list, std::list< std::string > & seq_list, std::list< std::string > & qual_list, std::list<int> & new_pos_list, std::list< std::string> & new_seq_list, std::list< std::string > & new_qual_list);
     std::vector< node_id_t > sortVerticesByEndpos(std::vector< std::pair<node_id_t, int> > pairs);
     Read merge_self_overlap(Read superread, EdgeCalculator & edge_calculator);
-    bool test_N_rate(Read read);
 
     // FindNextOverlaps.cpp: induce overlaps from current edges
     std::vector< std::set< read_id_t > > overlaps_found;

@@ -211,6 +211,28 @@ public:
         return len;
     }
 
+    bool test_N_rate() {
+        unsigned int N_count;
+        unsigned int len;
+        if (m_is_paired) {
+            std::string total_seq = m_seq1 + m_seq2;
+            N_count = std::count(total_seq.begin(), total_seq.end(), 'N');
+            len = total_seq.size();
+        }
+        else {
+            N_count = std::count(m_seq1.begin(), m_seq1.end(), 'N');
+            len = m_seq1.size();
+        }
+        bool pass;
+        if (N_count < 0.05*len) {
+            pass = true;
+        }
+        else {
+            pass = false;
+        }
+        return pass;
+    }
+
     // only for superreads:
 	std::list< unsigned int > get_sorted_clique(int i) const {
 	    assert (m_is_super);
