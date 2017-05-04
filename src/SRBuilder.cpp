@@ -1076,7 +1076,7 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
             std::vector< unsigned int> clique;
             std::istringstream iss(cliqueline);
             unsigned int node;
-            while (iss >> node) {
+            while (iss >> node) { // this automatically filters out comment lines because they can't be written to int
                 clique.push_back(node);
             }
 
