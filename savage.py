@@ -15,9 +15,13 @@ from sets import Set
 __author__ = "Jasmijn Baaijens"
 __license__ = "GPL"
 
+version = "0.3.0"
+releasedate = "March 6, 2017"
+
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
-Version: 0.3.0
+Version: %s
+Release date: %s
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
@@ -28,7 +32,7 @@ PEAR.
 Run savage -h for a complete description of required and optional arguments.
 
 For more information, please visit https://bitbucket.org/jbaaijens/savage
-"""
+""" % (version, releasedate)
 
 # ------------------------------
 
@@ -57,6 +61,7 @@ def main():
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
     advanced.add_argument('--merge_contigs', dest='merge_contigs', type=float, default=0.0, help='specify maximal distance between contigs for merging into master strains (stage c)')
+    advanced.add_argument('--min_clique_size', dest='min_clique_size', type=int, default=4, help='minimum clique size used during error correction')
     advanced.add_argument('--overlap_len_stage_c', dest='overlap_stage_c', type=int, default=100, help='min_overlap_len used in stage c')
     advanced.add_argument('--contig_len_stage_c', dest='contig_len_stage_c', type=int, default=100, help='minimum contig length required for stage c input contigs')
     advanced.add_argument('--keep_branches', dest='remove_branches', action='store_false', help='disable merging along branches by removing them from the graph (stage b & c)')
@@ -84,6 +89,21 @@ def main():
         parser.exit()
     args = parser.parse_args()
 
+    print """
+-------------------------------------------
+SAVAGE - Strain Aware VirAl GEnome assembly
+-------------------------------------------
+Version: %s
+Author: %s
+    """ % (version, __author__)
+    print "Command used:"
+    print ' '.join(sys.argv)
+    print
+    print "Parameter values:"
+    for arg in vars(args):
+        print arg, "=", getattr(args, arg)
+    print
+
     FNULL = open(os.devnull, 'w')
     remove_branches = 'true' if args.remove_branches else 'false'
 #    remove_branches = 'true'
@@ -106,15 +126,15 @@ def main():
     else:
         preprocessing = True
 
-    if preprocessing:
-        if not (args.input_s or (args.input_p1 and args.input_p2)):
-            sys.stderr.write("""Please enter input fastq file(s) with -s and/or -p1,-p2.\n""")
-            sys.stderr.flush()
-            sys.exit(1)
-        elif (args.input_p1 and not args.input_p2) or (args.input_p2 and not args.input_p1):
-            sys.stderr.write("""For paired-end reads, please enter the fastq file(s) separately using -p1 and -p2.\n""")
-            sys.stderr.flush()
-            sys.exit(1)
+#    if preprocessing:
+    if not (args.input_s or (args.input_p1 and args.input_p2)):
+        sys.stderr.write("""Please enter input fastq file(s) with -s and/or -p1,-p2.\n""")
+        sys.stderr.flush()
+        sys.exit(1)
+    elif (args.input_p1 and not args.input_p2) or (args.input_p2 and not args.input_p1):
+        sys.stderr.write("""For paired-end reads, please enter the fastq file(s) separately using -p1 and -p2.\n""")
+        sys.stderr.flush()
+        sys.exit(1)
 
     if args.reference:
         denovo = False
@@ -126,17 +146,42 @@ def main():
     else:
         denovo = True
 
-    # analyze input reads
+    # analyze single-end input reads
+    if args.input_s:
+        [s_seq_count, s_total_len, s_longest_seq] = analyze_fastq(args.input_s)
+    else:
+        s_seq_count = 0
+        s_total_len = 0
+        s_longest_seq = 0
+    # analyze paired-end input reads
+    if args.input_p1:
+        [p1_seq_count, p1_total_len, p1_longest_seq] = analyze_fastq(args.input_p1)
+        [p2_seq_count, p2_total_len, p2_longest_seq] = analyze_fastq(args.input_p2)
+    else:
+        p_seq_count = 0
+        p_total_len = 0
+        p_longest_seq = 0
+    total_seq_len = s_total_len + p1_total_len + p2_total_len
+    total_seq_count = s_seq_count + p1_seq_count
+    if not total_seq_len > 0:
+        print "ERROR: Total input length is zero. Exiting."
+        sys.exit(1)
+    if p1_seq_count != p2_seq_count:
+        print "ERROR: Unequal number of /1 and /2 reads. Exiting."
+        sys.exit(1)
+
+    # compute average read length
     if args.average_read_len > 0:
         average_read_len = args.average_read_len
     else:
-        if args.input_s:
-            [seq_count, total_len, longest_seq] = analyze_input(args.input_s)
-        else:
-            [seq_count, total_len_1, longest_seq_1] = analyze_input(args.input_p1)
-            total_len = 2*total_len_1 # approximately
-            longest_seq = 2*longest_seq_1 # approximately
-        average_read_len = total_len/seq_count
+        average_read_len = total_seq_len/total_seq_count
+
+    # print stats
+    print "Input fastq stats:"
+    print "Number of single-end reads =", s_seq_count
+    print "Number of paired-end reads =", p1_seq_count
+    print "Total number of bases =", total_seq_len
+    print "Average read length =", average_read_len
 
     max_tip_len = int(round(average_read_len)) # average input read length
 
@@ -228,6 +273,8 @@ def main():
                 sys.stderr.flush()
                 sys.exit(1)
 
+    final_contig_file = ""
+
     # Run SAVAGE Stage a: error correction and initial contig formation
     if args.stage_a:
         print "**************"
@@ -241,18 +288,18 @@ def main():
             overwrite_dir('stage_a')
             os.chdir('stage_a')
             edge_threshold = 0.97
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s --edge_threshold %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len, edge_threshold), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage a --fastq ../input_fas --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s --edge_threshold %s --clique_size_EC %s" %(base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len, edge_threshold, args.min_clique_size), shell=True)
             os.chdir('../..')
         os.chdir('..')
         # combine contigs from all patches
         remove_file('stage_a/combined_singles.fastq')
         remove_file('stage_a/subreads.txt')
-#        combine_contigs(args.split_num)
         subprocess.check_call("%s/scripts/combine_contigs.py --split %s --paired_to_single" % (base_path, args.split_num), shell=True)
         # now rename the merged fastq and convert to fasta
         subprocess.check_call("%s/scripts/rename_fas.py --in stage_a/combined_singles.fastq --out stage_a/singles.fastq" % base_path, shell=True)
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"
+        final_contig_file = "contigs_stage_a.fasta"
     # else:
     #     print "Stage a skipped"
 
@@ -266,6 +313,9 @@ def main():
             print """Contigs file from Stage a not found. Please make sure that both
                      'stage_a/singles.fastq' and 'contigs_stage_a.fasta' exist. If
                      absent, please rerun Stage a."""
+            sys.exit(1)
+        elif os.stat("contigs_stage_a.fasta").st_size == 0:
+            print "Empty set of contigs from Stage a (contigs_stage_a.fasta) --> Exiting SAVAGE."
             sys.exit(1)
         subprocess.call(['cp', 'stage_a/singles.fastq', 'stage_b/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
@@ -281,6 +331,7 @@ def main():
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
         print "Done!"
+        final_contig_file = "contigs_stage_b.fasta"
     # else:
     #     print "Stage b skipped"
 
@@ -305,6 +356,9 @@ def main():
                      'stage_b/singles.fastq' and 'contigs_stage_b.fasta' exist. If
                      absent, please rerun Stage b."""
             sys.exit(1)
+        elif os.stat("contigs_stage_b.fasta").st_size == 0:
+            print "Empty set of contigs from Stage b (contigs_stage_b.fasta) --> Exiting SAVAGE"
+            sys.exit(1)
         subprocess.call(['cp', 'stage_b/singles.fastq', 'stage_c/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 100*(0.99-args.merge_contigs)
         overlaps = run_blast('b', pident, base_path, min_overlap_len)
@@ -320,6 +374,7 @@ def main():
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_c/singles.fastq contigs_stage_c.fasta" % base_path, shell=True)
         subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
+        final_contig_file = "contigs_stage_c.fasta"
     # else:
     #     print "Stage c skipped"
     if args.diploid:
@@ -336,6 +391,9 @@ def main():
                      'stage_c/singles.fastq' and 'contigs_stage_c.fasta' exist. If
                      absent, please rerun Stage c."""
             sys.exit(1)
+        elif os.stat("contigs_stage_c.fasta").st_size == 0:
+            print "Empty set of contigs from Stage c (contigs_stage_c.fasta) --> Exiting SAVAGE."
+            sys.exit(1)
         subprocess.call(['cp', 'stage_c/singles.fastq', 'diploid/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
         overlaps = run_blast('c', pident, base_path, min_overlap_len)
@@ -351,8 +409,24 @@ def main():
         subprocess.check_call("%s/scripts/fastq2fasta.py diploid/singles.fastq diploid_contigs.fasta" % base_path, shell=True)
         subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
+        final_contig_file = "diploid_contigs.fasta"
+
+    print """**************
+SAVAGE assembly has been completed, the final contig set was written to:
+
+        %s
+
+Optionally, you can now apply frequency estimation using freq_est.py. Please see
+the manual page for more information. If you have a reference genome for your
+sample, it can also be helpful to run the strain count estimator on the resulting
+contigs (estimate_strain_count.py). More information about this can also be
+found in the manual.
+
+Thank you for using SAVAGE!
+    """ % final_contig_file
 
     FNULL.close()
+    return
 
 
 # ------------------------------
@@ -382,7 +456,7 @@ def remove_file(filename):
         os.remove(filename)
     return
 
-def analyze_input(filename):
+def analyze_fastq(filename):
     total_len = 0
     longest_seq = 0
     i = 0
@@ -395,7 +469,7 @@ def analyze_input(filename):
                     longest_seq = l
             i += 1
         assert i % 4 == 0 # fastq
-    seq_count = i/4
+    seq_count = int(i/4)
     return [seq_count, total_len, longest_seq]
 
 def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
@@ -465,56 +539,6 @@ def run_blast(previous_stage, pident, base_path, min_overlap_len):
     overlaps_path = "../" + overlaps_file
     return overlaps_path
 
-def combine_contigs(split_num):
-    total_contigs = 0
-    ALL_TYPES = ["singles", "paired1", "paired2"]
-    with open('stage_a/subreads.txt', 'w') as new_subreads_file:
-        s_id = 0
-        p_id = 0
-        for patch_num in range(split_num):
-            subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
-            singles_count = round(file_len('stage_a/patch%d/stage_a/singles.fastq' % patch_num)/4)
-            renamed2originals = {}
-            i = 0
-            original_singles = 'stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[0], patch_num)
-            if os.path.isfile(original_singles):
-                with open(original_singles, 'r') as f1:
-                    for line in f1:
-                        if i%4 == 0:
-#                            old_id = line.strip('\n')[1:]
-                            old_id = str(s_id) # note: old_id equals line number in original fastq to avoid problems with non-int identifiers
-                            s_id += 1
-                            new_id = str(int(round(i/4)))
-                            renamed2originals[new_id] = old_id
-                        i += 1
-                    assert i%4 == 0
-            original_pairs = 'stage_a/original_reads/%s.%d.fastq' % (ALL_TYPES[1], patch_num)
-            if os.path.isfile(original_pairs):
-                with open(original_pairs, 'r') as f2:
-                    for line in f2:
-                        if i%4 == 0:
-#                            old_id = line.strip('\n')[1:]
-                            old_id = str(p_id) # note: old_id equals line number in original fastq to avoid problems with non-int identifiers
-                            p_id += 1
-                            new_id = str(int(round(i/4)))
-                            renamed2originals[new_id] = old_id
-                        i += 1
-            with open('stage_a/patch%d/stage_a/subreads.txt' % patch_num, 'r') as f3:
-                for line in f3:
-                    split_line = line.strip('\n').split('\t')
-                    contig_id = split_line[0]
-                    if int(contig_id) >= singles_count: # paired-end contig
-                        continue
-                    new_contig_id = str(int(contig_id) + total_contigs)
-                    new_line = [new_contig_id]
-                    for subread_info in split_line[1:]:
-                        [ID, poslist] = subread_info.split(':')
-                        new_subread_id = renamed2originals[ID]
-                        new_info = new_subread_id + ':' + poslist
-                        new_line.append(new_info)
-                    new_subreads_file.write('\t'.join(new_line) + '\n')
-            total_contigs += singles_count
-    return
 
 if __name__ == '__main__':
     sys.exit(main())
