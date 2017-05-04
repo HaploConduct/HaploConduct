@@ -79,6 +79,8 @@ def main():
     parser.add_argument('--min_read_len', dest='min_read_len', type=int, default=0)
     parser.add_argument('--diploid', dest='diploid', action='store_true')
     parser.add_argument('--max_tip_len', dest='max_tip_len', type=int, required=True)
+    parser.add_argument('--clique_size_EC', dest='clique_size_EC', type=int, default=4)
+    parser.add_argument('--min_overlap_len_EC', dest='min_overlap_len_EC', type=int)
     parser.add_argument('--verbose', dest='verbose', action='store_true')
     args = parser.parse_args()
 
@@ -126,12 +128,16 @@ def main():
         subprocess.call(["touch", "removed_tip_sequences.fastq"])
 
     min_overlap_len = args.min_overlap_len
+    if args.min_overlap_len_EC:
+        min_overlap_len_EC = args.min_overlap_len_EC
+    else:
+        min_overlap_len_EC = args.min_overlap_len
     const_read_its = 0
 
     if args.stage == 'a':
         # Stage a
         if args.error_correction:
-            run_error_correction(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len_EC, args.merge_contigs, first_it)
+            run_error_correction(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len_EC, args.merge_contigs, first_it, args.clique_size_EC)
         else:
             run_first_it_noEC(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
         while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
@@ -347,7 +353,7 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
         print "***"
 
 
-def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it):
+def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, min_clique_size):
     global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
     iteration += 1
     if verbose == 'true':
@@ -365,7 +371,7 @@ def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_
         "--cliques=true",
         "--error_correction=true",
         "--keep_singletons=1000",
-        "--min_clique_size=4",
+        "--min_clique_size=%d" %min_clique_size,
         "--remove_branches=false",
         "--min_overlap_perc=%d" %min_overlap_perc,
         "--min_overlap_len=%d" %min_overlap_len,
