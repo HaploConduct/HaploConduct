@@ -47,6 +47,8 @@ original_readcount = 0
 max_read_lengths = []
 max_coverages = []
 read_counts = []
+singles_counts = []
+paired_counts = []
 overlap_counts = []
 edge_counts = []
 iteration = 0
@@ -88,7 +90,7 @@ def main():
 
     global iteration, original_readcount, max_read_lengths, max_coverages, overlap_counts
     global edge_counts, read_counts, threads, verbose, stage_a, min_read_len, diploid
-    global max_tip_len, separate_tips, remove_inclusions
+    global max_tip_len, separate_tips, remove_inclusions, singles_counts, paired_counts
 
     if args.use_subreads:
         original_readcount = get_max_subread_id("subreads.txt") + 1
@@ -202,12 +204,15 @@ def main():
     print "Stage %s done in %d iterations" %(args.stage, iteration)
     print "Maximum read length per iteration: \t", max_read_lengths
 #    print "Maximum # subreads per iteration: \t", max_coverages
-    print "Number of input reads per iteration: \t", read_counts
-    print "Number of overlaps found per iteration: \t", overlap_counts
+    print "Number of contigs per iteration: \t", singles_counts
+    if max(paired_counts) > 0:
+        print "Number of paired reads per itereation: \t", paired_counts
+    print "Number of overlaps per iteration: \t", overlap_counts
 
 
 def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, remove_branches='true'):
-    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts
+    global read_counts, singles_counts, paired_counts
     iteration += 1
     keep_singletons = max(min_overlap_len, min_read_len)
     if verbose == 'true':
@@ -242,8 +247,11 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
     if COPYFILES:
         copy_files(iteration)
     copy_log()
-    [readcount, n_overlaps] = analyze_results()
+    [singles_count, paired_count, n_overlaps] = analyze_results()
+    readcount = singles_count + paired_count
     read_counts.append(readcount)
+    singles_counts.append(singles_count)
+    paired_counts.append(paired_count)
     overlap_counts.append(n_overlaps)
     n_edges = get_edge_count()
     edge_counts.append(n_edges)
@@ -252,7 +260,8 @@ def run_first_it_merge(fastq, overlaps, edge_threshold, min_overlap_perc, min_ov
 
 
 def run_first_it_noEC(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, remove_branches='true'):
-    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts
+    global read_counts, singles_counts, paired_counts
     iteration += 1
     keep_singletons = max(min_overlap_len, min_read_len)
     if verbose == 'true':
@@ -289,8 +298,11 @@ def run_first_it_noEC(fastq, overlaps, edge_threshold, min_overlap_perc, min_ove
     if COPYFILES:
         copy_files(iteration)
     copy_log()
-    [readcount, n_overlaps] = analyze_results()
+    [singles_count, paired_count, n_overlaps] = analyze_results()
+    readcount = singles_count + paired_count
     read_counts.append(readcount)
+    singles_counts.append(singles_count)
+    paired_counts.append(paired_count)
     overlap_counts.append(n_overlaps)
     n_edges = get_edge_count()
     edge_counts.append(n_edges)
@@ -299,7 +311,8 @@ def run_first_it_noEC(fastq, overlaps, edge_threshold, min_overlap_perc, min_ove
 
 
 def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate, remove_branches='true'):
-    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts
+    global read_counts, singles_counts, paired_counts
     iteration += 1
     if verbose == 'true':
         print "\n*******************************"
@@ -344,8 +357,11 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
     if COPYFILES:
         copy_files(iteration)
     copy_log()
-    [readcount, n_overlaps] = analyze_results()
+    [singles_count, paired_count, n_overlaps] = analyze_results()
+    readcount = singles_count + paired_count
     read_counts.append(readcount)
+    singles_counts.append(singles_count)
+    paired_counts.append(paired_count)
     overlap_counts.append(n_overlaps)
     n_edges = get_edge_count()
     edge_counts.append(n_edges)
@@ -354,7 +370,8 @@ def run_merging_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate
 
 
 def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_overlap_len, error_rate, first_it, min_clique_size):
-    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts
+    global read_counts, singles_counts, paired_counts
     iteration += 1
     if verbose == 'true':
         print "\n****************************************"
@@ -390,8 +407,11 @@ def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_
     if COPYFILES:
         copy_files(iteration)
     copy_log()
-    [readcount, n_overlaps] = analyze_results()
+    [singles_count, paired_count, n_overlaps] = analyze_results()
+    readcount = singles_count + paired_count
     read_counts.append(readcount)
+    singles_counts.append(singles_count)
+    paired_counts.append(paired_count)
     overlap_counts.append(n_overlaps)
     n_edges = get_edge_count()
     edge_counts.append(n_edges)
@@ -400,7 +420,8 @@ def run_error_correction(fastq, overlaps, edge_threshold, min_overlap_perc, min_
 
 
 def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate):
-    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts, read_counts
+    global iteration, max_read_lengths, max_coverages, overlap_counts, edge_counts
+    global read_counts, singles_counts, paired_counts
     iteration += 1
     if verbose == 'true':
         print "\n*******************************"
@@ -444,8 +465,11 @@ def run_clique_it(edge_threshold, min_overlap_perc, min_overlap_len, error_rate)
     if COPYFILES:
         copy_files(iteration)
     copy_log()
-    [readcount, n_overlaps] = analyze_results()
+    [singles_count, paired_count, n_overlaps] = analyze_results()
+    readcount = singles_count + paired_count
     read_counts.append(readcount)
+    singles_counts.append(singles_count)
+    paired_counts.append(paired_count)
     overlap_counts.append(n_overlaps)
     n_edges = get_edge_count()
     edge_counts.append(n_edges)
@@ -477,7 +501,11 @@ def get_edge_count():
 def analyze_results(cliques=False):
 #    max_cov = analyze_coverage()
 #    max_coverages.append(max_cov)
-    [readcount, max_len] = analyze_fastq()
+    [singles_count, max_len] = analyze_fastq("singles.fastq")
+    if os.path.isfile('paired1.fastq'):
+        [paired_count, paired_len] = analyze_fastq("paired1.fastq")
+    else:
+        paired_count = 0
     max_read_lengths.append(max_len)
     if cliques:
         analyze_cliques()
@@ -486,7 +514,7 @@ def analyze_results(cliques=False):
         n_overlaps = analyze_overlaps('overlaps.txt')
     else:
         n_overlaps = 0
-    return [readcount, n_overlaps]
+    return [singles_count, paired_count, n_overlaps]
 
 
 def analyze_coverage():
@@ -513,11 +541,10 @@ def analyze_coverage():
         return 0
 
 
-def analyze_fastq():
+def analyze_fastq(infile):
     len_counts = [0 for i in xrange(100000)]
     max_len = 0
 
-    infile = "singles.fastq"
     if os.path.isfile(infile):
         with open(infile, 'r') as f:
             c = 0
