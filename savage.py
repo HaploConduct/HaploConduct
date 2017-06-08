@@ -181,7 +181,7 @@ Author: %s
     # print stats
     print "Input fastq stats:"
     print "Number of single-end reads =", s_seq_count
-    print "Number of paired-end reads =", p1_seq_count
+    print "Number of paired-end reads =", p_seq_count
     print "Total number of bases =", total_seq_len
     print "Average read length =", average_read_len
 
