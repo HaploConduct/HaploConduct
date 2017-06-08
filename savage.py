@@ -157,12 +157,14 @@ Author: %s
     if args.input_p1:
         [p1_seq_count, p1_total_len, p1_longest_seq] = analyze_fastq(args.input_p1)
         [p2_seq_count, p2_total_len, p2_longest_seq] = analyze_fastq(args.input_p2)
+        p_total_len = p1_total_len + p2_total_len
+        p_seq_count = p1_seq_count + p2_seq_count
     else:
         p_seq_count = 0
         p_total_len = 0
         p_longest_seq = 0
-    total_seq_len = s_total_len + p1_total_len + p2_total_len
-    total_seq_count = s_seq_count + p1_seq_count
+    total_seq_len = s_total_len + p_total_len
+    total_seq_count = s_seq_count + p_seq_count
     if not total_seq_len > 0:
         print "ERROR: Total input length is zero. Exiting."
         sys.exit(1)
