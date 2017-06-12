@@ -83,10 +83,11 @@ def main():
 
         # filter for minimum length and translate kallisto TPM counts to frequencies
         freq_dict = process_kallisto_output(kallisto_file, args.min_len, select_contigs)
-
+        # sort dict by estimated frequency
+        sorted_freqs = sorted(freq_dict.items(), key=lambda x:x[1][0], reverse=True)
         # write the resulting frequencies to the output file
         print_string(args.out_file, "id\tlength\tfrequency")
-        for contig_id, info in freq_dict.iteritems():
+        for contig_id, info in sorted_freqs:
             freq = info[0]
             length = info[1]
             print_string(args.out_file, contig_id + "\t%s\t%.3f" % (length, freq))
