@@ -49,6 +49,8 @@ def main():
     kallisto_mode = parser.add_argument_group('kallisto-mode arguments')
     kallisto_mode.add_argument('--kallisto', dest='kallisto', action='store_true', help='use Kallisto for improved frequency estimation')
     kallisto_mode.add_argument('--kallisto_path', dest='kallisto_path', type=str, default='kallisto', help='path to kallisto executable; needed only if Kallisto path is not included in PATH')
+    kallisto_mode.add_argument('-l', '--fragmentsize', dest='fragmentsize', type=float, required=True, help='Estimated average fragment size')
+    kallisto_mode.add_argument('-d', '--stddev', dest='stddev', type=float, required=True, help='Estimated standard deviation of fragment size')
     kallisto_mode.add_argument('-f', '--forward', dest='forward', type=str, help='original forward input reads (before assembly) in fastq format')
     kallisto_mode.add_argument('-r', '--reverse', dest='reverse', type=str, help='original reverse input reads (before assembly) in fastq format')
     quick_mode = parser.add_argument_group('quick-mode arguments')
@@ -59,10 +61,10 @@ def main():
     if args.out_file != "" and os.path.isfile(args.out_file):
         os.remove(args.out_file)
 
-    if args.kallisto and not (args.forward and args.reverse):
+    if args.kallisto and not args.forward:
         sys.stderr.write("Input arguments missing: Kallisto-mode requires original fastq files.\n")
         sys.stderr.flush()
-        print "Please specify forward and reverse fastq files using options -f and -r"
+        print "Please specify forward and reverse fastq files using options -f and -r, or single-end input using only -f"
         sys.exit(1)
 
     if not args.kallisto and not args.subreads_file:
@@ -77,7 +79,7 @@ def main():
 
     if args.kallisto:
         # run kallisto on contig file
-        kallisto_file = run_kallisto(args.kallisto_path, args.contigs, args.forward, args.reverse)
+        kallisto_file = run_kallisto(args.kallisto_path, args.contigs, str(args.fragmentsize), str(args.stddev), args.forward, args.reverse)
 
         # filter for minimum length and translate kallisto TPM counts to frequencies
         freq_dict = process_kallisto_output(kallisto_file, args.min_len, select_contigs)
@@ -87,7 +89,7 @@ def main():
         for contig_id, info in freq_dict.iteritems():
             freq = info[0]
             length = info[1]
-            print_string(args.out_file, contig_id + "\t%s\t%.3f\n" % (length, freq))
+            print_string(args.out_file, contig_id + "\t%s\t%.3f" % (length, freq))
         print "*** Done ***\n"
 
     else:
@@ -224,7 +226,7 @@ def process_kallisto_output(abundance_file, min_len, select_contigs):
     return freq_dict
 
 
-def run_kallisto(kallisto, contigs, forward, reverse):
+def run_kallisto(kallisto, contigs, fragmentsize, stddev, forward, reverse=""):
     # create output directory
     subprocess.call(['mkdir', '-p', 'frequencies'])
     # index construction
@@ -234,7 +236,10 @@ def run_kallisto(kallisto, contigs, forward, reverse):
     subprocess.check_call([kallisto, 'index', '-i', index_file, contigs])
     # estimate abundances
     print "*** Running Kallisto abundance quantification ***"
-    subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', 'frequencies/kallisto', '-b', '100', forward, reverse])
+    if reverse:
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', 'frequencies/kallisto', '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
+    else:
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', 'frequencies/kallisto', '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', forward])
     abundance_file = 'frequencies/kallisto/abundance.tsv'
     return abundance_file
 
