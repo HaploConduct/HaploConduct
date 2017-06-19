@@ -57,7 +57,7 @@ def main():
                     OLA = length
                     OHB = int(qlen)-int(qend)-(int(slen)-int(send))
                     OLB = length
-                sfo_line = '\t'.join([idA, idB, ori, str(OHA), str(OHB), OLA, OLB]) + '\t0\n'
+                sfo_line = '\t'.join([idA, idB, ori, str(OHA), str(OHB), OLA, OLB, mismatch]) + '\n'
                 f1.write(sfo_line)
                 overlap_count += 1
             print "overlaps shorter than %d bp: %d" %(args.min_overlap_len, too_short_count)
