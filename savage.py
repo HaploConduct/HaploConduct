@@ -541,6 +541,72 @@ def run_blast(previous_stage, pident, base_path, min_overlap_len):
     overlaps_path = "../" + overlaps_file
     return overlaps_path
 
+def freq_filtering(contig_fasta, contig_fastq, min_TPM, fragmentsize, stddev, forward, reverse=""):
+    # run kallisto
+    abundance_file = run_kallisto(contig_fasta, fragmentsize, stddev, forward, reverse="")
+    # read TPMs from file
+    TPM_dict = {}
+    with open(kallisto_file, 'r') as f:
+        c = 1
+        for line in f:
+            if c == 1:
+                continue
+            [target_id, length, eff_length, est_counts, tpm] = line.split('\t')
+            TPM_dict[target_id] = float(tpm)
+            c += 1
+
+    if min(TPM_list) < min_TPM:
+        # rename old contig files
+        renamed_fasta = ""
+        renamed_fastq = ""
+        'mv contig_fasta renamed_fasta'
+        'mv contig_fastq renamed_fastq'
+        # filter contig set and write to new files
+        fasta = open(contig_fasta, 'w')
+        fastq = open(contig_fastq, 'w')
+        with open(renamed_fastq, 'r') as f:
+            c = 0
+            for line in f:
+                c += 1
+                if (c % 4) == 1:
+                    # ID line
+                    id_line = line
+                    cur_id = id_line.lstrip('@').rstrip('\n)
+                elif (c % 4) == 2:
+                    # seq line
+                    seq_line = line
+                elif k == 4 and (c % k) == 3:
+                    # + line
+                    continue
+                else:
+                    # qual line
+                    assert (c % 4) == 0
+                    if TPM_list[cur_id] > min_TPM:
+                        # write to new files
+                        
+        fasta.close()
+        fastq.close()
+    return
+
+def run_kallisto(contigs, fragmentsize, stddev, forward, reverse=""):
+    kallisto = "kallisto" # kallisto executable
+    # create output directory
+    subprocess.call(['mkdir', '-p', 'frequencies'])
+    # index construction
+    contigs_name, extension = os.path.splitext(contigs)
+    index_file = 'frequencies/' + contigs_name + '.idx'
+    print "\n*** Running Kallisto index construction ***"
+    subprocess.check_call([kallisto, 'index', '-i', index_file, contigs])
+    # estimate abundances
+    print "*** Running Kallisto abundance quantification ***"
+    kallisto_out = 'frequencies/' + contigs_name
+    if reverse:
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
+    else:
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', forward])
+    abundance_file = kallisto_out + '/abundance.tsv'
+    return abundance_file
+
 
 if __name__ == '__main__':
     sys.exit(main())
