@@ -9,6 +9,7 @@ import subprocess
 import shutil
 from time import clock
 from sets import Set
+from collections import namedtuple
 
 # ------------------------------
 
@@ -35,6 +36,8 @@ For more information, please visit https://bitbucket.org/jbaaijens/savage
 """ % (version, releasedate)
 
 # ------------------------------
+
+InputStruct = namedtuple("InputStruct", "input_s input_p1 input_p2 read_len fragmentsize stddev")
 
 def main():
     parser = ArgumentParser(description=usage, formatter_class=RawTextHelpFormatter)
@@ -183,7 +186,13 @@ Author: %s
     print "Number of single-end reads =", s_seq_count
     print "Number of paired-end reads =", p_seq_count
     print "Total number of bases =", total_seq_len
-    print "Average read length =", average_read_len
+    print "Average read length = %.1f" % average_read_len
+
+#    fragmentsize = args.fragmentsize if args.fragmentsize else average_read_len
+#    stddev = args.stddev if args.stddev else 20
+    fragmentsize = average_read_len
+    stddev = 20
+    input_info = InputStruct(args.input_s, args.input_p1, args.input_p2, average_read_len, fragmentsize, stddev)
 
     max_tip_len = int(round(average_read_len)) # average input read length
 
@@ -302,6 +311,11 @@ Author: %s
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_a.fasta"
+        # apply frequency-based filtering
+        try:
+            freq_filtering("contigs_stage_a.fasta", "stage_a/singles.fastq", 0, input_info)
+        except subprocess.CalledProcessError as e:
+            print "\nKallisto not found - skipping this filtering step.\n"
     # else:
     #     print "Stage a skipped"
 
@@ -334,8 +348,11 @@ Author: %s
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_b.fasta"
-    # else:
-    #     print "Stage b skipped"
+        # apply frequency-based filtering
+        try:
+            freq_filtering("contigs_stage_b.fasta", "stage_b/singles.fastq", 0, input_info)
+        except subprocess.CalledProcessError as e:
+            print "\nKallisto not found - skipping this filtering step.\n"
 
     # Run SAVAGE Stage c: build master strains
     if args.stage_c:
@@ -377,6 +394,11 @@ Author: %s
         subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_c.fasta"
+        # apply frequency-based filtering
+        try:
+            freq_filtering("contigs_stage_c.fasta", "stage_c/singles.fastq", 0, input_info)
+        except subprocess.CalledProcessError as e:
+            print "\nKallisto not found - skipping this filtering step.\n"
     # else:
     #     print "Stage c skipped"
     if args.diploid:
@@ -541,29 +563,36 @@ def run_blast(previous_stage, pident, base_path, min_overlap_len):
     overlaps_path = "../" + overlaps_file
     return overlaps_path
 
-def freq_filtering(contig_fasta, contig_fastq, min_TPM, fragmentsize, stddev, forward, reverse=""):
+def freq_filtering(contig_fasta, contig_fastq, min_TPM, input_info): # fragmentsize, stddev, forward, reverse=""):
+    print "\n--- Filtering contigs ---"
     # run kallisto
-    abundance_file = run_kallisto(contig_fasta, fragmentsize, stddev, forward, reverse="")
+    abundance_file = run_kallisto(contig_fasta, input_info)
     # read TPMs from file
     TPM_dict = {}
-    with open(kallisto_file, 'r') as f:
-        c = 1
+    with open(abundance_file, 'r') as f:
+        c = 0
         for line in f:
+            c += 1
             if c == 1:
                 continue
             [target_id, length, eff_length, est_counts, tpm] = line.split('\t')
             TPM_dict[target_id] = float(tpm)
-            c += 1
 
-    if min(TPM_list) < min_TPM:
+    input_count = 0
+    output_count = 0
+
+    if min(TPM_dict.itervalues()) > min_TPM:
+        print "Nothing filtered out.\n"
+    else:
         # rename old contig files
-        renamed_fasta = ""
-        renamed_fastq = ""
-        'mv contig_fasta renamed_fasta'
-        'mv contig_fastq renamed_fastq'
+        contigs_name, extension = os.path.splitext(contig_fasta)
+        renamed_fasta = contigs_name + ".unfiltered.fasta"
+        renamed_fastq = contigs_name + ".unfiltered.fastq"
+        subprocess.check_call(['mv', contig_fasta, renamed_fasta])
+        subprocess.check_call(['mv', contig_fastq, renamed_fastq])
         # filter contig set and write to new files
-        fasta = open(contig_fasta, 'w')
-        fastq = open(contig_fastq, 'w')
+        output_fasta = open(contig_fasta, 'w')
+        output_fastq = open(contig_fastq, 'w')
         with open(renamed_fastq, 'r') as f:
             c = 0
             for line in f:
@@ -571,40 +600,56 @@ def freq_filtering(contig_fasta, contig_fastq, min_TPM, fragmentsize, stddev, fo
                 if (c % 4) == 1:
                     # ID line
                     id_line = line
-                    cur_id = id_line.lstrip('@').rstrip('\n)
+                    cur_id = id_line.lstrip('@').rstrip('\n')
                 elif (c % 4) == 2:
                     # seq line
                     seq_line = line
-                elif k == 4 and (c % k) == 3:
+                elif (c % 4) == 3:
                     # + line
                     continue
                 else:
                     # qual line
                     assert (c % 4) == 0
-                    if TPM_list[cur_id] > min_TPM:
+                    qual_line = line
+                    input_count += 1
+                    if TPM_dict[cur_id] > min_TPM:
                         # write to new files
-                        
-        fasta.close()
-        fastq.close()
+                        output_fasta.write('>' + cur_id + '\n' + seq_line)
+                        output_fastq.write(id_line + seq_line + '+\n' + qual_line)
+                        output_count += 1
+        output_fasta.close()
+        output_fastq.close()
+        print "Filtered %s down to %s contigs (originally %s contigs).\n" % (contig_fasta, output_count, input_count)
     return
 
-def run_kallisto(contigs, fragmentsize, stddev, forward, reverse=""):
+def run_kallisto(contigs, input_info): #fragmentsize, stddev, forward, reverse=""):
     kallisto = "kallisto" # kallisto executable
+    FNULL = open(os.devnull, 'w')
     # create output directory
     subprocess.call(['mkdir', '-p', 'frequencies'])
     # index construction
     contigs_name, extension = os.path.splitext(contigs)
     index_file = 'frequencies/' + contigs_name + '.idx'
-    print "\n*** Running Kallisto index construction ***"
-    subprocess.check_call([kallisto, 'index', '-i', index_file, contigs])
+    print "Kallisto index construction... "
+    subprocess.check_call([kallisto, 'index', '-i', index_file, contigs], stdout=FNULL, stderr=FNULL)
     # estimate abundances
-    print "*** Running Kallisto abundance quantification ***"
+    print "Kallisto abundance quantification... "
     kallisto_out = 'frequencies/' + contigs_name
-    if reverse:
-        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
+    if input_info.input_s:
+        fragmentsize = str(input_info.fragmentsize)
+        stddev = str(input_info.stddev)
+        if input_info.input_p1 and input_info.input_p2:
+            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s, input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
+        else:
+            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s], stdout=FNULL, stderr=FNULL)
     else:
-        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', forward])
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
+    # if reverse:
+    #     subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
+    # else:
+    #     subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', forward])
     abundance_file = kallisto_out + '/abundance.tsv'
+    FNULL.close()
     return abundance_file
 
 
