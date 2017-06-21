@@ -311,11 +311,6 @@ Author: %s
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_a.fasta"
-        # apply frequency-based filtering
-        try:
-            freq_filtering("contigs_stage_a.fasta", "stage_a/singles.fastq", 0, input_info)
-        except subprocess.CalledProcessError as e:
-            print "\nKallisto not found - skipping this filtering step.\n"
     # else:
     #     print "Stage a skipped"
 
