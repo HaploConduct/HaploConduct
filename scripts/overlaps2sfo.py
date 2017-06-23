@@ -22,9 +22,9 @@ SFO format: [idA, idB, ori, OHA, OHB, OLA, OLB, K]
 
 def main():
     parser = ArgumentParser(description=usage)
-    parser.add_argument('--overlaps_in', dest='infile', type=str)
-    parser.add_argument('--overlaps_out', dest='outfile', type=str)
-    parser.add_argument('--fasta', dest='fasta', type=str)
+    parser.add_argument('--in', dest='infile', required=True, type=str)
+    parser.add_argument('--out', dest='outfile', required=True, type=str)
+    parser.add_argument('--fasta', dest='fasta', required=True, type=str)
     parser.add_argument('-m', dest='min_overlap_len', default=0, type=int)
     args = parser.parse_args()
 
@@ -54,6 +54,9 @@ def main():
             for line in f2:
                 [id1, id2, pos1, pos2, order, ori1, ori2, perc1, perc2, len1, len2, type1, type2] = line.strip('\n').split('\t')
                 assert type1 == type2 == 's' # only allow s-s overlaps
+                if id1 == id2:
+                    # self-overlap
+                    continue
                 length = int(len1)
                 if int(length) < args.min_overlap_len:
                     too_short_count += 1

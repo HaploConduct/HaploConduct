@@ -35,28 +35,37 @@ def main():
             overlap_count = 0
             for line in f2:
                 [qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, qlen, slen] = line.strip('\n').split('\t')
+                if qseqid == sseqid:
+                    # self-overlap
+                    continue
                 qori = int(qstart) <= int(qend)
                 sori = int(sstart) <= int(send)
                 assert qori # otherwise script needs extra cases to find correct pos1
                 if int(length) < args.min_overlap_len:
                     too_short_count += 1
                     continue
-                if int(qseqid) <= int(sseqid):
-                    idA = qseqid
-                    idB = sseqid
-                    ori = 'N' if sori else 'I'
+
+                idA = qseqid
+                idB = sseqid
+                ori = 'N' if sori else 'I'
+                OLA = length
+                OLB = OLA
+                if sori:
                     OHA = int(qstart)-int(sstart)
-                    OLA = length
-                    OHB = int(slen)-int(send)-(int(qlen)-int(qend))
-                    OLB = length
+                    OHB = int(slen)-int(sstart)-(int(qlen)-int(qstart))
                 else:
-                    idA = sseqid
-                    idB = qseqid
-                    ori = 'N' if sori else 'I'
-                    OHA = int(sstart)-int(qstart)
-                    OLA = length
-                    OHB = int(qlen)-int(qend)-(int(slen)-int(send))
-                    OLB = length
+                    OHA = int(qstart)-(int(slen)-int(sstart)+1)
+                    OHB = int(sstart)-(int(qlen)-int(qstart)+1)
+#                if int(idA) > int(idB):
+                if idA > idB:
+                    # swap order such that id1 < id2
+                    idA, idB = idB, idA
+                    if ori == 'N':
+                        OHA *= -1
+                        OHB *= -1
+                    else:
+                        # swap orientations such that id1 sequence is forward
+                        OHA, OHB = OHB, OHA
                 sfo_line = '\t'.join([idA, idB, ori, str(OHA), str(OHB), OLA, OLB, mismatch]) + '\n'
                 f1.write(sfo_line)
                 overlap_count += 1

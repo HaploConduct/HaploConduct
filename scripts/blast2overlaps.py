@@ -39,6 +39,9 @@ def main():
             overlap_count = 0
             for line in f2:
                 [qseqid, sseqid, pident, length, mismatch, gapopen, qstart, qend, sstart, send, qlen, slen] = line.strip('\n').split('\t')
+                if qseqid == sseqid:
+                    # self-overlap
+                    continue
                 if int(qstart) > int(qend) or int(sstart) > int(send):
                     rev_comp_count += 1
                     if args.norevcomp:
@@ -46,16 +49,17 @@ def main():
                 qori = int(qstart) <= int(qend)
                 sori = int(sstart) <= int(send)
                 assert qori # otherwise script needs extra cases to find correct pos1
+                if not sori:
+                    sstart = int(slen)-int(sstart)+1
+                    send = int(slen)-int(send)+1
                 len1 = length
                 if int(len1) < args.min_overlap_len:
                     too_short_count += 1
                     continue
-                if int(qstart) > 1:
-                    if not (int(sstart) == 1 or sstart == slen):
-                        continue
+                if int(qstart)-int(sstart) >= 0:
                     id1 = qseqid
                     id2 = sseqid
-                    pos1 = str(int(qstart)-1)
+                    pos1 = str(int(qstart)-int(sstart))
                     ori1 = "+" if qori else "-"
                     ori2 = "+" if sori else "-"
                     if int(pos1) >= int(qlen):
@@ -64,16 +68,11 @@ def main():
                         print qlen
                     assert int(pos1) < int(qlen)
                 else:
-                    assert int(qstart) == 1
-                    assert int(sstart) >= 1
                     id1 = sseqid
                     id2 = qseqid
                     ori1 = "+" if sori else "-"
                     ori2 = "+" if qori else "-"
-                    if sori:
-                        pos1 = str(int(sstart)-1)
-                    else:
-                        pos1 = str(int(slen)-int(sstart))
+                    pos1 = str(int(sstart)-int(qstart))
                     if int(pos1) >= int(slen):
                         print "sstart > 1"
                         print pos1
