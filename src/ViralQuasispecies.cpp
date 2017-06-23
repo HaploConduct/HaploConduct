@@ -332,7 +332,9 @@ int main(int argc, char *argv[])
 //    if (program_settings.cliques) {
     overlap_graph->writeGraphToFile(); // write current graph to file for quick-cliques
     overlap_graph->write2GFA(); // build a GFA file for analyzing the graph with Bandage
-//    overlap_graph->writeDiGraphToFile(); // write digraph to file for comparison between runs
+    if (program_settings.graph_only) {
+        overlap_graph->writeDiGraphToFile(); // write digraph to file for comparison between runs
+    }
     if (program_settings.graph_only) {
         return 0;
     }
