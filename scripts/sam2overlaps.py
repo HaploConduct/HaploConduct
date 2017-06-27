@@ -6,11 +6,11 @@ import sys
 import random
 import subprocess
 from time import clock
-
+import itertools
 
 __author__ = "Jasmijn Baaijens"
 
-usage = """%prog [options]
+usage = """
 
 Create an overlaps file for viral quasispecies assembly
 based on the alignments to a reference genome. Assumes an
@@ -40,7 +40,33 @@ def read_sam_to_list(sam):
             header = False
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
-            record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
+            
+            # check for clipping                                                                                                                                                                            
+            cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
+            softclip = CIGAR.split('S')[0]
+            hardclip = CIGAR.split('H')[0]
+            hardclip_end = CIGAR.split('H')[-1]
+            if cigar[1] == 'S':
+                # subtract soft-clipped part from alignment position                                                                                                                                        
+                cpos = int(POS) - int(cigar[0])
+                cseq = SEQ
+                cqual = QUAL
+            elif cigar[1] == 'H':
+                # subtract hard-clipped part from alignment position                                                                                                                                        
+                cpos = int(POS) - int(cigar[0])
+                # add dummy nucleotides to front of sequence                                                                                                                                                
+                cseq = int(cigar[0])*'N' + SEQ
+                cqual = int(cigar[0])*'$' + QUAL
+            else:
+                cpos = int(POS)
+                cseq = SEQ
+                cqual = QUAL
+            if cigar[-1] == 'H':
+                # add dummy nucleotides to back of sequence                                                                                                                                                 
+                cseq +=	int(cigar[-2])*'N'
+                cqual += int(cigar[-2])*'$'
+
+            record = [ID, int(FLAG), REF, cpos, int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), cseq, cqual]
             if 4 not in power_find(int(FLAG)): # check if read is mapped
                 records.append(record)
             else:
@@ -64,7 +90,33 @@ def read_paired_sam_to_list(sam):
             header = False
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
-            record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
+
+            # check for clipping
+            cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
+            softclip = CIGAR.split('S')[0]
+            hardclip = CIGAR.split('H')[0]
+            hardclip_end = CIGAR.split('H')[-1]
+            if cigar[1] == 'S':
+                # subtract soft-clipped part from alignment position
+                cpos = int(POS) - int(cigar[0])
+                cseq = SEQ
+                cqual = QUAL
+            elif cigar[1] == 'H':
+                # subtract hard-clipped part from alignment position
+                cpos = int(POS) - int(cigar[0])
+                # add dummy nucleotides to front of sequence
+                cseq = int(cigar[0])*'N' + SEQ
+                cqual = int(cigar[0])*'$' + QUAL
+            else:
+                cpos = int(POS)
+                cseq = SEQ
+                cqual = QUAL
+            if cigar[-1] == 'H':
+                # add dummy nucleotides to back of sequence
+                cseq += int(cigar[-2])*'N'
+                cqual += int(cigar[-2])*'$'
+                
+            record = [ID, int(FLAG), REF, cpos, int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), cseq, cqual]
             if 4 not in power_find(int(FLAG)): # check if read is mapped
                 paired_read.append(record)
             else:
