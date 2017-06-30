@@ -207,7 +207,7 @@ def main():
 #    print "Maximum # subreads per iteration: \t", max_coverages
     print "Number of contigs per iteration: \t", singles_counts
     if max(paired_counts) > 0:
-        print "Number of paired reads per itereation: \t", paired_counts
+        print "Number of paired reads per iteration: \t", paired_counts
     print "Number of overlaps per iteration: \t", overlap_counts
 
 
