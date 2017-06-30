@@ -116,7 +116,7 @@ def main():
     diploid = "true" if args.diploid else "false"
     max_tip_len = args.max_tip_len
     separate_tips = "false" if stage_a else "true"
-    remove_inclusions = "false" if stage_a else "true"
+    remove_inclusions = "false" if stage_a else "true" # only keep inclusions during error correction
 
     # create a global log file; after every iteration the log file is appended to this global log file
     subprocess.call(["rm", "pipeline.log"], stdout=FNULL, stderr=FNULL)
@@ -142,6 +142,7 @@ def main():
             run_error_correction(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len_EC, args.merge_contigs, first_it, args.clique_size_EC)
         else:
             run_first_it_noEC(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
+        remove_inclusions = "true"
         while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
             while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
                 # merge simple paths
