@@ -143,6 +143,7 @@ def main():
         else:
             run_first_it_noEC(args.fastq, args.overlaps, args.edge_threshold, args.min_overlap_perc, min_overlap_len, args.merge_contigs, first_it)
         remove_inclusions = "true"
+        separate_tips = "true"
         while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
             while overlap_counts[-1] > 0 and edge_counts[-1] > 0 and const_read_its < 2:
                 # merge simple paths
