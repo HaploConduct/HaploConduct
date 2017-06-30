@@ -330,8 +330,18 @@ Author: %s
             print "Empty set of contigs from Stage a (contigs_stage_a.fasta) --> Exiting SAVAGE."
             sys.exit(1)
         subprocess.call(['cp', 'stage_a/singles.fastq', 'stage_b/singles.fastq'], stdout=FNULL, stderr=FNULL)
-        pident = 98
-        overlaps = run_blast('a', pident, base_path, args.min_overlap_len)
+        pident = 99
+        min_overlap_len = args.min_overlap_len
+        # find contig overlaps
+        try:
+            sfo_mm = 200 # 0.5% errors
+            paired_count = 0
+            singles_count = int(file_len('contigs_stage_a.fasta')/2)
+            overlaps = run_sfo('a', sfo_mm, base_path, min_overlap_len, args.threads, singles_count, paired_count)
+        except subprocess.CalledProcessError as e:
+            print "\nRUNNING BLAST....\n"
+            overlaps = run_blast('a', pident, base_path, min_overlap_len)
+            subprocess.call("rm blastout* contigs_db*", shell=True)
         sys.stdout.flush()
         # run SAVAGE
         os.chdir('stage_b')
