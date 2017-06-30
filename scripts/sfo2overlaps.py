@@ -11,10 +11,10 @@ __author__ = "Amal Zine el Aabidine and Jasmijn Baaijens"
 
 usage = """
 
-Convert SFO output to overlaps format for SAVAGE. This script also uses the read 
+Convert SFO output to overlaps format for SAVAGE. This script also uses the read
 pairing-information to output paired-end read overlaps if present.
 
-"""    
+"""
 
 def main():
     parser = ArgumentParser(description=usage)
@@ -23,7 +23,7 @@ def main():
     parser.add_argument('--num_singles', dest='num_singles', type=int, required=True, help="number of single-end reads")
     parser.add_argument('--num_pairs', dest='num_pairs', type=int, required=True, help="number of paired-end reads")
     args = parser.parse_args()
-    
+
     # read SFO results and add two fields for the original read IDs
     # (the two ends of a paired-end read have the same original ID)
     # write the result to a temporary overlaps file:
@@ -45,11 +45,11 @@ def main():
                 else:
                     newline = str(new_idA) + "\t" + str(new_idB) + "\t" + line
                 f_tmp.write(newline)
-    
+
     # sort the resulting overlaps file
     subprocess.check_call('sort -k1,1n -k2,2n -k3,3n -k4,4n %s | uniq > sorted_overlaps.txt' % tmp_file, shell=True)
     subprocess.check_call('mv sorted_overlaps.txt %s' % tmp_file, shell=True)
-    
+
     # read the sorted overlaps and process line by line
     s_s_count = 0
     p_count = 0
@@ -64,15 +64,15 @@ def main():
                 idB = int(sfo_line[1])
                 if idA == idB: # self-overlap
                     continue
-                    
+
                 OLA = int(sfo_line[7]) # read A bases inside overlap
                 OLB = int(sfo_line[8]) # read B bases inside overlap
 #                if OLA != OLB: # indel in overlap
 #                    continue
-                    
+
                 is_paired_A = is_paired(idA, args.num_singles, args.num_pairs)
                 is_paired_B = is_paired(idB, args.num_singles, args.num_pairs)
-                if (not is_paired_A) and (not is_paired_B): 
+                if (not is_paired_A) and (not is_paired_B):
                     # single-single overlap
                     s_s_overlap = get_s_s_overlap(sfo_line)
                     if len(s_s_overlap) > 0:
@@ -100,7 +100,7 @@ def main():
                     candidates.append(sfo_line)
     print "total overlap count: %d" % (s_s_count + p_count)
     print "of which single-single: %d" % s_s_count
-    
+
     # remove duplicate overlaps from the resulting overlaps file
     subprocess.check_call('echo "$(uniq %s)" > %s' % (args.outfile, args.outfile), shell=True)
     # remove temporary overlaps file
@@ -110,7 +110,7 @@ def main():
 def flip(sfo_tup):
     # sfo_tuple = [sfo_idA, sfo_idB, ori, OHA, OHB, OLA, OLB, K]
     flipped = [sfo_tup[1], sfo_tup[0], sfo_tup[2], sfo_tup[4], sfo_tup[3], sfo_tup[6], sfo_tup[5], sfo_tup[7]]
-    return flipped    
+    return flipped
 
 def is_paired(ID, num_singles, num_pairs):
     # check if a read is paired based on its read ID
@@ -118,21 +118,21 @@ def is_paired(ID, num_singles, num_pairs):
     if ID >= num_singles:
         paired = True
     else:
-        paired = False 
+        paired = False
     return paired
-    
+
 def get_original_id(sfo_ID, num_singles, num_pairs):
     # translate the read ID used by SFO to the original read ID
     assert sfo_ID >= 0 and sfo_ID < num_singles + 2*num_pairs
     if sfo_ID < num_singles + num_pairs:
         # single-end read or /1 read of a pair
         original_ID = sfo_ID
-    else: 
+    else:
         # /2 read of a pair
         original_ID = sfo_ID - num_pairs
     return original_ID
-        
-    
+
+
 def get_s_s_overlap(sfo_line):
     # translate SFO style overlap to SAVAGE style overlap
     # sfo format: [idA, idB, sfo_idA, sfo_idB, ori, OHA, OHB, OLA, OLB, K]
@@ -142,14 +142,16 @@ def get_s_s_overlap(sfo_line):
     OHA = int(sfo_line[5]) # read A bases outside overlap
     OHB = int(sfo_line[6]) # read B bases outside overlap
     OLA = int(sfo_line[7]) # read A bases inside overlap
-    OLB = int(sfo_line[8]) # read B bases inside overlap        
+    OLB = int(sfo_line[8]) # read B bases inside overlap
     ori = "+" if sfo_line[4] == "N" else "-"
-    readlenA = abs(OLA) + abs(OHA)
-    readlenB = abs(OLB) + abs(OHB)
-    minreadlen = min(readlenA, readlenB)
     ovlen = min(OLA, OLB)
-    assert minreadlen > 0
     if OHA >= 0: # read A is first
+        if OHB >= 0:
+            readlenA = OLA + OHA
+            readlenB = OLB + OHB
+        else:
+            readlenA = OLA + OHA + -OHB
+            readlenB = OLB
         id1 = idA
         id2 = idB
         pos1 = str(OHA)
@@ -157,14 +159,13 @@ def get_s_s_overlap(sfo_line):
         order = "-"
         ori1 = "+"
         ori2 = ori
-        perc = min(round(100*OLA/minreadlen), 100)
-        perc1 = "{:.0f}".format(perc)
-        perc2 = "-"
-        len1 = str(ovlen)
-        len2 = "-"
-        type1 = "s"
-        type2 = "s"
     else: # read B is first
+        if OHB >= 0:
+            readlenA = OLA
+            readlenB = -OHA + OLB + OHB
+        else:
+            readlenA = OLA + -OHB
+            readlenB = -OHA + OLB
         id1 = idB
         id2 = idA
         pos1 = str(-1*OHA)
@@ -172,19 +173,21 @@ def get_s_s_overlap(sfo_line):
         order = "-"
         ori1 = ori
         ori2 = "+"
-        perc = min(round(100*OLA/minreadlen), 100)
-        perc1 = "{:.0f}".format(perc)
-        perc2 = "-"
-        len1 = str(ovlen)
-        len2 = "-"
-        type1 = "s"
-        type2 = "s"
+    minreadlen = min(readlenA, readlenB)
+    perc = min(round(100*ovlen/minreadlen), 100)
+    perc1 = "{:.0f}".format(perc)
+    perc2 = "-"
+    len1 = str(ovlen)
+    len2 = "-"
+    type1 = "s"
+    type2 = "s"
+    assert minreadlen > 0
     overlap = [id1, id2, pos1, pos2, order, ori1, ori2, perc1, perc2, len1, len2, type1, type2]
     return overlap
 
 
 def match_candidates(candidates, typeA, typeB):
-    # using maxoverlaps for SFO should result in only one candidate per 
+    # using maxoverlaps for SFO should result in only one candidate per
     # read end, so at most two candidates for every paired-end read;
     # for a paired end overlap, we need exactly two candidates.
     overlaps = []
@@ -204,17 +207,17 @@ def match_candidates(candidates, typeA, typeB):
                     overlaps.append(overlap)
     return overlaps
 
-                
-def find_paired_overlap(cand1, cand2, typeA, typeB):            
-#    assert len(candidates) == 2   
+
+def find_paired_overlap(cand1, cand2, typeA, typeB):
+#    assert len(candidates) == 2
 #    cand1 = candidates[0]
 #    cand2 = candidates[1]
     overlap1 = []
     overlap2 = []
     # sfo format: [idA, idB, sfo_idA, sfo_idB, ori, OHA, OHB, OLA, OLB, K]
-    if cand1[4] != cand2[4]: 
-        # orientations don't match; since SFO outputs the orientation of 
-        # read B, which is always the read with largest ID, the orientations 
+    if cand1[4] != cand2[4]:
+        # orientations don't match; since SFO outputs the orientation of
+        # read B, which is always the read with largest ID, the orientations
         # of both read ends should agree
         return []
     cand1_id1 = int(cand1[2])
@@ -263,7 +266,7 @@ def find_paired_overlap(cand1, cand2, typeA, typeB):
             elif (cand1_id2 > cand2_id2 and cand1_pos1 < cand2_pos1):
                 overlap1 = get_s_s_overlap(cand1)
                 overlap2 = get_s_s_overlap(cand2)
-            
+
     if len(overlap1) > 0 and len(overlap2) > 0:
         # now combine both overlaps into one paired-end overlap
         if overlap1[0] == cand1[0]:
@@ -297,7 +300,7 @@ def merge_overlaps(overlap1, overlap2, type1, type2):
     overlap[8] = overlap2[7] # perc2
     overlap[10] = overlap2[9] # len2
     return overlap
-            
-        
+
+
 if __name__ == '__main__':
     sys.exit(main())
