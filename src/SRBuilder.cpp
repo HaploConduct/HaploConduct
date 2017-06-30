@@ -1370,7 +1370,15 @@ void SRBuilder::writeTipsToFile() {
     read_id_t new_ID = 0;
     for (auto read : tips_vec) {
         if (read.is_paired()) {
-            continue;
+            tips_file << "@" << new_ID << "_1\n";
+            tips_file << read.get_seq(1) << "\n";
+            tips_file << "+\n";
+            tips_file << read.get_phred(1) << "\n";
+            tips_file << "@" << new_ID << "_2\n";
+            tips_file << read.get_seq(2) << "\n";
+            tips_file << "+\n";
+            tips_file << read.get_phred(2) << "\n";
+            new_ID++;
         }
         else {
             tips_file << "@" << new_ID << "\n";
