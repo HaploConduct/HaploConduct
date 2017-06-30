@@ -73,6 +73,7 @@ def main():
     advanced.add_argument('--diploid_contig_len', dest='diploid_contig_len', type=int, default=200, help='minimum contig length required for diploid step contigs')
     advanced.add_argument('--diploid_overlap_len', dest='diploid_overlap_len', type=int, default=30, help='min_overlap_len used in diploid assembly step')
     advanced.add_argument('--average_read_len', dest='average_read_len', type=float, help='average length of the input reads; will be computed from the input if not specified')
+    advanced.add_argument('--no_filtering', dest='filtering', action='store_false', help='disable kallisto-based filtering of contigs')
 
     # store the path to the SAVAGE root directory
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -334,6 +335,7 @@ Author: %s
         sys.stdout.flush()
         # run SAVAGE
         os.chdir('stage_b')
+        subprocess.check_call(["cp", overlaps, "original_overlaps.txt"])
         if args.use_subreads:
             subprocess.check_call("cp ../stage_a/subreads.txt subreads.txt", shell=True)
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, args.min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
@@ -344,10 +346,11 @@ Author: %s
         print "Done!"
         final_contig_file = "contigs_stage_b.fasta"
         # apply frequency-based filtering
-        try:
-            freq_filtering("contigs_stage_b.fasta", "stage_b/singles.fastq", 0, input_info)
-        except subprocess.CalledProcessError as e:
-            print "\nKallisto not found - skipping this filtering step.\n"
+        if args.filtering:
+            try:
+                freq_filtering("contigs_stage_b.fasta", "stage_b/singles.fastq", 0, input_info)
+            except subprocess.CalledProcessError as e:
+                print "\nKallisto not found - skipping this filtering step.\n"
 
     # Run SAVAGE Stage c: build master strains
     if args.stage_c:
@@ -375,10 +378,20 @@ Author: %s
             sys.exit(1)
         subprocess.call(['cp', 'stage_b/singles.fastq', 'stage_c/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 100*(0.99-args.merge_contigs)
-        overlaps = run_blast('b', pident, base_path, min_overlap_len)
+        # find contig overlaps
+        try:
+            sfo_mm = 1 + (0.99 - args.merge_contigs) / (args.merge_contigs + 0.01)
+            paired_count = 0
+            singles_count = int(file_len('contigs_stage_b.fasta')/2)
+            overlaps = run_sfo('b', sfo_mm, base_path, min_overlap_len, args.threads, singles_count, paired_count)
+        except subprocess.CalledProcessError as e:
+            print "\nRUNNING BLAST....\n"
+            overlaps = run_blast('b', pident, base_path, min_overlap_len)
+            subprocess.call("rm blastout* contigs_db*", shell=True)
         sys.stdout.flush()
         # run SAVAGE
         os.chdir('stage_c')
+        subprocess.check_call(["cp", overlaps, "original_overlaps.txt"])
         if args.use_subreads:
             subprocess.check_call("cp ../stage_b/subreads.txt subreads.txt", shell=True)
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
@@ -386,14 +399,14 @@ Author: %s
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_c/singles.fastq contigs_stage_c.fasta" % base_path, shell=True)
-        subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_c.fasta"
         # apply frequency-based filtering
-        try:
-            freq_filtering("contigs_stage_c.fasta", "stage_c/singles.fastq", 0, input_info)
-        except subprocess.CalledProcessError as e:
-            print "\nKallisto not found - skipping this filtering step.\n"
+        if args.filtering:
+            try:
+                freq_filtering("contigs_stage_c.fasta", "stage_c/singles.fastq", 0, input_info)
+            except subprocess.CalledProcessError as e:
+                print "\nKallisto not found - skipping this filtering step.\n"
     # else:
     #     print "Stage c skipped"
     if args.diploid:
@@ -415,10 +428,20 @@ Author: %s
             sys.exit(1)
         subprocess.call(['cp', 'stage_c/singles.fastq', 'diploid/singles.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
+        # find contig overlaps
+        # try:
+        #     sfo_mm = 1 + (0.99 - args.merge_contigs) / (args.merge_contigs + 0.01)
+        #     paired_count = 0
+        #     singles_count = int(file_len('contigs_stage_c.fasta')/2)
+        #     overlaps = run_sfo('c', sfo_mm, base_path, min_overlap_len, args.threads, singles_count, paired_count)
+        # except subprocess.CalledProcessError as e:
+        #     print "\nRUNNING BLAST....\n"
         overlaps = run_blast('c', pident, base_path, min_overlap_len)
+        subprocess.call("rm blastout* contigs_db*", shell=True)
         sys.stdout.flush()
         # run SAVAGE
         os.chdir('diploid')
+        subprocess.check_call(["cp", overlaps, "original_overlaps.txt"])
         if args.use_subreads:
             subprocess.check_call("cp ../stage_c/subreads.txt subreads.txt", shell=True)
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
@@ -426,7 +449,6 @@ Author: %s
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py diploid/singles.fastq diploid_contigs.fasta" % base_path, shell=True)
-        subprocess.call("rm blastout* contigs_db*", shell=True)
         print "Done!"
         final_contig_file = "diploid_contigs.fasta"
 
@@ -459,7 +481,6 @@ def file_len(fname):
         linecount = i + 1
     else:
         linecount = 0
-    assert linecount % 4 == 0
     return linecount
 
 def overwrite_dir(dir):
@@ -555,6 +576,17 @@ def run_blast(previous_stage, pident, base_path, min_overlap_len):
     subprocess.check_call("makeblastdb -in contigs_stage_%s.fasta -dbtype nucl -out contigs_db 1>/dev/null 2>&1" % (previous_stage), shell=True)
     subprocess.check_call("blastn -db contigs_db -query contigs_stage_%s.fasta -outfmt '6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send qlen slen' -out blastout_contigs.tsv -perc_identity %s" % (previous_stage, pident), shell=True)
     subprocess.check_call("%s/scripts/blast2overlaps.py --in blastout_contigs.tsv --out %s --min_overlap_len %d" % (base_path, overlaps_file, min_overlap_len), shell=True)
+    overlaps_path = "../" + overlaps_file
+    return overlaps_path
+
+def run_sfo(previous_stage, sfo_mm, base_path, min_overlap_len, threads, singles_count, paired_count):
+    overlaps_file = "contig_overlaps.txt"
+    subprocess.check_call("%s/sfo_2011_5/builder contigs_stage_%s.fasta" % (base_path, previous_stage), shell=True)
+    subprocess.check_call("%s/sfo_2011_5/sfoverlap --parallel %d --indels -e %d -t %d contigs_stage_%s.fasta > tmp_overlaps.out 2>/dev/null" % (base_path, threads, sfo_mm, min_overlap_len, previous_stage), shell=True)
+    subprocess.check_call("%s/sfo_2011_5/maxoverlaps < tmp_overlaps.out > sfoverlaps.out" % (base_path), shell=True)
+    subprocess.check_call("rm tmp_overlaps.out", shell=True)
+    subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, singles_count, paired_count), shell=True)
+    subprocess.check_call("rm contigs_stage_%s.fasta.* sfoverlaps.out" % (previous_stage), shell=True)
     overlaps_path = "../" + overlaps_file
     return overlaps_path
 
