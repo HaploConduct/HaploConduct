@@ -128,6 +128,7 @@ def read_sam_to_list(sam):
     header = True
     with open(sam, 'r') as f:
         unmapped = 0
+        reverse = 0
         for line in f:
             if header and line[0] == '@':
                 continue
@@ -135,9 +136,12 @@ def read_sam_to_list(sam):
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
             # check if read is mapped
-            if 4 in power_find(int(FLAG)):
+            bits_flag = power_find(int(FLAG))
+            if 4 in bits_flag:
                 unmapped += 1
                 continue
+            elif 16 in bits_flag:
+                reverse += 1
             # check for clipping
             cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
             softclip = CIGAR.split('S')[0]
@@ -167,6 +171,7 @@ def read_sam_to_list(sam):
             records.append(record)
         if verbose:
             print "Number of singles unmapped: ", unmapped
+            print "Number of singles reversed: ", reverse
     return records
 
 def read_paired_sam_to_list(sam):
@@ -408,8 +413,8 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
             overlap2 = get_overlap_line(record, read[1], corrected_overlap_pos2, corrected_overlap_len2)
             overlap = merge_overlaps(overlap1, overlap2, "s", "p")
             # check orientations
-            ori1 = "-" if 16 in power_find(read[0][1]) else "+"
-            ori2 = "-" if record[2] else "+"
+            ori1 = "-" if read[2] else "+"
+            ori2 = "-" if 16 in power_find(record[1]) else "+"
             overlap[5] = ori1
             overlap[6] = ori2
             if corrected_overlap_len2 > min_overlap_len and corrected_overlap_pos2 >= 0:
