@@ -134,7 +134,10 @@ def read_sam_to_list(sam):
             header = False
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
-
+            # check if read is mapped
+            if 4 in power_find(int(FLAG)):
+                unmapped += 1
+                continue
             # check for clipping
             cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
             softclip = CIGAR.split('S')[0]
@@ -161,10 +164,7 @@ def read_sam_to_list(sam):
                 cqual += int(cigar[-2])*'$'
 
             record = [ID, int(FLAG), REF, cpos, int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), cseq, cqual]
-            if 4 not in power_find(int(FLAG)): # check if read is mapped
-                records.append(record)
-            else:
-                unmapped += 1
+            records.append(record)
         if verbose:
             print "Number of singles unmapped: ", unmapped
     return records
@@ -184,7 +184,10 @@ def read_paired_sam_to_list(sam):
             header = False
             aln = line.strip('\n').split('\t')
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
-
+            # check if read is mapped
+            if 4 in power_find(int(FLAG)):
+                unmapped += 1
+                continue
             # check for clipping
             cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
             softclip = CIGAR.split('S')[0]
@@ -211,10 +214,8 @@ def read_paired_sam_to_list(sam):
                 cqual += int(cigar[-2])*'$'
 
             record = [ID, int(FLAG), REF, cpos, int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), cseq, cqual]
-            if 4 not in power_find(int(FLAG)): # check if read is mapped
-                paired_read.append(record)
-            else:
-                unmapped += 1
+            paired_read.append(record)
+            # store both sequences of a paired-end read together in a tuple
             assert len(paired_read) <= 2
             if i%2 == 1:
                 if len(paired_read) == 2:
@@ -500,7 +501,7 @@ def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
     count_problems = 0
     with open(outfile, 'a') as outfile:
         i = 0
-        cur_pos = 0
+        cur_pos = merged_records[0][0]
         overlap_count = 0
         while cur_pos < len(ref) and i < readcount:
             cur_read = merged_records[i][1]
