@@ -359,6 +359,9 @@ Edge EdgeCalculator::compute_overlap(const Overlap &overlap)
             pos3 = (read_1->get_seq(2)).size() - pos2 - (read_2->get_seq(2)).size();
         }
         else {
+            if (ord != "2") {
+                std::cout << overlap.get_overlap_line() << std::endl;
+            }
             assert (ord == "2");
             pos3 = (read_1->get_seq(2)).size() + pos2 - (read_2->get_seq(2)).size();
         }
