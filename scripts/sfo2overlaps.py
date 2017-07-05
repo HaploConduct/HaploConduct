@@ -244,8 +244,24 @@ def find_paired_overlap(cand1, cand2, typeA, typeB):
                 overlap2 = get_s_s_overlap(cand1)
     elif typeA and not typeB:
         # paired-single
-        print "this case should not occur by definition of SFO output" # single ID always smaller than paired ID
-        assert False
+        cand1_pos1 = int(cand1[5])
+        cand2_pos1 = int(cand2[5])
+        if cand1[4] == 'N':
+            # forward-forward
+            if (cand1_id1 < cand2_id1 and cand1_pos1 < cand2_pos1):
+                overlap1 = get_s_s_overlap(cand1)
+                overlap2 = get_s_s_overlap(cand2)
+            elif (cand1_id1 > cand2_id1 and cand1_pos1 > cand2_pos1):
+                overlap1 = get_s_s_overlap(cand2)
+                overlap2 = get_s_s_overlap(cand1)
+        elif cand1[4] == 'I':
+            # forward-reverse
+            if (cand1_id1 < cand2_id1 and cand1_pos1 > cand2_pos1):
+                overlap1 = get_s_s_overlap(cand2)
+                overlap2 = get_s_s_overlap(cand1)
+            elif (cand1_id1 > cand2_id1 and cand1_pos1 < cand2_pos1):
+                overlap1 = get_s_s_overlap(cand1)
+                overlap2 = get_s_s_overlap(cand2)
     else:
         # single-paired
         cand1_pos1 = int(cand1[5])
