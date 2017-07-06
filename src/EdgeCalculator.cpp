@@ -33,8 +33,9 @@ double EdgeCalculator::score(char nt1, char nt2, double p1, double p2, int & mis
 //    }
 	double p;
 	if (nt1=='N' || nt2=='N') {
-	    p = 0.25;
+//	    p = 0.25;
 //        mismatch_count++;
+        return 1;
 	}
     else if (nt1==nt2) {
         p = (1-p1)*(1-p2) + (p1*p2)/3.0;
@@ -46,7 +47,7 @@ double EdgeCalculator::score(char nt1, char nt2, double p1, double p2, int & mis
     assert (p > 0 && p <= 1);
     // only accept alignment if the probability that the reads come from the same strain is sufficiently high
     if (p < program_settings.mismatch) {
-        return 1;
+        return 2;
     }
 	double lp = log(p);
 	assert (lp == lp); // checks that lp != NaN
@@ -117,6 +118,9 @@ double EdgeCalculator::overlap_score(std::string seq1, std::string seq2, std::st
         if (s <= 0) {
             total_score += s;
             total_len += 1;
+        }
+        else if (s == 1) { // N-base in overlap
+            continue;
         }
         else { // there is an unacceptable mismatch in the overlap
             return 0;
