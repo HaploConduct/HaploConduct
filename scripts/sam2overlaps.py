@@ -296,6 +296,8 @@ def compute_overlap_pos(pos1, pos2, len1, len2, CIGAR1, CIGAR2):
             # no acceptable overlap
             overlap_pos = -1
             overlap_len = 0
+    if overlap_len > min(len1, len2):
+        print overlap_len, len1, len2
     return [overlap_pos, overlap_len]
 
 def get_overlap_line(read1, read2, pos, ovlen):
@@ -318,6 +320,9 @@ def get_overlap_line(read1, read2, pos, ovlen):
     seq2 = read2[9]
     perc = int(round(ovlen / min(len(seq1), len(seq2)) * 100))
     assert perc >= 0
+    if perc > 100:
+        print ovlen, pos
+        print len(seq1), len(seq2), perc
     assert perc <= 100
     perc1 = str(perc)
     perc2 = "0"
@@ -394,7 +399,7 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
             SEQ4 = read[9]
             CIGAR3 = record[1][5]
             CIGAR4 = read[5]
-            [corrected_overlap_pos2, corrected_overlap_len2] = compute_overlap_pos(POS3, POS4, len(SEQ1), len(SEQ2), CIGAR1, CIGAR2)
+            [corrected_overlap_pos2, corrected_overlap_len2] = compute_overlap_pos(POS3, POS4, len(SEQ3), len(SEQ4), CIGAR3, CIGAR4)
             overlap2 = get_overlap_line(read, record[1], corrected_overlap_pos2, corrected_overlap_len2)
             overlap = merge_overlaps(overlap1, overlap2, "s", "p")
             # check orientations
@@ -416,7 +421,7 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
             SEQ4 = record[9]
             CIGAR3 = read[1][5]
             CIGAR4 = record[5]
-            [corrected_overlap_pos2, corrected_overlap_len2] = compute_overlap_pos(POS3, POS4, len(SEQ1), len(SEQ2), CIGAR1, CIGAR2)
+            [corrected_overlap_pos2, corrected_overlap_len2] = compute_overlap_pos(POS3, POS4, len(SEQ3), len(SEQ4), CIGAR3, CIGAR4)
             overlap2 = get_overlap_line(record, read[1], corrected_overlap_pos2, corrected_overlap_len2)
             overlap = merge_overlaps(overlap1, overlap2, "s", "p")
             # check orientations
