@@ -290,7 +290,12 @@ def compute_overlap_pos(pos1, pos2, len1, len2, CIGAR1, CIGAR2):
                 if aln_type != 'I':
                     p += aln_len
         overlap_pos = (pos1 - pos2) - ((front_ref_len - front_seq_len) - (back_ref_len - back_seq_len))
-        overlap_len = min(len2 - overlap_pos, len1)
+        if overlap_pos >= 0:
+            overlap_len = min(len2 - overlap_pos, len1)
+        else:
+            # no acceptable overlap
+            overlap_pos = -1
+            overlap_len = 0
     return [overlap_pos, overlap_len]
 
 def get_overlap_line(read1, read2, pos, ovlen):
@@ -312,6 +317,8 @@ def get_overlap_line(read1, read2, pos, ovlen):
     seq1 = read1[9]
     seq2 = read2[9]
     perc = int(round(ovlen / min(len(seq1), len(seq2)) * 100))
+    assert perc >= 0
+    assert perc <= 100
     perc1 = str(perc)
     perc2 = "0"
     len1 = str(ovlen)
