@@ -656,7 +656,7 @@ def freq_filtering(contig_fasta, contig_fastq, min_TPM, input_info): # fragments
                         output_count += 1
         output_fasta.close()
         output_fastq.close()
-        print "Filtered %s down to %s contigs (originally %s contigs).\n" % (contig_fasta, output_count, input_count)
+        print "Filtered %s down to %s contigs.\n" % (contig_fasta, output_count)
     return
 
 def run_kallisto(contigs, input_info): #fragmentsize, stddev, forward, reverse=""):
