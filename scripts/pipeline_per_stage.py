@@ -600,6 +600,8 @@ def analyze_overlaps(filename):
         for line in f:
             c += 1
             line = line.strip().split('\t')
+            if len(line) < 12:
+                continue
             if line[11] == 'p' and line[12] == 'p':
                 if line[5] == '-' and line[6] == '+':
                     pp_count[0] += 1
