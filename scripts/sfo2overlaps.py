@@ -38,8 +38,11 @@ def main():
                 idB = int(sfo_line[1])
                 new_idA = get_original_id(idA, args.num_singles, args.num_pairs)
                 new_idB = get_original_id(idB, args.num_singles, args.num_pairs)
-                if (new_idA > new_idB) and sfo_line[2] == 'I':
-                    flipped_tup = flip(sfo_line)
+                if new_idA > new_idB:
+                    if sfo_line[2] == 'I':
+                        flipped_tup = flip_I(sfo_line)
+                    else:
+                        flipped_tup = flip_N(sfo_line)
                     flipped_line = '\t'.join(flipped_tup) + '\n'
                     newline = str(new_idB) + "\t" + str(new_idA) + "\t" + flipped_line
                 else:
@@ -91,8 +94,6 @@ def main():
                             paired_overlaps = match_candidates(candidates, is_paired_A, is_paired_B)
                             for p_overlap in paired_overlaps:
                                 if len(p_overlap) > 0:
-                                    if p_overlap[0] == '11765' and p_overlap[1] == '11952':
-                                        print "CHECK!"
                                     overlap_line = '\t'.join(p_overlap) + '\n'
                                     f_out.write(overlap_line)
                                     p_count += 1
@@ -107,22 +108,34 @@ def main():
     subprocess.check_call("rm %s" % tmp_file, shell=True)
 
 
-def flip(sfo_tup):
+def flip_N(sfo_tup):
+    # sfo_tuple = [sfo_idA, sfo_idB, ori, OHA, OHB, OLA, OLB, K]
+    OHA = -1*int(sfo_tup[3])
+    OHB = -1*int(sfo_tup[4])
+    flipped = [sfo_tup[1], sfo_tup[0], sfo_tup[2], str(OHA), str(OHB), sfo_tup[6], sfo_tup[5], sfo_tup[7]]
+    return flipped
+
+def flip_I(sfo_tup):
     # sfo_tuple = [sfo_idA, sfo_idB, ori, OHA, OHB, OLA, OLB, K]
     flipped = [sfo_tup[1], sfo_tup[0], sfo_tup[2], sfo_tup[4], sfo_tup[3], sfo_tup[6], sfo_tup[5], sfo_tup[7]]
     return flipped
 
 def is_paired(ID, num_singles, num_pairs):
     # check if a read is paired based on its read ID
-    assert ID >= 0 and ID < num_singles + num_pairs
-    if ID >= num_singles:
-        paired = True
-    else:
+    if num_pairs == 0:
         paired = False
+    else:
+        assert ID >= 0 and ID < num_singles + num_pairs
+        if ID >= num_singles:
+            paired = True
+        else:
+            paired = False
     return paired
 
 def get_original_id(sfo_ID, num_singles, num_pairs):
     # translate the read ID used by SFO to the original read ID
+    if num_pairs == 0:
+        return sfo_ID
     assert sfo_ID >= 0 and sfo_ID < num_singles + 2*num_pairs
     if sfo_ID < num_singles + num_pairs:
         # single-end read or /1 read of a pair
@@ -201,9 +214,6 @@ def match_candidates(candidates, typeA, typeB):
                 cand2 = candidates[j]
                 overlap = find_paired_overlap(cand1, cand2, typeA, typeB)
                 if len(overlap) > 0:
-                    if overlap[0] == '11765' and overlap[1] == '11952':
-                        print "CHECK! paired overlap found!"
-                        print overlap
                     overlaps.append(overlap)
     return overlaps
 
