@@ -101,11 +101,23 @@ def main():
         sam_records_p_per_ref[ref_idx].append(record)
 
     # find overlaps per reference genome
+    total_overlap_count = 0
+    total_aln_count = 0
     for idx in xrange(len(ref_list)):
         ref_seq = ref_list[idx]
         sam_singles = sam_records_s_per_ref[idx]
         sam_paired = sam_records_p_per_ref[idx]
-        process_sam(ref_seq, sam_singles, sam_paired, args.outfile, args.min_overlap_len)
+        aln_count = len(sam_singles) + len(sam_paired)
+        total_aln_count += aln_count
+        if aln_count > 0:
+            overlap_count = process_sam(ref_seq, sam_singles, sam_paired, args.outfile, args.min_overlap_len)
+            total_overlap_count += overlap_count
+    if total_aln_count == 0:
+        print "\n\nERROR: No reads could be aligned to reference. Exiting."
+        sys.exit(1)
+    elif total_overlap_count == 0:
+        print "\n\nERROR: No overlaps found. Exiting."
+        sys.exit(1)
     return
 
 
@@ -548,6 +560,7 @@ def process_sam(ref, sam_records_s, sam_records_p, outfile, min_overlap_len):
         print "... of which +-: ", overlap_types[1]
         print "... of which -+: ", overlap_types[2]
         print "... of which --: ", overlap_types[3]
+    return overlap_count
 
 
 if __name__ == '__main__':
