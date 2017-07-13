@@ -620,6 +620,14 @@ void EdgeCalculator::construct_edges()
                     overlaps_vec.push_back(overlap);
                 }
             }
+            // relaxed edge condition: allow len1 + len2 >= threshold
+            else if (program_settings.relax_PE_edges
+                && overlap.get_len(1) + overlap.get_len(2) >= program_settings.min_overlap_len
+                && (overlap.get_type(1) == "p" || overlap.get_type(2) == "p")) {
+                if (overlap.get_perc() >= program_settings.min_overlap_perc) {
+                    overlaps_vec.push_back(overlap);
+                }
+            }
             else { // store overlap, later on write it back to file (nonedge_overlaps)
                 nonedge_overlaps.push_back(overlap);
             }

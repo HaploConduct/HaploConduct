@@ -57,6 +57,7 @@ struct ProgramSettings {
     bool diploid;
     unsigned int max_tip_len;
     bool store_tips_separately;
+    bool relax_PE_edges;
 };
 
 struct IterationStats {

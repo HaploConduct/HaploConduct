@@ -86,6 +86,7 @@ int main(int argc, char *argv[])
         ("separate_tips", po::value< bool > (&program_settings.store_tips_separately)->default_value(true), "store tip-sequences in a separate file, away from the contigs")
         ("base_path", po::value< std::string > (&program_settings.base_path)->default_value("."), "set path to SAVAGE directory containing quick-cliques-1.0")
         ("diploid", po::value< bool > (&program_settings.diploid)->default_value(false), "apply edge filtering for diploid genomes")
+        ("relax_PE_edges", po::value< bool > (&program_settings.relax_PE_edges)->default_value(false), "relax edge restrictions for paired-end overlaps")
         ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
