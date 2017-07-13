@@ -32,7 +32,7 @@ PEAR.
 
 Run savage -h for a complete description of required and optional arguments.
 
-For more information, please visit https://bitbucket.org/jbaaijens/savage
+For the complete manual, please visit https://bitbucket.org/jbaaijens/savage
 """ % (version, releasedate)
 
 # ------------------------------
@@ -60,6 +60,7 @@ def main():
     advanced.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
     advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
     advanced.add_argument('--no_preprocessing', dest='preprocessing', action='store_false', help='skip preprocessing procedure (i.e. creating data patches)')
+    advanced.add_argument('--count_strains', dest='count_strains', action='store_true', help="compute a lower bound on the number of strains in the sample based on your final contig set and a reference genome")
 #    advanced.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; please make sure \nto enter the full path!')
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
@@ -113,7 +114,7 @@ Author: %s
     remove_branches = 'true' if args.remove_branches else 'false'
 #    remove_branches = 'true'
 
-    if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps):
+    if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps or args.diploid or args.count_strains):
         sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
         sys.stderr.flush()
         sys.exit(1)
@@ -124,9 +125,15 @@ Author: %s
         sys.stderr.flush()
         sys.exit(1)
 
+    if args.compute_overlaps and (args.stage_b or args.stage_c) and not args.stage_a:
+        sys.stderr.write("""Options specified suggest computing overlaps and running stages b and/or c, but skipping stage a.
+                 If you really want to do this, then run these steps separately.\n""")
+        sys.stderr.flush()
+        sys.exit(1)
+
     if not args.preprocessing:
         preprocessing = False
-    elif (args.stage_b or args.stage_c) and not args.stage_a:
+    elif (args.stage_a or args.stage_b or args.stage_c or args.diploid) and not args.compute_overlaps:
         preprocessing = False
     else:
         preprocessing = True
