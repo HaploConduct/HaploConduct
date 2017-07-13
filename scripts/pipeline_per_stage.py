@@ -125,9 +125,8 @@ def main():
     subprocess.call(["rm", "stats.txt"], stdout=FNULL, stderr=FNULL)
     subprocess.call(["touch", "stats.txt"])
     # remove existing tips file
-    if not stage_a:
-        subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
-        subprocess.call(["touch", "removed_tip_sequences.fastq"])
+    subprocess.call(["rm", "removed_tip_sequences.fastq"], stdout=FNULL, stderr=FNULL)
+    subprocess.call(["touch", "removed_tip_sequences.fastq"])
 
     min_overlap_len = args.min_overlap_len
     if args.min_overlap_len_EC:
