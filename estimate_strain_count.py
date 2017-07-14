@@ -5,6 +5,8 @@ import os
 import sys
 import random
 import subprocess
+import shutil
+import itertools
 from time import clock
 
 
@@ -121,7 +123,8 @@ def main():
                 clique_size = len(clique)
                 if clique_size > max_clique_size:
                     max_clique_size = clique_size
-    print "Lower bound on the number of strains in this sample is %d." % max_clique_size
+    print "The lower bound on the number of strains in this sample is %d.\n" % max_clique_size
+    shutil.rmtree(output_dir)
     return
 
 #-------------------------------
@@ -160,6 +163,24 @@ def read_sam_to_list(sam):
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
             record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
             ID_set.add(ID)
+            # check for soft-clipping and remove clipped ends from sequence
+            cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
+            if cigar[1] == 'S' and cigar[-1] != 'S':
+                clip1 = int(cigar[0])
+                clip2 = len(SEQ)
+            elif cigar[1] != 'S' and cigar[-1] == 'S':
+                clip1 = 0
+                clip2 = -int(cigar[-2])
+            elif cigar[1] == 'S' and cigar[-1] == 'S':
+                clip1 = int(cigar[0])
+                clip2 = -int(cigar[-2])
+            else:
+                clip1 = 0
+                clip2 = len(SEQ)
+            cSEQ = SEQ[clip1 : clip2]
+            cQUAL = QUAL[clip1 : clip2]
+            record[9] = cSEQ
+            record[10] = cQUAL
             flag_decomp = power_find(int(FLAG))
             if 4 not in flag_decomp: # check if read is mapped
                 if not 256 in flag_decomp: # ignore secondary aligments
