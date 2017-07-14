@@ -1,7 +1,7 @@
 //============================================================================
 // Name        : FindNextOverlaps3.cpp
 // Author      : Jasmijn Baaijens
-// Version     : 0.3.0
+// Version     : 0.4.0
 // License     : GNU GPL v3.0
 // Project     : ViralQuasispecies
 // Description : An alternative algorithm for finding the new overlaps:
