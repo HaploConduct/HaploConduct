@@ -16,8 +16,8 @@ from collections import namedtuple
 __author__ = "Jasmijn Baaijens"
 __license__ = "GPL"
 
-version = "0.3.0"
-releasedate = "March 6, 2017"
+version = "0.4.0"
+releasedate = "July 17, 2017"
 
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
@@ -49,7 +49,6 @@ def main():
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--split', dest='split_num', type=int, required=True, help='split the data set into patches s.t. 500 < coverage/split_num < 1000')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
-#    basic.add_argument('--config', dest='config', type=str, help='path to config file containing parameter settings; for an example, \nplease see the SAVAGE repository on https://bitbucket.org/jbaaijens/savage')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
 #    ref_guided.add_argument('--singles', dest='singles', type=str, help='single-end read alignments in SAM format')
@@ -60,7 +59,8 @@ def main():
     advanced.add_argument('--no_stage_c', dest='stage_c', action='store_false', help='skip Stage c (merging maximized contigs into master strains)')
     advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
     advanced.add_argument('--no_preprocessing', dest='preprocessing', action='store_false', help='skip preprocessing procedure (i.e. creating data patches)')
-    advanced.add_argument('--count_strains', dest='count_strains', action='store_true', help="compute a lower bound on the number of strains in the sample based on your final contig set and a reference genome")
+    advanced.add_argument('--no_assembly', dest='no_assembly', action='store_true', help='skip all assembly steps; only use this option when using --count_strains separate from assembly (e.g. on a denovo assembly)')
+    advanced.add_argument('--count_strains', dest='count_strains', action='store_true', help='compute a lower bound on the number of strains in this sample; note: this requires a reference genome.')
 #    advanced.add_argument('--overlaps', dest='overlaps', type=str, help='skip overlap computations by using given overlaps file; please make sure \nto enter the full path!')
 #    advanced.add_argument('--contigs', dest='contigs', type=str, help='contigs fastq file resulting from Stage a; \n--> use this option together with --no_stage_a')
     advanced.add_argument('--ignore_subreads', dest='use_subreads', action='store_false', help='ignore subread info from previous stage')
@@ -75,7 +75,7 @@ def main():
     advanced.add_argument('--diploid_overlap_len', dest='diploid_overlap_len', type=int, default=30, help='min_overlap_len used in diploid assembly step')
     advanced.add_argument('--average_read_len', dest='average_read_len', type=float, help='average length of the input reads; will be computed from the input if not specified')
     advanced.add_argument('--no_filtering', dest='filtering', action='store_false', help='disable kallisto-based filtering of contigs')
-    advanced.add_argument('--max_tip_len', dest='max_tip_len', type=int, default=-1, help='maximum extension length for a sequence to be called a tip')
+    advanced.add_argument('--max_tip_len', dest='max_tip_len', type=int, help='maximum extension length for a sequence to be called a tip')
 
     # store the path to the SAVAGE root directory
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -105,14 +105,57 @@ Author: %s
     print "Command used:"
     print ' '.join(sys.argv)
     print
-    print "Parameter values:"
-    for arg in vars(args):
-        print arg, "=", getattr(args, arg)
-    print
 
     FNULL = open(os.devnull, 'w')
     remove_branches = 'true' if args.remove_branches else 'false'
 #    remove_branches = 'true'
+
+    if args.reference:
+        denovo = False
+        if not os.path.exists(args.reference):
+            sys.stderr.write("""ERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
+            sys.stderr.flush()
+            sys.exit(1)
+        if not os.path.exists(args.reference + ".bwt"):
+            print "Building index for reference genome...",
+            subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
+            print "done!\n"
+    else:
+        denovo = True
+
+    if args.no_assembly:
+        print "Skipping assembly because --no_assembly flag was used.\n"
+        if args.count_strains:
+            if args.reference:
+                if os.path.exists('diploid_contigs.fasta'):
+                    final_contig_file = 'diploid_contigs.fasta'
+                elif os.path.exists('contigs_stage_c.fasta'):
+                    final_contig_file = 'contigs_stage_c.fasta'
+                elif os.path.exists('contigs_stage_b.fasta'):
+                    final_contig_file = 'contigs_stage_b.fasta'
+                elif os.path.exists('contigs_stage_a.fasta'):
+                    final_contig_file = 'contigs_stage_a.fasta'
+                else:
+                    sys.stderr.write("No contigs found for estimating strain count. Please run savage assembly first.\n")
+                    sys.stderr.flush()
+                    sys.exit(1)
+                # run estimate_strain_count.py
+                run_strain_count(args.reference, final_contig_file, base_path)
+                FNULL.close()
+                return # No assembly, so we are done!
+            else:
+                sys.stderr.write("Please specify a reference genome when using --count_strains.\n")
+                sys.stderr.flush()
+                sys.exit(1)
+        else:
+            sys.stderr.write("Please make sure to use --no_assembly ONLY in combination with --count_strains.\n")
+            sys.stderr.flush()
+            sys.exit(1)
+
+    print "Parameter values:"
+    for arg in vars(args):
+        print arg, "=", getattr(args, arg)
+    print
 
     if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps or args.diploid or args.count_strains):
         sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
@@ -127,7 +170,7 @@ Author: %s
 
     if args.compute_overlaps and (args.stage_b or args.stage_c) and not args.stage_a:
         sys.stderr.write("""Options specified suggest computing overlaps and running stages b and/or c, but skipping stage a.
-                 If you really want to do this, then run these steps separately.\n""")
+                 Please add --no_overlaps flag to skip overlap computations as well.\n""")
         sys.stderr.flush()
         sys.exit(1)
 
@@ -148,19 +191,6 @@ Author: %s
         sys.stderr.flush()
         sys.exit(1)
 
-    if args.reference:
-        denovo = False
-        if not os.path.exists(args.reference):
-            sys.stderr.write("""ERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
-            sys.stderr.flush()
-            sys.exit(1)
-        if not os.path.exists(args.reference + ".bwt"):
-            print "Building index for reference genome...",
-            subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
-            print "done!\n"
-    else:
-        denovo = True
-
     # analyze single-end input reads
     if args.input_s:
         [s_seq_count, s_total_len, s_longest_seq] = analyze_fastq(args.input_s)
@@ -175,7 +205,8 @@ Author: %s
         p_total_len = p1_total_len + p2_total_len
         p_seq_count = p1_seq_count + p2_seq_count
         if p1_seq_count != p2_seq_count:
-            print "ERROR: Unequal number of /1 and /2 reads. Exiting."
+            sys.stderr.write("""ERROR: Unequal number of /1 and /2 reads. Exiting.\n""")
+            sys.stderr.flush()
             sys.exit(1)
     else:
         p_seq_count = 0
@@ -184,7 +215,8 @@ Author: %s
     total_seq_len = s_total_len + p_total_len
     total_seq_count = s_seq_count + p_seq_count
     if not total_seq_len > 0:
-        print "ERROR: Total input length is zero. Exiting."
+        sys.stderr.write("""ERROR: Total input length is zero. Exiting.\n""")
+        sys.stderr.flush()
         sys.exit(1)
 
     # compute average read length
@@ -198,28 +230,35 @@ Author: %s
     print "Number of single-end reads =", s_seq_count
     print "Number of paired-end reads =", p_seq_count
     print "Total number of bases =", total_seq_len
-    print "Average read length = %.1f" % average_read_len
-
+    print "Average sequence length = %.1f" % average_read_len
+    print
 #    fragmentsize = args.fragmentsize if args.fragmentsize else average_read_len
 #    stddev = args.stddev if args.stddev else 20
     fragmentsize = average_read_len
     stddev = 20
     input_info = InputStruct(args.input_s, args.input_p1, args.input_p2, average_read_len, fragmentsize, stddev)
 
-    if args.max_tip_len >= 0:
+    if args.max_tip_len is None:
+        max_tip_len = int(round(average_read_len)) # average input read length
+        print "Using max_tip_len =", max_tip_len
+        assert max_tip_len > 0
+    elif args.max_tip_len >= 0:
         max_tip_len = args.max_tip_len
     else:
-        max_tip_len = int(round(average_read_len)) # average input read length
+        sys.stderr.write("""\nERROR: invalid --max_tip_len %s. Please make sure this value is non-negative. Exiting.\n\n""" % args.max_tip_len)
+        sys.stderr.flush()
+        sys.exit(1)
 
-    if not args.min_overlap_len:
+    if args.min_overlap_len is None:
         m = 0.6*average_read_len # 60% of average input read length
         min_overlap_len = int(round(m))
         print "Using min_overlap_len =", min_overlap_len
+        print
         assert min_overlap_len > 0
     else:
         min_overlap_len = args.min_overlap_len
 
-    if min_overlap_len < 100:
+    if min_overlap_len < 80:
         print "----------------------------------------------------------------"
         print "WARNING: min_overlap_len = %s" % min_overlap_len
         print "For more accurate error correction, increase the minimal overlap length using --min_overlap_len"
@@ -333,8 +372,9 @@ Author: %s
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_a.fasta"
-    # else:
-    #     print "Stage a skipped"
+    elif not (args.stage_b or args.stage_c or args.diploid):
+        if os.path.exists('contigs_stage_a.fasta'):
+            os.remove('contigs_stage_a.fasta')
 
     # Run SAVAGE Stage b: build maximized contigs
     if args.stage_b:
@@ -371,6 +411,7 @@ Author: %s
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
         else:
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True) # note: not using stage a subreads
+        os.remove(overlaps)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
         print "Done!"
@@ -381,6 +422,11 @@ Author: %s
                 freq_filtering("contigs_stage_b.fasta", "stage_b/singles.fastq", 0, input_info)
             except subprocess.CalledProcessError as e:
                 print "\nKallisto not found - skipping this filtering step.\n"
+    elif final_contig_file != "":
+        if os.path.exists('stage_b'):
+            shutil.rmtree('stage_b') #removes all the subdirectories!
+        if os.path.exists('contigs_stage_b.fasta'):
+            os.remove('contigs_stage_b.fasta')
 
     # Run SAVAGE Stage c: build master strains
     if args.stage_c:
@@ -428,6 +474,7 @@ Author: %s
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         else:
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
+        os.remove(overlaps)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_c/singles.fastq contigs_stage_c.fasta" % base_path, shell=True)
         print "Done!"
@@ -438,6 +485,11 @@ Author: %s
                 freq_filtering("contigs_stage_c.fasta", "stage_c/singles.fastq", 0, input_info)
             except subprocess.CalledProcessError as e:
                 print "\nKallisto not found - skipping this filtering step.\n"
+    elif final_contig_file != "":
+        if os.path.exists('stage_c'):
+            shutil.rmtree('stage_c') #removes all the subdirectories!
+        if os.path.exists('contigs_stage_c.fasta'):
+            os.remove('contigs_stage_c.fasta')
     # else:
     #     print "Stage c skipped"
     if args.diploid:
@@ -478,21 +530,39 @@ Author: %s
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --use_subreads --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
         else:
             subprocess.check_call("%s/scripts/pipeline_per_stage.py --fastq ../stage_c --overlaps %s --merge_contigs %f --stage c --min_overlap_len %d --num_threads %d --remove_branches %s --min_read_len %d --diploid --max_tip_len %s" % (base_path, overlaps, args.merge_contigs, min_overlap_len, args.threads, remove_branches, min_contig_len, max_tip_len), shell=True)
+        os.remove(overlaps)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py diploid/singles.fastq diploid_contigs.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "diploid_contigs.fasta"
+    elif final_contig_file != "":
+        if os.path.exists('diploid'):
+            shutil.rmtree('diploid') #removes all the subdirectories!
+        if os.path.exists('diploid_contigs.fasta'):
+            os.remove('diploid_contigs.fasta')
+
+    # cleanup
+    if os.path.exists('frequencies'):
+        shutil.rmtree('frequencies') #removes all the subdirectories!
+
+    if args.count_strains:
+        if args.reference:
+            # run strain count on final contig set and reference genome
+            run_strain_count(args.reference, final_contig_file, base_path)
+        else:
+            print """
+For estimating a lower bound on the number of strains a reference genome is
+required; please specify a reference using --ref. If you want to keep your
+current contigs, make sure to add the --no_assembly flag.
+"""
 
     print """**************
 SAVAGE assembly has been completed, the final contig set was written to:
 
         %s
 
-Optionally, you can now apply frequency estimation using freq_est.py. Please see
-the manual page for more information. If you have a reference genome for your
-sample, it can also be helpful to run the strain count estimator on the resulting
-contigs (estimate_strain_count.py). More information about this can also be
-found in the manual.
+Optionally, you can now apply frequency estimation using freq-est.py. Please see
+the manual page for more information: https://bitbucket.org/jbaaijens/savage.
 
 Thank you for using SAVAGE!
     """ % final_contig_file
@@ -554,14 +624,13 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
     paired_count = int(file_len('input_fas/paired1.fastq')/4.0)
     assert paired_count == int(file_len('input_fas/paired2.fastq')/4.0)
     # run SFO
-    print "- Running SFO",
+    print "- Running rust-overlaps",
     sys.stdout.flush()
     sfo_err = 1 / sfo_mm
     if paired_count > 0:
         sfo_len = int(round(min_overlap_len / 2))
     else:
         sfo_len = min_overlap_len
-    sfo_len = 20 # TESTTEST
     # run sfoverlap
     try:
 #        print "sfo_err:", sfo_err
@@ -573,7 +642,7 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
         subprocess.check_call("%s/scripts/blast2sfo.py --in blastout.tsv --out sfoverlaps.out -m %s" % (base_path, sfo_len), shell=True)
         subprocess.check_call("rm blastout.tsv", shell=True)
     # run postprocessing scripts
-    print "\b" * 12 + "Processing output",
+    print "\b" * 15 + "Processing output",
     sys.stdout.flush()
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out original_overlaps.txt --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, singles_count, paired_count), shell=True)
 #    print "Overlaps are ready!"
@@ -613,7 +682,6 @@ def run_blast(previous_stage, pident, base_path, min_overlap_len):
 def run_sfo(previous_stage, sfo_mm, base_path, min_overlap_len, threads, singles_count, paired_count):
     overlaps_file = "contig_overlaps.txt"
     sfo_err = 1 / sfo_mm
-    min_overlap_len = 20 # TESTTEST
 #    print "sfo_err: ", sfo_err
     subprocess.check_call("~/git_repos/rust_overlaps/target/release/rust-overlaps -w %d -i -r contigs_stage_%s.fasta sfoverlaps.out %f %d" % (threads, previous_stage, sfo_err, min_overlap_len), shell=True)
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, singles_count, paired_count), shell=True)
@@ -709,6 +777,14 @@ def run_kallisto(contigs, input_info): #fragmentsize, stddev, forward, reverse="
     abundance_file = kallisto_out + '/abundance.tsv'
     FNULL.close()
     return abundance_file
+
+def run_strain_count(reference, contigs_fastq, base_path):
+    print "Estimating strain count on %s" % contigs_fastq
+    # align contigs to ref
+    contigs_sam = contigs_fastq.rstrip('.fastq') + ".sam"
+    subprocess.check_call("bwa mem %s %s 1> %s 2> /dev/null" % (reference, contigs_fastq, contigs_sam), shell=True)
+    subprocess.check_call("%s/estimate_strain_count.py --sam %s --ref %s" % (base_path, contigs_sam, reference), shell=True)
+    return
 
 
 if __name__ == '__main__':
