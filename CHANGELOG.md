@@ -1,5 +1,16 @@
 # Change log
 
+## [0.4.0] - 2017-07-17
+### Added
+- Frequency-based filtering using Kallisto
+- Estimate strain count with --count_strains flag
+- User options for specifying max_tip_len and min_clique_size
+### Changed
+- Replaced SFO tool by rust-overlaps for faster de novo overlaps, also allowing exact overlap computations in stages b and c instead of running blast
+- Take cigar strings into account when computing overlaps from read-to-reference alignments
+- Keep paired-end contigs as single-end after stage a (instead of removal)
+- Fixed bug when -m is odd
+
 ## [0.3.0] - 2017-03-06
 ### Added
 - Remove contigs which are fully included in another contig without any mismatches
@@ -19,8 +30,7 @@
 
 ## [0.2.1] - 2017-01-25
 ### Added
-- Option --revcomp to enable processing of forward-reverse paired-end reads instead
-of only forward-forward as output by PEAR
+- Option --revcomp to enable processing of forward-reverse paired-end reads instead of only forward-forward as output by PEAR
 
 ### Changed
 - Print error messages to stderr instead of stdout.
