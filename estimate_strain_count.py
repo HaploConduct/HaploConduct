@@ -91,10 +91,11 @@ def main():
             ref_seq = ""
 
     if args.infile_s:
-        [sam_records, readcount] = read_sam_to_list(args.infile_s)
+        [sam_records, readcount, max_id] = read_sam_to_list(args.infile_s)
     else:
         sam_records = []
         readcount = 0
+        max_id = 0
 
     # split sam records (single-end) per reference genome
     sam_records_s_per_ref = [[] for i in xrange(len(ref_list))]
@@ -107,7 +108,7 @@ def main():
     for idx in xrange(len(ref_list)):
         ref_seq = ref_list[idx]
         sam_singles = sam_records_s_per_ref[idx]
-        process_sam(ref_seq, sam_singles, graph_file, min_overlap_len, readcount)
+        process_sam(ref_seq, sam_singles, graph_file, min_overlap_len, max_id)
 
     # run quick-cliques on conflict graph
     base_path = os.path.dirname(os.path.abspath(__file__))
@@ -153,6 +154,7 @@ def read_sam_to_list(sam):
     records = []
     header = True
     ID_set = set()
+    max_id = 0
     with open(sam, 'r') as f:
         unmapped = 0
         for line in f:
@@ -163,6 +165,7 @@ def read_sam_to_list(sam):
             [ID, FLAG, REF, POS, MAPQ, CIGAR, RNEXT, PNEXT, TLEN, SEQ, QUAL] = aln[0:11]
             record = [ID, int(FLAG), REF, int(POS), int(MAPQ), CIGAR, RNEXT, int(PNEXT), int(TLEN), SEQ, QUAL]
             ID_set.add(ID)
+            max_id = max(max_id, int(ID))
             # check for soft-clipping and remove clipped ends from sequence
             cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
             if cigar[1] == 'S' and cigar[-1] != 'S':
@@ -189,7 +192,7 @@ def read_sam_to_list(sam):
                 unmapped += 1
         if verbose:
             print "Number of singles unmapped: ", unmapped
-    return [records, len(ID_set)]
+    return [records, len(ID_set), max_id]
 
 
 def get_overlap_line(read1, read2, pos, ovlen):
@@ -252,7 +255,7 @@ def get_overlaps(record, active_reads, pos, min_overlap_len):
 def get_key_s(record):
     return record[3]
 
-def process_sam(ref, sam_records, outfile, min_overlap_len, readcount):
+def process_sam(ref, sam_records, outfile, min_overlap_len, max_id):
     aln_count = len(sam_records)
     sorted_records = sorted(sam_records, key=get_key_s)
     if verbose:
@@ -292,14 +295,14 @@ def process_sam(ref, sam_records, outfile, min_overlap_len, readcount):
         i += 1
 
     with open(outfile, 'w') as f:
-        f.write(str(readcount) + '\n')
+        f.write(str(max_id + 1) + '\n')
         f.write(str(2*len(edges)) + '\n')
         for edge in edges:
             node1 = int(edge[0])
             node2 = int(edge[1])
-            if node1 < 0 or node1 >= readcount:
+            if node1 < 0 or node1 > max_id:
                 print node1
-            if node2 < 0 or node2 >= readcount:
+            if node2 < 0 or node2 > max_id:
                 print node2
             f.write(','.join(edge) + '\n')
             f.write(','.join(edge[::-1]) + '\n')
