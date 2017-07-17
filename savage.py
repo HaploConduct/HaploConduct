@@ -113,7 +113,7 @@ Author: %s
     if args.reference:
         denovo = False
         if not os.path.exists(args.reference):
-            sys.stderr.write("""ERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
+            sys.stderr.write("""\nERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
             sys.stderr.flush()
             sys.exit(1)
         if not os.path.exists(args.reference + ".bwt"):
@@ -298,7 +298,7 @@ Author: %s
             if not denovo:
                 # Check for reference fasta
                 if not os.path.exists(args.reference):
-                    sys.stderr.write("""ERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
+                    sys.stderr.write("""\nERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
                     sys.stderr.flush()
                     sys.exit(1)
                 # Run BWA to get alignments
@@ -654,7 +654,7 @@ def preprocessing_ref(min_overlap_len, reference, base_path, paired):
     sys.stdout.flush()
     # Check for reference fasta
     if not os.path.exists(reference):
-        sys.stderr.write("""ERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % reference)
+        sys.stderr.write("""\nERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % reference)
         sys.stderr.flush()
         sys.exit(1)
     # Induce overlaps from alignment
@@ -745,6 +745,8 @@ def freq_filtering(contig_fasta, contig_fastq, min_TPM, input_info): # fragments
                         output_count += 1
         output_fasta.close()
         output_fastq.close()
+        os.remove(renamed_fasta)
+        os.remove_renamed_fastq)
         print "Filtered %s down to %s contigs.\n" % (contig_fasta, output_count)
     return
 
