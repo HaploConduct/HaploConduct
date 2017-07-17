@@ -124,7 +124,7 @@ def main():
                 clique_size = len(clique)
                 if clique_size > max_clique_size:
                     max_clique_size = clique_size
-    print "The lower bound on the number of strains in this sample is %d.\n" % max_clique_size
+    print "The estimated number of strains in this sample is %d.\n" % max_clique_size
     shutil.rmtree(output_dir)
     return
 
