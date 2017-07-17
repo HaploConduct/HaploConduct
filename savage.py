@@ -746,7 +746,7 @@ def freq_filtering(contig_fasta, contig_fastq, min_TPM, input_info): # fragments
         output_fasta.close()
         output_fastq.close()
         os.remove(renamed_fasta)
-        os.remove_renamed_fastq)
+        os.remove(renamed_fastq)
         print "Filtered %s down to %s contigs.\n" % (contig_fasta, output_count)
     return
 
