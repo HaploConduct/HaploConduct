@@ -125,42 +125,43 @@ Author: %s
 
     if args.no_assembly:
         print "Skipping assembly because --no_assembly flag was used.\n"
+
+    if (args.no_assembly or not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps or args.diploid)):
         if args.count_strains:
-            if args.reference:
-                if os.path.exists('diploid_contigs.fasta'):
-                    final_contig_file = 'diploid_contigs.fasta'
-                elif os.path.exists('contigs_stage_c.fasta'):
-                    final_contig_file = 'contigs_stage_c.fasta'
-                elif os.path.exists('contigs_stage_b.fasta'):
-                    final_contig_file = 'contigs_stage_b.fasta'
-                elif os.path.exists('contigs_stage_a.fasta'):
-                    final_contig_file = 'contigs_stage_a.fasta'
-                else:
-                    sys.stderr.write("No contigs found for estimating strain count. Please run savage assembly first.\n")
-                    sys.stderr.flush()
-                    sys.exit(1)
-                # run estimate_strain_count.py
-                run_strain_count(args.reference, final_contig_file, base_path)
-                FNULL.close()
-                return # No assembly, so we are done!
-            else:
-                sys.stderr.write("Please specify a reference genome when using --count_strains.\n")
-                sys.stderr.flush()
-                sys.exit(1)
+            only_strain_count = True
         else:
-            sys.stderr.write("Please make sure to use --no_assembly ONLY in combination with --count_strains.\n")
+            sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
+            sys.stderr.write("Make sure to use --no_assembly ONLY in combination with --count_strains.\n")
+            sys.stderr.flush()
+            sys.exit(1)
+    else:
+        only_strain_count = False
+
+    if only_strain_count:
+        if os.path.exists('diploid_contigs.fasta'):
+            final_contig_file = 'diploid_contigs.fasta'
+        elif os.path.exists('contigs_stage_c.fasta'):
+            final_contig_file = 'contigs_stage_c.fasta'
+        elif os.path.exists('contigs_stage_b.fasta'):
+            final_contig_file = 'contigs_stage_b.fasta'
+        elif os.path.exists('contigs_stage_a.fasta'):
+            final_contig_file = 'contigs_stage_a.fasta'
+        else:
+            sys.stderr.write("No contigs found for estimating strain count. Please run savage assembly first.\n")
             sys.stderr.flush()
             sys.exit(1)
 
-    print "Parameter values:"
-    for arg in vars(args):
-        print arg, "=", getattr(args, arg)
-    print
-
-    if not (args.stage_a or args.stage_b or args.stage_c or args.preprocessing or args.compute_overlaps or args.diploid or args.count_strains):
-        sys.stderr.write("Nothing to be done; please specify at least one task to perform.\n")
-        sys.stderr.flush()
-        sys.exit(1)
+        if args.reference:
+            # run estimate_strain_count.py
+            run_strain_count(args.reference, final_contig_file, base_path)
+            FNULL.close()
+            return # No assembly, so we are done!
+        else:
+            sys.stderr.write("Please specify a reference genome when using --count_strains.\n")
+            sys.stderr.flush()
+            sys.exit(1)
+    else:
+        final_contig_file = ""
 
     if args.stage_a and args.stage_c and not args.stage_b:
         sys.stderr.write("""Options specified suggest running stages a and c, but skipping stage b.
@@ -190,6 +191,12 @@ Author: %s
         sys.stderr.write("""For paired-end reads, please enter the fastq file(s) separately using -p1 and -p2.\n""")
         sys.stderr.flush()
         sys.exit(1)
+
+
+    print "Parameter values:"
+    for arg in vars(args):
+        print arg, "=", getattr(args, arg)
+    print
 
     # analyze single-end input reads
     if args.input_s:
@@ -345,8 +352,6 @@ Author: %s
                 sys.stderr.flush()
                 sys.exit(1)
 
-    final_contig_file = ""
-
     # Run SAVAGE Stage a: error correction and initial contig formation
     if args.stage_a:
         print "**************"
@@ -372,7 +377,7 @@ Author: %s
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_a/singles.fastq contigs_stage_a.fasta" % base_path, shell=True)
         print "Done!"
         final_contig_file = "contigs_stage_a.fasta"
-    elif not (args.stage_b or args.stage_c or args.diploid):
+    elif not (args.stage_b or args.stage_c or args.diploid or args.count_strains):
         if os.path.exists('contigs_stage_a.fasta'):
             os.remove('contigs_stage_a.fasta')
 
