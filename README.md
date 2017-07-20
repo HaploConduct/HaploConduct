@@ -68,7 +68,7 @@ that supports [OpenMP](http://openmp.org/wp/) (such as `g++`).
 
 For maximal clique enumeration, SAVAGE depends on the [quick-cliques package](https://github.com/darrenstrash/quick-cliques) which is already included.
 
-As of version 0.4.0, SAVAGE uses the [rust-overlaps package](https://github.com/sirkibsirkib/rust-overlaps) for
+As of version 0.4.0, SAVAGE uses the [rust-overlaps package](https://github.com/jbaaijens/rust-overlaps) for
 computing suffix-prefix overlaps in de novo mode.
 
 For reference-guided assembly, SAVAGE depends on the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
@@ -82,7 +82,7 @@ This is optional, for more information please see the frequency estimation and f
 
 To summarize, please download and install:
 
-* [rust-overlaps](https://github.com/sirkibsirkib/rust-overlaps)
+* [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
 * [ncbi-blast](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [bwa mem](http://bio-bwa.sourceforge.net/)
 * [Kallisto](https://pachterlab.github.io/kallisto/)
