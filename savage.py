@@ -634,7 +634,7 @@ def preprocessing_denovo(min_overlap_len, sfo_mm, threads, base_path):
     # run sfoverlap
     try:
 #        print "sfo_err:", sfo_err
-        subprocess.check_call("~/git_repos/rust_overlaps/target/release/rust-overlaps -i -r -w %d s_p1_p2.fasta sfoverlaps.out %f %d" % (threads, sfo_err, sfo_len), shell=True)
+        subprocess.check_call("rust-overlaps -i -r -w %d s_p1_p2.fasta sfoverlaps.out %f %d" % (threads, sfo_err, sfo_len), shell=True)
     except subprocess.CalledProcessError as e:
         print "-> sfoverlap failed, running blast instead"
         subprocess.check_call("makeblastdb -in s_p1_p2.fasta -dbtype nucl -out s_p1_p2.db 1>/dev/null 2>&1", shell=True)
@@ -683,7 +683,7 @@ def run_sfo(previous_stage, sfo_mm, base_path, min_overlap_len, threads, singles
     overlaps_file = "contig_overlaps.txt"
     sfo_err = 1 / sfo_mm
 #    print "sfo_err: ", sfo_err
-    subprocess.check_call("~/git_repos/rust_overlaps/target/release/rust-overlaps -w %d -i -r contigs_stage_%s.fasta sfoverlaps.out %f %d" % (threads, previous_stage, sfo_err, min_overlap_len), shell=True)
+    subprocess.check_call("rust-overlaps -w %d -i -r contigs_stage_%s.fasta sfoverlaps.out %f %d" % (threads, previous_stage, sfo_err, min_overlap_len), shell=True)
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, singles_count, paired_count), shell=True)
     subprocess.check_call("rm sfoverlaps.out", shell=True)
     overlaps_path = "../" + overlaps_file
