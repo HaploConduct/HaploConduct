@@ -168,7 +168,10 @@ def read_sam_to_list(sam):
             max_id = max(max_id, int(ID))
             # check for soft-clipping and remove clipped ends from sequence
             cigar = ["".join(x) for _, x in itertools.groupby(CIGAR, key=str.isdigit)]
-            if cigar[1] == 'S' and cigar[-1] != 'S':
+            if len(cigar) < 2:
+                clip1 = 0
+                clip2 = len(SEQ)
+            elif cigar[1] == 'S' and cigar[-1] != 'S':
                 clip1 = int(cigar[0])
                 clip2 = len(SEQ)
             elif cigar[1] != 'S' and cigar[-1] == 'S':
