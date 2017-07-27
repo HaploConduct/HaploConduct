@@ -2,6 +2,8 @@
 
 [![license](https://img.shields.io/badge/license-GPL%20v3.0-blue.svg)](http://www.gnu.org/licenses/)
 
+Current version: 0.4.0
+
 ## Synopsis
 
 SAVAGE is a computational tool for reconstructing individual
@@ -189,6 +191,22 @@ Maximum extension length for a sequence to be called a tip in the overlap graph.
 * `--no_filtering`
 By default, SAVAGE contigs are filtered after stages b and c based on Kallisto frequency estimates: all zero-abundance contigs are removed from the assembly. To disable this filtering procedure, add the `--no_filtering` flag.
 
+### SAVAGE-de-novo
+
+This mode does not rely on any reference sequence; instead, it
+computes all approximate suffix-prefix overlaps among the reads
+using the [rust-overlaps](https://github.com/sirkibsirkib/rust-overlaps) package. This is computationally more challenging than reference-guided
+overlaps (see SAVAGE-ref) but avoids any bias towards a reference genome.
+
+To run SAVAGE-de-novo, complete the following steps:
+
+1. Create a directory `my_directory` where you want to store the
+    results and enter this directory: `cd my_directory`.
+2. Now run SAVAGE:
+```python
+savage --split patch_num --min_overlap_len M --s singles.fastq --p1 paired1.fastq --p2 paired2.fastq
+```
+
 ### SAVAGE-ref
 
 This mode constructs the overlap graph of the reads using the
@@ -210,21 +228,6 @@ To run SAVAGE-ref, complete the following steps:
 3. Now run SAVAGE with the option `--ref /path/to/reference.fasta`:
 ```python
 savage --ref /path/to/reference.fasta --split patch_num --min_overlap_len M --s singles.fastq --p1 paired1.fastq --p2 paired2.fastq
-```
-
-### SAVAGE-de-novo
-
-This mode does not rely on any reference sequence; instead, it
-computes all approximate suffix-prefix overlaps among the reads
-using the [rust-overlaps](https://github.com/sirkibsirkib/rust-overlaps) package.
-
-To run SAVAGE-de-novo, complete the following steps:
-
-1. Create a directory `my_directory` where you want to store the
-    results and enter this directory: `cd my_directory`.
-2. Now run SAVAGE:
-```python
-savage --split patch_num --min_overlap_len M --s singles.fastq --p1 paired1.fastq --p2 paired2.fastq
 ```
 
 
