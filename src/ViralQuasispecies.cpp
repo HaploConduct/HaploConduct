@@ -288,7 +288,8 @@ int main(int argc, char *argv[])
     overlap_graph->removeTransitiveEdges();
     // Resolve branches using read evidence
     overlap_graph->buildOriginalsDict();
-    overlap_graph->readBasedBranchReduction();
+//    overlap_graph->readBasedBranchReduction();
+
     // Remove edges to obtain a diploid assembly
     if (program_settings.diploid) {
         overlap_graph->reduceDiploidBranching();

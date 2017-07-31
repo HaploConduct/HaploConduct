@@ -122,8 +122,11 @@ public:
     // BranchReduction.cpp
     void readBasedBranchReduction(int SE_count, int PE_count, int min_evidence,
             std::string SE_file, std::string PE_file1, std::string PE_file2);
-    void buildDiffList();
-    bool checkReadEvidence(std::string contig, std::string read, int position);
+    void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
+            std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
+            int SE_count, int PE_count, int min_evidence);
+    std::list< int > buildDiffList(node_id_t node1, std::list< node_id_t > neighbors);
+    bool checkReadEvidence(std::string contig, std::string read, std::list< int > diff_list);
 };
 
 #endif /* OVERLAPGRAPH_H_ */
