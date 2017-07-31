@@ -48,7 +48,6 @@ private:
     std::string PATH;
     ProgramSettings program_settings;
     boost::dynamic_bitset<> visited;
-    std::map<read_id_t, std::unordered_map< read_id_t, OriginalIndex > > original_ID_dict; // dict from current ID to original subread IDs and indexes
     std::deque< std::vector< Read* > > nodes_to_SR;
     unsigned int new_read_count; // including trivial superreads
 
@@ -116,7 +115,6 @@ public:
 
     void cliquesToSuperreads();
     void mergeAlongEdges();
-    void buildOriginalsDict();
 
     // FindNextOverlaps.cpp:
     unsigned long findNextOverlaps();

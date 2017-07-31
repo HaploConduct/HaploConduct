@@ -43,6 +43,7 @@ private:
     std::string PATH;
     std::shared_ptr<FastqStorage> fastq_storage;
     ProgramSettings program_settings;
+    std::map<read_id_t, std::unordered_map< read_id_t, OriginalIndex > > original_ID_dict; // dict from current ID to original subread IDs and indexes
 
 public:
     OverlapGraph(unsigned int V, std::shared_ptr<FastqStorage> fastq, ProgramSettings ps) {
@@ -93,6 +94,7 @@ public:
     void addEquivalentEdges();
     bool getOrientation(node_id_t v);
     void sortEdges();
+    void buildOriginalsDict();
 
     // GraphAlgos.cpp: algorithms
     std::vector< node_id_t > sortVerticesByIndegree();
@@ -116,6 +118,12 @@ public:
     void removeTips();
     void reduceDiploidBranching();
     void removeInclusions();
+
+    // BranchReduction.cpp
+    void readBasedBranchReduction(int SE_count, int PE_count, int min_evidence,
+            std::string SE_file, std::string PE_file1, std::string PE_file2);
+    void buildDiffList();
+    bool checkReadEvidence(std::string contig, std::string read, int position);
 };
 
 #endif /* OVERLAPGRAPH_H_ */

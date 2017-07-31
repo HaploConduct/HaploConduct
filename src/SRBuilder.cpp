@@ -26,79 +26,6 @@
 #include "Edge.h"
 
 
-// Construct a dictionary that stores subread IDs (original fastq)
-void SRBuilder::buildOriginalsDict() {
-    if (program_settings.verbose) {
-        std::cout << "buildOriginalsDict... ";
-    }
-    if (program_settings.first_it) { // trivial originals dict
-        read_id_t ID;
-        std::pair< read_id_t, OriginalIndex > ID_idx_pair;
-        OriginalIndex original_index;
-        original_index.index1 = 0;
-        for (auto read_it : fastq_storage->m_singles_vec) {
-            original_index.is_paired = 0;
-            ID = read_it.get_read_id();
-            std::unordered_map< read_id_t, OriginalIndex > originals_map;
-            ID_idx_pair = std::make_pair(ID, original_index);
-            originals_map.insert(ID_idx_pair);
-            original_ID_dict.insert(std::make_pair(ID, originals_map));
-        }
-        for (auto read : fastq_storage->m_paired_vec) {
-            original_index.index2 = 0;
-            original_index.is_paired = 1;
-            ID = read.get_read_id();
-            std::unordered_map< read_id_t, OriginalIndex > originals_map;
-            ID_idx_pair = std::make_pair(ID, original_index);
-            originals_map.insert(ID_idx_pair);
-            original_ID_dict.insert(std::make_pair(ID, originals_map));
-        }
-    }
-    else { // create originals dict from subreads file
-        std::string line;
-        std::stringstream ss;
-        std::string filename = PATH + "subreads.txt";
-        std::ifstream originals (filename.c_str());
-        if (originals.is_open()) {
-            std::string readID;
-            std::string info;
-            while (getline(originals, line)) {
-                ss << line;
-                getline(ss, readID, '\t');
-                read_id_t ID = str_to_read_id(readID);
-                std::unordered_map< read_id_t, OriginalIndex > originals_map;
-                while (getline(ss, info, '\t')) {
-                    std::pair< read_id_t, OriginalIndex > ID_idx_pair;
-                    std::vector< std::string > tmp_vec;
-                    boost::algorithm::split(tmp_vec, info, boost::is_any_of(":,"), boost::token_compress_on);
-                    assert (tmp_vec.size() == 2 || tmp_vec.size() == 3);
-                    read_id_t original_ID = str_to_read_id(tmp_vec[0]);
-                    OriginalIndex original_index;
-                    original_index.index1 = std::stol(tmp_vec[1]);
-                    if (tmp_vec.size() == 3) {
-                        original_index.index2 = std::stol(tmp_vec[2]);
-                        original_index.is_paired = 1;
-                    }
-                    else {
-                        original_index.is_paired = 0;
-                    }
-                    ID_idx_pair = std::make_pair(original_ID, original_index);
-                    originals_map.insert(ID_idx_pair);
-                    info.clear();
-                }
-                original_ID_dict.insert(std::make_pair(ID, originals_map));
-                ss << "";
-                ss.clear();
-            }
-            originals.close();
-        }
-        else {
-            std::cerr << "Unable to open subreads file";
-            exit(1);
-        }
-    }
-}
-
 /*  Sort vertices w.r.t. base_node: sort_vertices fills a list of sequences and their qualities to be inserted in the superread,
     while at the same time filling a list with the corresponding positions of these sequences in the superread.
     When finished, it returns the length of superread.
@@ -824,7 +751,7 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
     for (auto node_it : clique) {
         read_id_t ID = (overlap_graph->vertex_to_read).at(node_it);
         if (!program_settings.first_it) { // update existing subread (originals) indexes
-            std::unordered_map< read_id_t, OriginalIndex > subreads = original_ID_dict.at(ID);
+            std::unordered_map< read_id_t, OriginalIndex > subreads = (overlap_graph->original_ID_dict).at(ID);
             SubreadInfo sub_info = subreads_map.at(node_it);
             int idx1 = sub_info.index1 - sub_info.startpos1;
             int idx2 = sub_info.index2 - sub_info.startpos2;
@@ -1190,7 +1117,7 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
                     subreads.insert(std::make_pair(ID, original_index)); // trivial subread
                 }
                 else {
-                    subreads = original_ID_dict.at(ID);
+                    subreads = (overlap_graph->original_ID_dict).at(ID);
                 }
                 assert (subreads.size() > 0);
 //                if (v == read->get_vertex_id(/*normal*/ true)) {
@@ -1321,7 +1248,7 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                 subreads.insert(std::make_pair(ID, original_index)); // trivial subread
             }
             else {
-                subreads = original_ID_dict.at(ID);
+                subreads = (overlap_graph->original_ID_dict).at(ID);
             }
             assert (subreads.size() > 0);
 //                if (v == read->get_vertex_id(/*normal*/ true)) {

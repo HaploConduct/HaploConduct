@@ -286,6 +286,9 @@ int main(int argc, char *argv[])
 
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
+    // Resolve branches using read evidence
+    overlap_graph->buildOriginalsDict();
+    overlap_graph->readBasedBranchReduction();
     // Remove edges to obtain a diploid assembly
     if (program_settings.diploid) {
         overlap_graph->reduceDiploidBranching();
@@ -359,7 +362,7 @@ int main(int argc, char *argv[])
     // Compute consensus sequences from cliques.
     SRBuilder* SR_input = new SRBuilder(fastq_storage, overlap_graph, program_settings);
     std::shared_ptr<SRBuilder> superread_builder(SR_input);
-    superread_builder->buildOriginalsDict();
+//    superread_builder->buildOriginalsDict();
     if (program_settings.cliques) {
         if (program_settings.verbose) {
             std::cout << "Building superreads from clique file...\n";
