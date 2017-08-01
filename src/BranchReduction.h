@@ -57,7 +57,8 @@ public:
     void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
             std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
             unsigned int SE_count, unsigned int PE_count, int min_evidence);
-    std::list< int > buildDiffList(node_id_t node1, std::list< node_id_t > neighbors);
+    std::list< int > buildDiffListOut(node_id_t node1, std::list< node_id_t > neighbors);
+    int findDiffPos(std::string seq1, std::string seq2);
     bool checkReadEvidence(std::string contig, std::string read, int index, std::list< int > diff_list);
 };
 
