@@ -781,7 +781,7 @@ bool OverlapGraph::nonemptyIntersect(std::list< node_id_t > & list1, std::list< 
     return false;
 }
 
-std::vector< std::list< node_id_t > > OverlapGraph::sortAdjLists(std::vector< std::list< node_id_t > > input_lists) {
+std::vector< std::list< node_id_t > > OverlapGraph::sortAdjLists(std::vector< std::list< node_id_t > > & input_lists) {
     std::vector< std::list< node_id_t > > output_lists;
     for (auto list_it : input_lists) {
         list_it.sort();
@@ -790,7 +790,7 @@ std::vector< std::list< node_id_t > > OverlapGraph::sortAdjLists(std::vector< st
     return output_lists;
 }
 
-std::vector< std::list< node_id_t > > OverlapGraph::sortAdjOut(std::vector< std::list< Edge > > input_lists) {
+std::vector< std::list< node_id_t > > OverlapGraph::sortAdjOut(std::vector< std::list< Edge > > & input_lists) {
     // sort adj_out by increasing outneighbor ID
     std::vector< std::list< node_id_t > > sorted_nodes_out;
     std::vector< std::list< Edge > > sorted_edges_out;

@@ -14,9 +14,6 @@
 #include <stdio.h>
 #include <boost/timer.hpp>
 #include <map>
-#include <boost/algorithm/string/split.hpp>
-#include <boost/algorithm/string.hpp>
-#include <sstream>
 
 #include "OverlapGraph.h"
 

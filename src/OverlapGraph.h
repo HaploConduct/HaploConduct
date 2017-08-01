@@ -15,7 +15,10 @@
 #include <vector>
 #include <set>
 #include <boost/dynamic_bitset.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string.hpp>
 #include <iostream>
+#include <sstream>
 
 #include "Overlap.h"
 #include "Types.h"
@@ -24,12 +27,15 @@
 //#include "SRBuilder.h"
 
 class SRBuilder; // forward definition to enable friend class
+class BranchReduction;
 
 // Class to represent an overlap graph and the algorithms necessary to make it cycle-free.
 // The maximal number of vertices must be specified at initialization to reserve the memory required.
 class OverlapGraph
 {
 friend class SRBuilder;
+friend class BranchReduction;
+
 private:
     unsigned int vertex_count;
     unsigned int edge_count;
@@ -111,22 +117,13 @@ public:
     void findBranchfreeGraph(std::vector< std::list< node_id_t > > & cur_adj_in, std::vector< std::list< node_id_t > > & cur_adj_out, std::set< node_id_t > & remove_in, std::set< node_id_t > & remove_out);
     unsigned int findTransEdges(std::vector< std::list< node_id_t > > & cur_adj_in, std::vector< std::list< node_id_t > > & cur_adj_out, std::vector< std::list< node_id_t > > & new_adj_in, std::vector< std::list< node_id_t > > & new_adj_out, bool removeTrans);
     bool nonemptyIntersect(std::list< node_id_t > & list1, std::list< node_id_t > & list2);
-    std::vector< std::list< node_id_t > > sortAdjLists(std::vector< std::list< node_id_t > > input_lists);
-    std::vector< std::list< node_id_t > > sortAdjOut(std::vector< std::list< Edge > > input_lists);
+    std::vector< std::list< node_id_t > > sortAdjLists(std::vector< std::list< node_id_t > > & input_lists);
+    std::vector< std::list< node_id_t > > sortAdjOut(std::vector< std::list< Edge > > & input_lists);
     void removeBranches();
     void removeTransitiveEdges();
     void removeTips();
     void reduceDiploidBranching();
     void removeInclusions();
-
-    // BranchReduction.cpp
-    void readBasedBranchReduction(int SE_count, int PE_count, int min_evidence,
-            std::string SE_file, std::string PE_file1, std::string PE_file2);
-    void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
-            std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
-            int SE_count, int PE_count, int min_evidence);
-    std::list< int > buildDiffList(node_id_t node1, std::list< node_id_t > neighbors);
-    bool checkReadEvidence(std::string contig, std::string read, std::list< int > diff_list);
 };
 
 #endif /* OVERLAPGRAPH_H_ */

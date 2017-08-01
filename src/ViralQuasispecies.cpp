@@ -286,9 +286,18 @@ int main(int argc, char *argv[])
 
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
-    // Resolve branches using read evidence
+
+    // // Adjust program settings to read from original input files
+    // ProgramSettings original_input = program_settings;
+    // original_input.singles_file = SE_file;
+    // original_input.paired1_file = PE_file1;
+    // original_input.paired2_file = PE_file2;
+    // // Now read and store original fastq file(s)
+    // FastqStorage* input_fastq = new FastqStorage(original_input);
+    // std::shared_ptr<FastqStorage> original_fastq(input_fastq);
+    // // Use original fastq to resolve branches using read evidence
     overlap_graph->buildOriginalsDict();
-//    overlap_graph->readBasedBranchReduction();
+    // overlap_graph->readBasedBranchReduction();
 
     // Remove edges to obtain a diploid assembly
     if (program_settings.diploid) {
