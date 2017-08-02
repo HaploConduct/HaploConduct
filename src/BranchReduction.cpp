@@ -57,35 +57,52 @@ void BranchReduction::readBasedBranchReduction(int SE_count, int PE_count, int m
     }
     // now remove all selected edges from overlap graph
     for (auto node_pair : edges_to_remove1) {
+        std::cout << "removing " << node_pair.second << " " << node_pair.first << std::endl;
         Edge edge = overlap_graph->removeEdge(node_pair.second, node_pair.first);
-//        branching_edges.push_back(edge);
+        overlap_graph->branching_edges.push_back(edge);
     }
     for (auto node_pair : edges_to_remove2) {
+        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
         Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
-//        branching_edges.push_back(edge);
+        overlap_graph->branching_edges.push_back(edge);
     }
 }
 
 void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
         std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
-        unsigned int SE_count, unsigned int PE_count, int min_evidence) {
+        unsigned int SE_count, unsigned int PE_count, int min_evidence,
+        bool outbranch) {
     // build list of difference positions (first difference for every pair)
-    std::list< int > diff_list = buildDiffListOut(node1, neighbors);
+    std::vector< std::string > sequence_vec;
+    std::vector< int > startpos_vec;
+    std::list< int > diff_list;
+    if (outbranch) {
+        diff_list = buildDiffListOut(node1, neighbors, sequence_vec, startpos_vec);
+    }
+    else {
+        diff_list = buildDiffListIn(node1, neighbors, sequence_vec, startpos_vec);
+    }
     std::unordered_map< read_id_t, OriginalIndex > subreads1 = overlap_graph->original_ID_dict.at(node1);
     // build evidence list of subread IDs per neighbor
     std::vector< std::vector< read_id_t > > evidence_per_neighbor;
+    std::vector< std::string >::const_iterator seq_it = sequence_vec.begin();
+    std::vector< int >::const_iterator startpos_it = startpos_vec.begin();
     for (auto node2 : neighbors) {
         // find common subreads from originals dict
         std::vector< read_id_t > evidence_list;
-        Read* read = fastq_storage->get_read(node2);
-        std::string contig;
-        if (read->is_paired()) {
-            std::cout << "TODO: resolve branches with PE reads as well" << std::endl;
-            continue;
-        }
-        else {
-            contig = read->get_seq(0);
-        }
+        std::string contig = *seq_it;
+        int startpos = *startpos_it;
+        seq_it++;
+        startpos_it++;
+        // Read* read = fastq_storage->get_read(node2);
+        // std::string contig;
+        // if (read->is_paired()) {
+        //     std::cout << "TODO: resolve branches with PE reads as well" << std::endl;
+        //     continue;
+        // }
+        // else {
+        //     contig = read->get_seq(0);
+        // }
         std::unordered_map< read_id_t, OriginalIndex > subreads2 = overlap_graph->original_ID_dict.at(node2);
         for (auto subread : subreads2) {
             read_id_t subread_id = subread.first;
@@ -114,13 +131,13 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
                 Read* original_read = original_fastq->get_read(subread_id);
                 std::string sequence = original_read->get_seq(0);
                 int index = subread.second.index1;
-                result1 = checkReadEvidence(contig, sequence, index, diff_list);
+                result1 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
             if (common_PE != subreads1.end()) {
                 Read* original_read = original_fastq->get_read(subread_id_PE);
                 std::string sequence = original_read->get_seq(0);
                 int index = subread.second.index1;
-                result2 = checkReadEvidence(contig, sequence, index, diff_list);
+                result2 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
             if (result1 || result2) {
                 evidence_list.push_back(subread_id);
@@ -182,15 +199,17 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
     }
 }
 
-std::list< int > BranchReduction::buildDiffListOut(node_id_t node1, std::list< node_id_t > neighbors) {
+std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
+        std::list< node_id_t > neighbors,
+        std::vector< std::string > & sequence_vec,
+        std::vector< int > & startpos_vec) {
     // build a list of all FIRST difference positions between any pair of branch sequences
     std::list< int > diff_list;
-    std::vector< std::string > sequence_vec;
-    std::vector< int > startpos_vec;
     for (auto node : neighbors) {
         Edge* edge = overlap_graph->getEdgeInfo(node1, node, /*reverse_allowed*/ false);
         int pos = edge->get_pos(1);
         Read* read = edge->get_read(2);
+        assert (!read->is_paired());
         std::string sequence = read->get_seq(0);
         sequence_vec.push_back(sequence);
         startpos_vec.push_back(pos);
@@ -201,6 +220,7 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1, std::list< n
         of neighbors at the same branch is not expected to be big, all pairwise
         comparisons should be fine computationally. */
     std::string seq_i, seq_j;
+    std::string subseq_i, subseq_j;
     int pos_i, pos_j;
     int relative_pos;
     int diff_pos;
@@ -214,13 +234,17 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1, std::list< n
             if (pos_i < pos_j) {
                 relative_pos = pos_j - pos_i;
                 len = std::min(seq_i.size()-relative_pos, seq_j.size());
-                diff_pos = findDiffPos(seq_i.substr(relative_pos, len), seq_j.substr(0, len));
+                subseq_i = seq_i.substr(relative_pos, len);
+                subseq_j = seq_j.substr(0, len);
+                diff_pos = findDiffPos(subseq_i, subseq_j);
                 diff_list.push_back(diff_pos + pos_j);
             }
             else {
                 relative_pos = pos_i - pos_j;
                 len = std::min(seq_j.size()-relative_pos, seq_i.size());
-                diff_pos = findDiffPos(seq_i.substr(0, len), seq_j.substr(relative_pos, len));
+                subseq_i = seq_i.substr(0, len);
+                subseq_j = seq_j.substr(relative_pos, len);
+                diff_pos = findDiffPos(subseq_i, subseq_j);
                 diff_list.push_back(diff_pos + pos_i);
             }
             assert (diff_pos < len);
@@ -231,6 +255,77 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1, std::list< n
     diff_list.unique();
     return diff_list;
 }
+
+std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
+        std::list< node_id_t > neighbors,
+        std::vector< std::string > & sequence_vec,
+        std::vector< int > & startpos_vec) {
+    // build a list of all FIRST difference positions between any pair of branch sequences
+    std::list< int > diff_list;
+    std::vector< int > pos_vec;
+    for (auto node : neighbors) {
+        Edge* edge = overlap_graph->getEdgeInfo(node, node1, /*reverse_allowed*/ false);
+        int pos = edge->get_pos(1);
+        Read* read = edge->get_read(1);
+        assert (!read->is_paired());
+        std::string sequence = read->get_seq(0);
+        sequence_vec.push_back(sequence);
+        pos_vec.push_back(pos);
+    }
+    /* since we are dealing wint an in-branch, we need to infer the startpos_vec entries
+        once we have those positions, we can proceed similar to the out-branch case,
+        except for the diff_pos computation where we need to reverse the sequences
+        first */
+    int max_pos = *std::max_element(pos_vec.begin(), pos_vec.end());
+    for (auto pos : pos_vec) {
+        startpos_vec.push_back(max_pos - pos);
+    }
+    // do all pairwise sequence comparisons until a difference is found;
+    /* note: could be done more efficiently by evaluating all sequences in one
+        for loop, but this would take extensive bookkeeping. Since the number
+        of neighbors at the same branch is not expected to be big, all pairwise
+        comparisons should be fine computationally. */
+    std::string seq_i, seq_j;
+    std::string subseq_i, subseq_j;
+    int pos_i, pos_j;
+    int relative_pos;
+    int diff_pos;
+    int len;
+    for (unsigned int i=0; i < neighbors.size(); i++) {
+        for (unsigned int j=i+1; j < neighbors.size(); j++) {
+            seq_i = sequence_vec.at(i);
+            seq_j = sequence_vec.at(j);
+            pos_i = startpos_vec.at(i);
+            pos_j = startpos_vec.at(j);
+            if (pos_i < pos_j) {
+                relative_pos = pos_j - pos_i;
+                len = std::min(seq_i.size()-relative_pos, seq_j.size());
+                subseq_i = seq_i.substr(relative_pos, len);
+                subseq_j = seq_j.substr(0, len);
+                std::reverse( subseq_i.begin(), subseq_i.end() );
+                std::reverse( subseq_j.begin(), subseq_j.end() );
+                diff_pos = findDiffPos(subseq_i, subseq_j);
+                diff_list.push_back(diff_pos + pos_j);
+            }
+            else {
+                relative_pos = pos_i - pos_j;
+                len = std::min(seq_j.size()-relative_pos, seq_i.size());
+                subseq_i = seq_i.substr(0, len);
+                subseq_j = seq_j.substr(relative_pos, len);
+                std::reverse( subseq_i.begin(), subseq_i.end() );
+                std::reverse( subseq_j.begin(), subseq_j.end() );
+                diff_pos = findDiffPos(subseq_i, subseq_j);
+                diff_list.push_back(diff_pos + pos_i);
+            }
+            assert (diff_pos < len);
+        }
+    }
+    // remove duplicate entries
+    diff_list.sort();
+    diff_list.unique();
+    return diff_list;
+}
+
 
 
 int BranchReduction::findDiffPos(std::string seq1, std::string seq2) {
@@ -252,9 +347,22 @@ int BranchReduction::findDiffPos(std::string seq1, std::string seq2) {
 }
 
 
-bool BranchReduction::checkReadEvidence(std::string contig, std::string read, int index, std::list< int > diff_list) {
+bool BranchReduction::checkReadEvidence(std::string contig, int startpos, std::string read, int index, std::list< int > diff_list) {
     // check if subread agrees with contig on diff_list positions
     bool true_evidence = true;
-    // do stuff
+    int read_start = startpos + index;
+    int read_end = read_start + read.size();
+    for (auto diff_pos : diff_list) {
+        if (diff_pos < read_start || diff_pos >= read_end) {
+            // read does not overlap this diff_pos
+            continue;
+        }
+        // check if read agrees with contig base
+        if (read.at(diff_pos - read_start) != contig.at(diff_pos - startpos)) {
+            // disagreement --> false evidence
+            true_evidence = false;
+            break; // no need to continue checking
+        }
+    }
     return true_evidence;
 }

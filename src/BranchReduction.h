@@ -56,10 +56,18 @@ public:
             std::string SE_file, std::string PE_file1, std::string PE_file2);
     void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
             std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
-            unsigned int SE_count, unsigned int PE_count, int min_evidence);
-    std::list< int > buildDiffListOut(node_id_t node1, std::list< node_id_t > neighbors);
+            unsigned int SE_count, unsigned int PE_count, int min_evidence,
+            bool outbranch=true);
+    std::list< int > buildDiffListOut(node_id_t node1,
+            std::list< node_id_t > neighbors,
+            std::vector< std::string > & sequence_vec,
+            std::vector< int > & startpos_vec);
+    std::list< int > buildDiffListIn(node_id_t node1,
+            std::list< node_id_t > neighbors,
+            std::vector< std::string > & sequence_vec,
+            std::vector< int > & startpos_vec);
     int findDiffPos(std::string seq1, std::string seq2);
-    bool checkReadEvidence(std::string contig, std::string read, int index, std::list< int > diff_list);
+    bool checkReadEvidence(std::string contig, int startpos, std::string read, int index, std::list< int > diff_list);
 };
 
 
