@@ -38,26 +38,23 @@ public:
     BranchReduction(std::shared_ptr<FastqStorage> fastq,
             std::shared_ptr<FastqStorage> originals,
             ProgramSettings ps,
-            std::shared_ptr<OverlapGraph> graph,
-            int SE_c, int PE_c, int min_ev) {
+            std::shared_ptr<OverlapGraph> graph) {
         PATH = ps.output_dir;
         fastq_storage = fastq;
         original_fastq = originals;
         overlap_graph = graph;
         program_settings = ps;
-        SE_count = SE_c;
-        PE_count = PE_c;
-        min_evidence = min_ev;
+        SE_count = ps.branch_SE_c;
+        PE_count = ps.branch_PE_c;
+        min_evidence = ps.branch_min_ev;
     }
     ~BranchReduction() {}
 
     // BranchReduction.cpp
-    void readBasedBranchReduction(int SE_count, int PE_count, int min_evidence,
-            std::string SE_file, std::string PE_file1, std::string PE_file2);
+    void readBasedBranchReduction();
     void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
             std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
-            unsigned int SE_count, unsigned int PE_count, int min_evidence,
-            bool outbranch=true);
+            bool outbranch);
     std::list< int > buildDiffListOut(node_id_t node1,
             std::list< node_id_t > neighbors,
             std::vector< std::string > & sequence_vec,
