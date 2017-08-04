@@ -58,6 +58,10 @@ struct ProgramSettings {
     unsigned int max_tip_len;
     bool store_tips_separately;
     bool relax_PE_edges;
+    std::string original_fastq;
+    int branch_min_ev;
+    unsigned int branch_SE_c;
+    unsigned int branch_PE_c;
 };
 
 struct IterationStats {
