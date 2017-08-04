@@ -26,6 +26,7 @@
 #include "OverlapGraph.h"
 #include "SRBuilder.h"
 #include "Edge.h"
+#include "BranchReduction.h"
 
 
 // define timestamp function to measure runtimes
@@ -87,6 +88,10 @@ int main(int argc, char *argv[])
         ("base_path", po::value< std::string > (&program_settings.base_path)->default_value("."), "set path to SAVAGE directory containing quick-cliques-1.0")
         ("diploid", po::value< bool > (&program_settings.diploid)->default_value(false), "apply edge filtering for diploid genomes")
         ("relax_PE_edges", po::value< bool > (&program_settings.relax_PE_edges)->default_value(false), "relax edge restrictions for paired-end overlaps")
+        ("original_fastq", po::value< std::string > (&program_settings.original_fastq)->default_value(""), "original reads for applying read-based branch reduction")
+        ("branch_min_ev", po::value< int > (&program_settings.branch_min_ev)->default_value(0), "minimum evidence required when applying read-based branch reduction")
+        ("branch_SE_c", po::value< unsigned int > (&program_settings.branch_SE_c)->default_value(0), "number of single-end input reads in original fastq")
+        ("branch_PE_c", po::value< unsigned int > (&program_settings.branch_PE_c)->default_value(0), "number of paired-end input reads in original fastq")
         ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
@@ -287,17 +292,24 @@ int main(int argc, char *argv[])
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
 
-    // // Adjust program settings to read from original input files
-    // ProgramSettings original_input = program_settings;
-    // original_input.singles_file = SE_file;
-    // original_input.paired1_file = PE_file1;
-    // original_input.paired2_file = PE_file2;
-    // // Now read and store original fastq file(s)
-    // FastqStorage* input_fastq = new FastqStorage(original_input);
-    // std::shared_ptr<FastqStorage> original_fastq(input_fastq);
-    // // Use original fastq to resolve branches using read evidence
     overlap_graph->buildOriginalsDict();
-    // overlap_graph->readBasedBranchReduction();
+    // Reduce branches in the graph by evaluating read evidence
+    if (program_settings.branch_min_ev > 0) {
+        // Adjust program settings to read from original input files
+        ProgramSettings original_input = program_settings;
+        original_input.singles_file = program_settings.original_fastq;
+        original_input.paired1_file = "";
+        original_input.paired2_file = "";
+        // Now read and store original fastq file(s)
+        FastqStorage* input_fastq = new FastqStorage(original_input);
+        std::shared_ptr<FastqStorage> original_fastq(input_fastq);
+        assert (program_settings.branch_SE_c + 2*program_settings.branch_PE_c
+            == original_fastq->get_readcount());
+        // Use original fastq to resolve branches using read evidence
+        BranchReduction branch_reduction(
+            fastq_storage, original_fastq, program_settings, overlap_graph);
+        branch_reduction.readBasedBranchReduction();
+    }
 
     // Remove edges to obtain a diploid assembly
     if (program_settings.diploid) {
