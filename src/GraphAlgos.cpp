@@ -712,7 +712,7 @@ void OverlapGraph::findBranchfreeGraph(std::vector< std::list< node_id_t > > & c
         std::list< node_id_t > adj_list = cur_adj_out.at(i);
         if (adj_list.size() > 1) {
             remove_out.insert(i);
-            remove_in.insert(adj_list.begin(), adj_list.end());
+//            remove_in.insert(adj_list.begin(), adj_list.end());
         }
     }
     // find all incoming branches
@@ -720,7 +720,7 @@ void OverlapGraph::findBranchfreeGraph(std::vector< std::list< node_id_t > > & c
         std::list< node_id_t > adj_list = cur_adj_in.at(i);
         if (adj_list.size() > 1) {
             remove_in.insert(i);
-            remove_out.insert(adj_list.begin(), adj_list.end());
+//            remove_out.insert(adj_list.begin(), adj_list.end());
         }
     }
     if (program_settings.verbose) {
