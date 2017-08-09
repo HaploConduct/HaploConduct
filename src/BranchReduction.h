@@ -56,14 +56,16 @@ public:
             std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
             bool outbranch);
     std::list< int > buildDiffListOut(node_id_t node1,
-            std::list< node_id_t > neighbors,
+            std::vector< node_id_t > neighbors,
             std::vector< std::string > & sequence_vec,
-            std::vector< int > & startpos_vec);
+            std::vector< int > & startpos_vec,
+            std::vector< std::pair< unsigned int, unsigned int > > & missing_edges);
     std::list< int > buildDiffListIn(node_id_t node1,
-            std::list< node_id_t > neighbors,
+            std::vector< node_id_t > neighbors,
             std::vector< std::string > & sequence_vec,
-            std::vector< int > & startpos_vec);
-    int findDiffPos(std::string seq1, std::string seq2);
+            std::vector< int > & startpos_vec,
+            std::vector< std::pair< unsigned int, unsigned int > > & missing_edges);
+    std::vector< int > findDiffPos(std::string seq1, std::string seq2);
     bool checkReadEvidence(std::string contig, int startpos, std::string read, int index, std::list< int > diff_list);
 };
 

@@ -76,14 +76,16 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
     std::vector< std::string > sequence_vec;
     std::vector< int > startpos_vec;
     std::list< int > diff_list;
+    std::vector< std::pair< unsigned int, unsigned int > > missing_edges;
+    std::vector< node_id_t > neighbors_vec(neighbors.begin(), neighbors.end());
     if (outbranch) {
-        diff_list = buildDiffListOut(node1, neighbors, sequence_vec, startpos_vec);
+        diff_list = buildDiffListOut(node1, neighbors_vec, sequence_vec, startpos_vec, missing_edges);
     }
     else {
-        diff_list = buildDiffListIn(node1, neighbors, sequence_vec, startpos_vec);
+        diff_list = buildDiffListIn(node1, neighbors_vec, sequence_vec, startpos_vec, missing_edges);
     }
-    std::unordered_map< read_id_t, OriginalIndex > subreads1 = overlap_graph->original_ID_dict.at(node1);
     // build evidence list of subread IDs per neighbor
+    std::unordered_map< read_id_t, OriginalIndex > subreads1 = overlap_graph->original_ID_dict.at(node1);
     std::vector< std::vector< read_id_t > > evidence_per_neighbor;
     std::vector< std::string >::const_iterator seq_it = sequence_vec.begin();
     std::vector< int >::const_iterator startpos_it = startpos_vec.begin();
@@ -146,6 +148,34 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
         std::sort(evidence_list.begin(), evidence_list.end());
         evidence_per_neighbor.push_back(evidence_list);
     }
+    // take care of 'missing edges' by removing all edges from 'missing branches'
+    if (!diff_list.empty()) {
+        for (auto index_pair : missing_edges) {
+            // remove evidence from node2
+            unsigned int idx = index_pair.second;
+            evidence_per_neighbor.at(idx).clear();
+            // identify newly created branches and remove corresponding edges;
+            // these branches will be resolved at a next iteration of ViralQuasispecies
+            node_id_t outnode = neighbors_vec.at(index_pair.first);
+            node_id_t innode = neighbors_vec.at(index_pair.second);
+            for (auto out_edge : overlap_graph->adj_out.at(outnode)) {
+                if (outbranch) {
+                    edges_to_remove.push_back(std::make_pair(outnode, out_edge.get_vertex(2)));
+                }
+                else { // add reverse edge because it will be reversed again later
+                    edges_to_remove.push_back(std::make_pair(out_edge.get_vertex(2), outnode));
+                }
+            }
+            for (auto in_edge : overlap_graph->adj_in.at(innode)) {
+                if (outbranch) {
+                    edges_to_remove.push_back(std::make_pair(in_edge, innode));
+                }
+                else { // add reverse edge because it will be reversed again later
+                    edges_to_remove.push_back(std::make_pair(innode, in_edge));
+                }
+            }
+        }
+    }
     // compute effective evidence per neighbor: remove evidence that is shared
     // between all neighbors and count evidence load
     std::vector< int > effective_evidence_counts;
@@ -181,7 +211,10 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
         assert (current_max < program_settings.original_readcount);
         assert (current_min < program_settings.original_readcount);
         bool unique_min;
-        if (current_evidence.size() == 1) {
+        if (diff_list.empty()) {
+            unique_min = true; // no difference positions so keep all evidence
+        }
+        else if (current_evidence.size() == 1) {
             unique_min = true; // only evidence remaining so definitely unique
         }
         else if (current_min < current_evidence.at(1)) {
@@ -207,23 +240,6 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
                 }
             }
         }
-        //         if (current_min == current_max) {
-        //             evidence_iterators.at(it_idx)++;
-        //             evidence_status.at(idx) = 0;
-        //         }
-        //         else if (*evidence_iterators.at(it_idx) < current_max) {
-        //             // non-trivial evidence, i.e. not shared between all neighbors
-        //             effective_evidence_counts.at(idx)++;
-        //             evidence_iterators.at(it_idx)++;
-        //             if (evidence_iterators.at(it_idx) == evidence_per_neighbor.at(idx).end()) {
-        //                 // reached end of evidence list, mark node as finished
-        //                 evidence_status.at(idx) = 0;
-        //             }
-        //         }
-        //         it_idx++;
-        //     }
-        //     idx++;
-        // }
     }
     std::cout << "effective_evidence_counts" << std::endl;
     for (auto count : effective_evidence_counts) {
@@ -244,9 +260,10 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
 }
 
 std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
-        std::list< node_id_t > neighbors,
+        std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
-        std::vector< int > & startpos_vec) {
+        std::vector< int > & startpos_vec,
+        std::vector< std::pair< node_id_t, node_id_t > > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
     std::cout << "buildDiffListOut" << std::endl;
     std::list< int > diff_list;
@@ -264,18 +281,23 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
         for loop, but this would take extensive bookkeeping. Since the number
         of neighbors at the same branch is not expected to be big, all pairwise
         comparisons should be fine computationally. */
+    node_id_t node_i, node_j;
     std::string seq_i, seq_j;
     std::string subseq_i, subseq_j;
     int pos_i, pos_j;
     int relative_pos;
-    int diff_pos;
+    std::vector< int > diff_pos;
     int len;
+    int startpos;
     for (unsigned int i=0; i < neighbors.size(); i++) {
         for (unsigned int j=i+1; j < neighbors.size(); j++) {
+            node_i = neighbors.at(i);
+            node_j = neighbors.at(j);
             seq_i = sequence_vec.at(i);
             seq_j = sequence_vec.at(j);
             pos_i = startpos_vec.at(i);
             pos_j = startpos_vec.at(j);
+            assert (node_i != node_j);
             if (pos_i < pos_j) {
                 relative_pos = pos_j - pos_i;
                 if (relative_pos >= int(seq_i.size())) {
@@ -285,9 +307,7 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
                 subseq_i = seq_i.substr(relative_pos, len);
                 subseq_j = seq_j.substr(0, len);
                 diff_pos = findDiffPos(subseq_i, subseq_j);
-                if (diff_pos < len) {
-                    diff_list.push_back(diff_pos + pos_j);
-                }
+                startpos = pos_j;
             }
             else {
                 relative_pos = pos_i - pos_j;
@@ -298,11 +318,27 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
                 subseq_i = seq_i.substr(0, len);
                 subseq_j = seq_j.substr(relative_pos, len);
                 diff_pos = findDiffPos(subseq_i, subseq_j);
-                if (diff_pos < len) {
-                    diff_list.push_back(diff_pos + pos_i);
+                startpos = pos_i;
+            }
+            assert (len > 0);
+            for (auto pos : diff_pos) {
+                diff_list.push_back(pos + startpos);
+            }
+            if (diff_pos.empty()) {
+                // identical overlap -> add corresponding edge
+                if (pos_i == pos_j && node_i < node_j) {
+                    missing_edges.push_back(std::make_pair(i, j));
+                }
+                else if (pos_i == pos_j && node_i > node_j) {
+                    missing_edges.push_back(std::make_pair(j, i));
+                }
+                else if (pos_i < pos_j) {
+                    missing_edges.push_back(std::make_pair(i, j));
+                }
+                else {
+                    missing_edges.push_back(std::make_pair(j, i));
                 }
             }
-//            assert (diff_pos < len);
         }
     }
     // remove duplicate entries
@@ -312,9 +348,10 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
 }
 
 std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
-        std::list< node_id_t > neighbors,
+        std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
-        std::vector< int > & startpos_vec) {
+        std::vector< int > & startpos_vec,
+        std::vector< std::pair< node_id_t, node_id_t > > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
     std::cout << "buildDiffListIn" << std::endl;
     std::list< int > diff_list;
@@ -341,14 +378,18 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
         for loop, but this would take extensive bookkeeping. Since the number
         of neighbors at the same branch is not expected to be big, all pairwise
         comparisons should be fine computationally. */
+    node_id_t node_i, node_j;
     std::string seq_i, seq_j;
     std::string subseq_i, subseq_j;
     int pos_i, pos_j;
     int relative_pos;
-    int diff_pos;
+    std::vector< int > diff_pos;
     int len;
+    int startpos;
     for (unsigned int i=0; i < neighbors.size(); i++) {
         for (unsigned int j=i+1; j < neighbors.size(); j++) {
+            node_i = neighbors.at(i);
+            node_j = neighbors.at(j);
             seq_i = sequence_vec.at(i);
             seq_j = sequence_vec.at(j);
             pos_i = startpos_vec.at(i);
@@ -364,9 +405,7 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
                 std::reverse( subseq_i.begin(), subseq_i.end() );
                 std::reverse( subseq_j.begin(), subseq_j.end() );
                 diff_pos = findDiffPos(subseq_i, subseq_j);
-                if (diff_pos < len) {
-                    diff_list.push_back(len - diff_pos + pos_j);
-                }
+                startpos = pos_j;
             }
             else {
                 relative_pos = pos_i - pos_j;
@@ -379,15 +418,27 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
                 std::reverse( subseq_i.begin(), subseq_i.end() );
                 std::reverse( subseq_j.begin(), subseq_j.end() );
                 diff_pos = findDiffPos(subseq_i, subseq_j);
-                if (diff_pos < len) {
-                    diff_list.push_back(len - diff_pos + pos_i);
+                startpos = pos_i;
+            }
+            assert (len > 0);
+            for (auto pos : diff_pos) {
+                diff_list.push_back(len - pos + startpos);
+            }
+            if (diff_pos.empty()) {
+                // identical overlap -> add corresponding edge
+                if (pos_i == pos_j && node_i < node_j) {
+                    missing_edges.push_back(std::make_pair(i, j));
+                }
+                else if (pos_i == pos_j && node_i > node_j) {
+                    missing_edges.push_back(std::make_pair(j, i));
+                }
+                else if (pos_i < pos_j) {
+                    missing_edges.push_back(std::make_pair(i, j));
+                }
+                else {
+                    missing_edges.push_back(std::make_pair(j, i));
                 }
             }
-            if (diff_pos == len) {
-                std::cout << pos_i << " " << seq_i.size() << std::endl;
-                std::cout << pos_j << " " << seq_j.size() << std::endl;
-            }
-//            assert (diff_pos < len);
         }
     }
     // remove duplicate entries
@@ -398,22 +449,29 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
 
 
 
-int BranchReduction::findDiffPos(std::string seq1, std::string seq2) {
+std::vector< int > BranchReduction::findDiffPos(std::string seq1, std::string seq2) {
     // given two input strings, find the first position where they disagree
     assert (seq1.size() == seq2.size());
     std::string::const_iterator it1 = seq1.begin();
     std::string::const_iterator it2 = seq2.begin();
-    int diff_pos = 0;
+    std::vector< int > diff_pos;
+    int pos = 0;
     while (it1 != seq1.end()) {
         if (*it1 != *it2) {
-            return diff_pos;
+            diff_pos.push_back(pos);
+            if (diff_pos.size() == 3) {
+                // store at most 3 positions per sequence pair
+                return diff_pos;
+            }
         }
         it1++;
         it2++;
-        diff_pos++;
+        pos++;
     }
-    // no difference found -> return sequence length
-    std::cout << "no difference found, len = " << seq1.size() << std::endl;
+    if (diff_pos.empty()) {
+        // no difference found -> return sequence length
+        std::cout << "no difference found, len = " << seq1.size() << std::endl;
+    }
     return diff_pos;
 }
 
