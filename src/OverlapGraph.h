@@ -91,7 +91,7 @@ public:
     void writeGraphToFile();
     void writeDiGraphToFile();
     void write2FASTG();
-    void write2GFA();
+    void write2GFA(std::string filename);
     void writeGraphToFile(std::vector< std::list< node_id_t >> &tmp_adj_out);
     void reportCycle(node_id_t u, node_id_t v, bool remove);
     void printAdjacencyLists();

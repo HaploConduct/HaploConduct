@@ -354,8 +354,8 @@ void OverlapGraph::write2FASTG() { // store directed edges
 }
 
 
-void OverlapGraph::write2GFA() { // store directed edges
-    std::string filename = PATH + "graph.gfa";
+void OverlapGraph::write2GFA(std::string filename) { // store directed edges
+//    std::string filename = PATH + "graph.gfa";
     if (program_settings.verbose) {
         std::cout << "Write2GFA " << filename << "\n";
         std::cout << "Note: currently only S-S edges are written to GFA." << "\n";
