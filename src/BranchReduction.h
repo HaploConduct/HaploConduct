@@ -33,6 +33,7 @@ private:
     unsigned int SE_count;
     unsigned int PE_count;
     int min_evidence;
+    std::unordered_map< std::pair< node_id_t, node_id_t >, std::vector< read_id_t > > evidence_per_edge;
 
 public:
     BranchReduction(std::shared_ptr<FastqStorage> fastq,
@@ -52,7 +53,7 @@ public:
 
     // BranchReduction.cpp
     void readBasedBranchReduction();
-    void findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
+    std::vector< node_id_t > findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
             std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove,
             bool outbranch);
     std::list< int > buildDiffListOut(node_id_t node1,

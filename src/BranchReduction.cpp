@@ -46,15 +46,26 @@ void BranchReduction::readBasedBranchReduction() {
     // find all branches in the graph and process one by one
     overlap_graph->findBranchfreeGraph(sorted_adj_in, sorted_adj_out, branch_in, branch_out);
     std::list< std::pair< node_id_t, node_id_t > > edges_to_remove1;
-    std::list< std::pair< node_id_t, node_id_t > > edges_to_remove2;
+    std::unordered_map< node_id_t, std::vector< node_id_t > > final_branch_in;
     for (auto node : branch_in) {
         bool outbranch = false;
-        findBranchingEvidence(node, sorted_adj_in.at(node), edges_to_remove1, outbranch);
+        std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
+            edges_to_remove1, outbranch);
+        final_branch_in.insert(std::make_pair( node, branch ));
     }
+    std::unordered_map< std::pair< node_id_t, std::vector< node_id_t > > > final_branch_out;
+    std::list< std::pair< node_id_t, node_id_t > > edges_to_remove2;
     for (auto node : branch_out) {
         bool outbranch = true;
-        findBranchingEvidence(node, sorted_adj_out.at(node), edges_to_remove2, outbranch);
+        std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
+            edges_to_remove2, outbranch);
+        final_branch_out.insert(std::make_pair( node, branch ));
     }
+    // find branching components
+    std::vector< std::pair< std::vector< node_id_t >, std::vector< node_id_t > > > branching_components;
+
+    // select unique evidence
+
     // build a set of edges to remove to avoid duplicates
     std::set< std::pair< node_id_t, node_id_t > > edges_to_remove (edges_to_remove2.begin(), edges_to_remove2.end());
     for (auto node_pair : edges_to_remove1) {
@@ -69,9 +80,10 @@ void BranchReduction::readBasedBranchReduction() {
     std::cout << edges_to_remove1.size() + edges_to_remove2.size() << " edges removed" << std::endl;
 }
 
-void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
+std::vector< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
         std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove, bool outbranch) {
     assert (neighbors.size() > 1);
+    std::vector< node_id_t > final_branch;
     // build list of difference positions (first difference for every pair)
     std::vector< std::string > sequence_vec;
     std::vector< int > startpos_vec;
@@ -96,15 +108,6 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
         int startpos = *startpos_it;
         seq_it++;
         startpos_it++;
-        // Read* read = fastq_storage->get_read(node2);
-        // std::string contig;
-        // if (read->is_paired()) {
-        //     std::cout << "TODO: resolve branches with PE reads as well" << std::endl;
-        //     continue;
-        // }
-        // else {
-        //     contig = read->get_seq(0);
-        // }
         std::unordered_map< read_id_t, OriginalIndex > subreads2 = overlap_graph->original_ID_dict.at(node2);
         for (auto subread : subreads2) {
             read_id_t subread_id = subread.first;
@@ -263,6 +266,7 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
         }
         node2_it++;
     }
+    return final_branch;
 }
 
 std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
