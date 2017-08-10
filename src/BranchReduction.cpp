@@ -46,20 +46,24 @@ void BranchReduction::readBasedBranchReduction() {
     // find all branches in the graph and process one by one
     overlap_graph->findBranchfreeGraph(sorted_adj_in, sorted_adj_out, branch_in, branch_out);
     std::list< std::pair< node_id_t, node_id_t > > edges_to_remove1;
-    std::unordered_map< node_id_t, std::vector< node_id_t > > final_branch_in;
+    std::vector< std::vector<node_id_t> > final_branch_in;
     for (auto node : branch_in) {
         bool outbranch = false;
         std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
             edges_to_remove1, outbranch);
-        final_branch_in.insert(std::make_pair( node, branch ));
+        if (!branch.empty()) {
+            final_branch_in.push_back(branch);
+        }
     }
-    std::unordered_map< std::pair< node_id_t, std::vector< node_id_t > > > final_branch_out;
     std::list< std::pair< node_id_t, node_id_t > > edges_to_remove2;
+    std::vector< std::vector< node_id_t > > final_branch_out;
     for (auto node : branch_out) {
         bool outbranch = true;
         std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
             edges_to_remove2, outbranch);
-        final_branch_out.insert(std::make_pair( node, branch ));
+        if (!branch.empty()) {
+            final_branch_out.push_back(branch);
+        }
     }
     // find branching components
     std::vector< std::pair< std::vector< node_id_t >, std::vector< node_id_t > > > branching_components;

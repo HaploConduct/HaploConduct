@@ -33,7 +33,7 @@ private:
     unsigned int SE_count;
     unsigned int PE_count;
     int min_evidence;
-    std::unordered_map< std::pair< node_id_t, node_id_t >, std::vector< read_id_t > > evidence_per_edge;
+//    std::unordered_map< std::pair< node_id_t, node_id_t >, std::vector< read_id_t > > evidence_per_edge;
 
 public:
     BranchReduction(std::shared_ptr<FastqStorage> fastq,
