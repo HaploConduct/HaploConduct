@@ -127,22 +127,28 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
                 common_PE = subreads1.end();
                 subread_id_PE = 0; // dummy
             }
+            // first check the subread itself
             bool result1 = false;
-            bool result2 = false;
             if (common_subread != subreads1.end()) {
                 Read* original_read = original_fastq->get_read(subread_id);
                 std::string sequence = original_read->get_seq(0);
                 int index = subread.second.index1;
                 result1 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
+            if (result1) {
+                evidence_list.push_back(subread_id);
+            }
+            // now also try its mate
+            bool result2 = false;
             if (common_PE != subreads1.end()) {
                 Read* original_read = original_fastq->get_read(subread_id_PE);
                 std::string sequence = original_read->get_seq(0);
                 int index = subread.second.index1;
                 result2 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
-            if (result1 || result2) {
-                evidence_list.push_back(subread_id);
+            if (result2) {
+                read_id_t joint_id = program_settings.original_readcount + std::min(subread_id, subread_id_PE);
+                evidence_list.push_back(joint_id);
             }
         }
         std::sort(evidence_list.begin(), evidence_list.end());
@@ -208,8 +214,8 @@ void BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_
         read_id_t current_min = current_evidence.front();
         read_id_t current_max = current_evidence.back();
         std::cout << "current_max " << current_max << " current_min " << current_min << std::endl;
-        assert (current_max < program_settings.original_readcount);
-        assert (current_min < program_settings.original_readcount);
+        assert (current_max < 2*program_settings.original_readcount);
+        assert (current_min < 2*program_settings.original_readcount);
         bool unique_min;
         if (diff_list.empty()) {
             unique_min = true; // no difference positions so keep all evidence
