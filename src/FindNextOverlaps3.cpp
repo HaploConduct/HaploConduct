@@ -24,8 +24,8 @@ void SRBuilder::findNextOverlaps3() {
     }
     // build an adjacency list mapping original reads to superreads
     std::deque<Read>::iterator it;
-    std::unordered_map< read_id_t, unsigned int > original_to_index;
-    unsigned int index = 0;
+    std::unordered_map< read_id_t, node_id_t > original_to_index;
+    node_id_t index = 0;
     for (it = single_SR_vec.begin(); it != single_SR_vec.end(); it++) {
         Read* read_ptr = & (*it);
         std::unordered_map< read_id_t, OriginalIndex > original_reads = it->get_original_reads();
@@ -74,7 +74,7 @@ void SRBuilder::findNextOverlaps3() {
             }
         }
     }
-    unsigned int SR_count = single_SR_vec.size() + paired_SR_vec.size();
+    node_id_t SR_count = single_SR_vec.size() + paired_SR_vec.size();
     unsigned int c = 0;
     for (auto it : nodes_to_SR) {
         if (it.size() > c) {
@@ -87,20 +87,20 @@ void SRBuilder::findNextOverlaps3() {
     nodeDictApproach(original_to_index);
 }
 
-void SRBuilder::nodeDictApproach(std::unordered_map< read_id_t, unsigned int > original_to_index) {
+void SRBuilder::nodeDictApproach(std::unordered_map< read_id_t, node_id_t > original_to_index) {
 //    std::cout << "nodeDictApproach...\n";
     // keep track of superread edges already found
     overlaps_found = std::vector< std::set< read_id_t >> (new_read_count, std::set< read_id_t >());
     // build a list containing every pair of superreads having a subread in common
     std::list< OverlapCandidate > overlaps_list;
-    unsigned int node_count = nodes_to_SR.size();
+    node_id_t node_count = nodes_to_SR.size();
     int status = 0;
     if (program_settings.verbose) {
         std::cout << "Building list of overlapping superreads: \n";
     }
     for (auto original_it : original_to_index) {
         read_id_t original_id = original_it.first;
-        unsigned int node = original_it.second; // index of original read in nodes_to_SR
+        node_id_t node = original_it.second; // index of original read in nodes_to_SR
         std::vector< Read* > SR_list = nodes_to_SR.at(node);
         int perc = static_cast<int>((node*100)/node_count);
         if (perc % 10 == 0 && perc > status) { // TODO: this does not always print because perc is rounded
@@ -109,16 +109,16 @@ void SRBuilder::nodeDictApproach(std::unordered_map< read_id_t, unsigned int > o
                 std::cout << status << "%.. \n";
             }
         }
-        unsigned int count = SR_list.size();
-        for (unsigned int i=0; i < count; i++) {
+        node_id_t count = SR_list.size();
+        for (node_id_t i=0; i < count; i++) {
             Read* SR1 = SR_list.at(i);
             read_id_t id1 = SR1->get_read_id();
-            for (unsigned int j=i+1; j < count; j++) {
+            for (node_id_t j=i+1; j < count; j++) {
                 Read* SR2 = SR_list.at(j);
                 read_id_t id2 = SR2->get_read_id();
                 // check if overlap was already found
-                unsigned int smallest = std::min(id1, id2);
-                unsigned int largest = std::max(id1, id2);
+                node_id_t smallest = std::min(id1, id2);
+                node_id_t largest = std::max(id1, id2);
                 if (overlaps_found.at(smallest).count(largest) != 0) { // overlap was found before
                     continue;
                 }
@@ -142,7 +142,7 @@ void SRBuilder::nodeDictApproach(std::unordered_map< read_id_t, unsigned int > o
     if (program_settings.verbose) {
         std::cout << "Deducing and writing overlaps: \n";
     }
-    unsigned int total_count = overlaps_list.size();
+    node_id_t total_count = overlaps_list.size();
     status = 0;
     for (auto overlap_candidate : overlaps_list) {
         int perc = static_cast<int>((overlaps_count*100)/total_count);
