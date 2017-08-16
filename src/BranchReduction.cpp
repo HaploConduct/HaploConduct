@@ -45,54 +45,65 @@ void BranchReduction::readBasedBranchReduction() {
     std::set< node_id_t > branch_out;
     // find all branches in the graph and process one by one
     overlap_graph->findBranchfreeGraph(sorted_adj_in, sorted_adj_out, branch_in, branch_out);
-    std::list< std::pair< node_id_t, node_id_t > > edges_to_remove1;
-    std::vector< std::vector<node_id_t> > final_branch_in;
+    std::list< node_pair_t > edges_to_remove;
+    // std::vector< std::list< node_id_t > > final_branch_in;
+    // std::vector< std::list< node_id_t > > final_branch_out;
+    // for (unsigned int i=0; i < overlap_graph->getVertexCount(); i++) {
+    //     final_branch_in.push_back(std::list< node_id_t >());
+    //     final_branch_in.push_back(std::list< node_id_t >());
+    // }
+    std::vector< std::list< node_id_t > > final_branch_in (overlap_graph->getVertexCount(), std::list< node_id_t >());
     for (auto node : branch_in) {
         bool outbranch = false;
-        std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
-            edges_to_remove1, outbranch);
+        std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
+            edges_to_remove, outbranch);
         if (!branch.empty()) {
-            final_branch_in.push_back(branch);
+            final_branch_in.at(node) = branch;
         }
     }
-    std::list< std::pair< node_id_t, node_id_t > > edges_to_remove2;
-    std::vector< std::vector< node_id_t > > final_branch_out;
+    std::vector< std::list< node_id_t > > final_branch_out (overlap_graph->getVertexCount(), std::list< node_id_t >());
     for (auto node : branch_out) {
         bool outbranch = true;
-        std::vector< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
-            edges_to_remove2, outbranch);
+        std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
+            edges_to_remove, outbranch);
         if (!branch.empty()) {
-            final_branch_out.push_back(branch);
+            final_branch_out.at(node) = branch;
         }
     }
-    // find branching components
-    std::vector< std::pair< std::vector< node_id_t >, std::vector< node_id_t > > > branching_components;
-
-    // select unique evidence
-
-    // build a set of edges to remove to avoid duplicates
-    std::set< std::pair< node_id_t, node_id_t > > edges_to_remove (edges_to_remove2.begin(), edges_to_remove2.end());
-    for (auto node_pair : edges_to_remove1) {
-        edges_to_remove.insert(std::make_pair(node_pair.second, node_pair.first));
+    // find branching components and build list of branching edges with
+    // insufficient UNIQUE evidence
+    findBranchingComponents(final_branch_in, final_branch_out);
+    std::cout << "Final evidence_per_edge.size() = " << evidence_per_edge.size() << std::endl;
+    for (auto component : branching_components) {
+        countUniqueEvidence(component, edges_to_remove);
     }
+    // remove duplicates from edges_to_remove
+    edges_to_remove.sort();
+    edges_to_remove.unique();
     // now remove all selected edges from overlap graph
     for (auto node_pair : edges_to_remove) {
-        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
+//        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
+        if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
+            std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
+            exit(1);
+        }
         Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
         overlap_graph->branching_edges.push_back(edge);
     }
-    std::cout << edges_to_remove1.size() + edges_to_remove2.size() << " edges removed" << std::endl;
+    std::cout << edges_to_remove.size() << " edges removed" << std::endl;
 }
 
-std::vector< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
-        std::list< std::pair< node_id_t, node_id_t > > & edges_to_remove, bool outbranch) {
+std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
+        std::list< node_pair_t > & edges_to_remove, bool outbranch) {
+//    std::cout << "findBranchingEvidence" << std::endl;
     assert (neighbors.size() > 1);
-    std::vector< node_id_t > final_branch;
+    std::list< node_id_t > final_branch (neighbors.begin(), neighbors.end());
+    final_branch.push_front(node1);
     // build list of difference positions (first difference for every pair)
     std::vector< std::string > sequence_vec;
     std::vector< int > startpos_vec;
     std::list< int > diff_list;
-    std::vector< std::pair< unsigned int, unsigned int > > missing_edges;
+    std::vector< node_pair_t > missing_edges;
     std::vector< node_id_t > neighbors_vec(neighbors.begin(), neighbors.end());
     if (outbranch) {
         diff_list = buildDiffListOut(node1, neighbors_vec, sequence_vec, startpos_vec, missing_edges);
@@ -102,12 +113,12 @@ std::vector< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1,
     }
     // build evidence list of subread IDs per neighbor
     std::unordered_map< read_id_t, OriginalIndex > subreads1 = overlap_graph->original_ID_dict.at(node1);
-    std::vector< std::vector< read_id_t > > evidence_per_neighbor;
+    std::unordered_map< node_id_t, std::list< read_id_t > > evidence_per_neighbor;
     std::vector< std::string >::const_iterator seq_it = sequence_vec.begin();
     std::vector< int >::const_iterator startpos_it = startpos_vec.begin();
     for (auto node2 : neighbors) {
         // find common subreads from originals dict
-        std::vector< read_id_t > evidence_list;
+        std::list< read_id_t > evidence_list;
         std::string contig = *seq_it;
         int startpos = *startpos_it;
         seq_it++;
@@ -158,118 +169,64 @@ std::vector< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1,
                 evidence_list.push_back(joint_id);
             }
         }
-        std::sort(evidence_list.begin(), evidence_list.end());
-        evidence_per_neighbor.push_back(evidence_list);
+        evidence_list.sort();
+        evidence_list.unique();
+        evidence_per_neighbor.insert(std::make_pair(node2, evidence_list));
     }
     // take care of 'missing edges' by removing all edges from 'missing branches'
-    if (!diff_list.empty()) {
-        for (auto index_pair : missing_edges) {
-            // remove evidence from node2
-            unsigned int idx = index_pair.second;
-            evidence_per_neighbor.at(idx).clear();
-            // identify newly created branches and remove corresponding edges;
-            // these branches will be resolved at a next iteration of ViralQuasispecies
-            node_id_t outnode = neighbors_vec.at(index_pair.first);
-            node_id_t innode = neighbors_vec.at(index_pair.second);
-            for (auto out_edge : overlap_graph->adj_out.at(outnode)) {
-                if (outbranch) {
-                    edges_to_remove.push_back(std::make_pair(outnode, out_edge.get_vertex(2)));
-                }
-                else { // add reverse edge because it will be reversed again later
-                    edges_to_remove.push_back(std::make_pair(out_edge.get_vertex(2), outnode));
-                }
-            }
-            for (auto in_edge : overlap_graph->adj_in.at(innode)) {
-                if (outbranch) {
-                    edges_to_remove.push_back(std::make_pair(in_edge, innode));
-                }
-                else { // add reverse edge because it will be reversed again later
-                    edges_to_remove.push_back(std::make_pair(innode, in_edge));
-                }
-            }
+    for (auto node_pair : missing_edges) {
+        // remove evidence from node2
+        evidence_per_neighbor.at(node_pair.second).clear();
+        final_branch.remove(node_pair.second);
+        // identify newly created branches and remove corresponding edges;
+        // these branches will be resolved at a next iteration of ViralQuasispecies
+        node_id_t outnode = node_pair.first;
+        node_id_t innode = node_pair.second;
+        for (auto out_edge : overlap_graph->adj_out.at(outnode)) {
+            edges_to_remove.push_back(std::make_pair(outnode, out_edge.get_vertex(2)));
+        }
+        for (auto in_edge : overlap_graph->adj_in.at(innode)) {
+            edges_to_remove.push_back(std::make_pair(in_edge, innode));
         }
     }
-    // compute effective evidence per neighbor: remove evidence that is shared
-    // between all neighbors and count evidence load
-    std::vector< int > effective_evidence_counts;
-    std::vector< unsigned int > evidence_indexes;
-    std::vector< int > evidence_status;
-    std::cout << "initial_evidence_counts" << std::endl;
-    for (unsigned int idx = 0; idx < neighbors.size(); idx++) {
-        std::cout << evidence_per_neighbor.at(idx).size() << std::endl;
-        effective_evidence_counts.push_back(0);
-        evidence_indexes.push_back(0);
-        if (evidence_per_neighbor.at(idx).empty()) {
-            evidence_status.push_back(0);
-        }
-        else {
-            evidence_status.push_back(1);
-        }
-    }
-    // filter evidence such that we only count UNIQUE read support
-    while (*std::max_element(evidence_status.begin(), evidence_status.end()) == 1) {
-        // get maximum value over all evidence iterators
-        std::vector< read_id_t > current_evidence;
-        for (unsigned int idx = 0; idx < neighbors.size(); idx++) {
-            if (evidence_status.at(idx) == 1) {
-                unsigned int ev_idx = evidence_indexes.at(idx);
-                current_evidence.push_back(evidence_per_neighbor.at(idx).at(ev_idx));
+    // store evidence in evidence_per_edge vector (private class member)
+    std::list< node_id_t >::const_iterator branch_it = final_branch.begin();
+    branch_it++; // skip first entry, this contains the branching node
+    for (auto neighbor : neighbors) {
+        if (branch_it != final_branch.end() && neighbor == *branch_it) {
+            // neighbor also in final_branch so we store its evidence
+            std::unordered_map< safe_edge_count_t, std::list< read_id_t > >::iterator ev_it;
+            std::list< read_id_t > current_evidence = evidence_per_neighbor.at(neighbor);
+            safe_edge_count_t index;
+            if (outbranch) {
+                index = edgeToEvidenceIndex(node1, neighbor);
             }
-        }
-        std::sort(current_evidence.begin(), current_evidence.end());
-        assert (!current_evidence.empty());
-        read_id_t current_min = current_evidence.front();
-        read_id_t current_max = current_evidence.back();
-        std::cout << "current_max " << current_max << " current_min " << current_min << std::endl;
-        assert (current_max < 2*program_settings.original_readcount);
-        assert (current_min < 2*program_settings.original_readcount);
-        bool unique_min;
-        if (diff_list.empty()) {
-            unique_min = true; // no difference positions so keep all evidence
-        }
-        else if (current_evidence.size() == 1) {
-            unique_min = true; // only evidence remaining so definitely unique
-        }
-        else if (current_min < current_evidence.at(1)) {
-            unique_min = true;
-        }
-        else {
-            unique_min = false;
-        }
-        for (unsigned int idx = 0; idx < neighbors.size(); idx++) {
-            if (evidence_status.at(idx) == 1) {
-                unsigned int ev_idx = evidence_indexes.at(idx);
-                if (evidence_per_neighbor.at(idx).at(ev_idx) == current_min) {
-                    if (unique_min) { // keep evidence
-                        effective_evidence_counts.at(idx)++;
+            else {
+                index = edgeToEvidenceIndex(neighbor, node1);
+            }
+            ev_it = evidence_per_edge.find(index);
+            if (ev_it != evidence_per_edge.end()) {
+                // intersect evidence sets
+                std::list< read_id_t > existing_evidence = ev_it->second;
+                std::list< read_id_t >::iterator it2 = existing_evidence.begin();
+                while (it2 != existing_evidence.end()) {
+                    auto find_ev = std::find(current_evidence.begin(), current_evidence.end(), *it2);
+                    if (find_ev == current_evidence.end()) {
+                        it2 = ev_it->second.erase(it2);
                     }
-                    std::cout << "before: " << evidence_indexes.at(idx) << std::endl;
-                    evidence_indexes.at(idx)++;
-                    std::cout << "after: " << evidence_indexes.at(idx) << std::endl;
-                    if (evidence_indexes.at(idx) >= evidence_per_neighbor.at(idx).size()) {
-                        // reached end of evidence list, mark node as finished
-                        evidence_status.at(idx) = 0;
+                    else {
+                        it2++;
                     }
                 }
             }
+            else {
+                // insert new evidence set
+                evidence_per_edge.insert(std::make_pair(index, current_evidence));
+            }
+            branch_it++;
         }
     }
-    std::cout << "effective_evidence_counts" << std::endl;
-    for (auto count : effective_evidence_counts) {
-        std::cout << count << std::endl;
-    }
-    // finally analyze evidence and reduce branches
-    assert (neighbors.size() == effective_evidence_counts.size());
-    //int largest_evidence = *std::max_element(effective_evidence_counts.begin(), effective_evidence_counts.end());
-    //if (largest_evidence >= min_evidence) {}
-    // remove edges with insufficient evidence
-    std::list< node_id_t >::const_iterator node2_it = neighbors.begin();
-    for (unsigned int i=0; i < neighbors.size(); i++) {
-        if (effective_evidence_counts.at(i) < min_evidence) {
-            edges_to_remove.push_back(std::make_pair(node1, *node2_it));
-        }
-        node2_it++;
-    }
+    assert (branch_it == final_branch.end());
     return final_branch;
 }
 
@@ -277,9 +234,9 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
         std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
         std::vector< int > & startpos_vec,
-        std::vector< std::pair< node_id_t, node_id_t > > & missing_edges) {
+        std::vector< node_pair_t > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
-    std::cout << "buildDiffListOut" << std::endl;
+//    std::cout << "buildDiffListOut" << std::endl;
     std::list< int > diff_list;
     for (auto node : neighbors) {
         Edge* edge = overlap_graph->getEdgeInfo(node1, node, /*reverse_allowed*/ false);
@@ -341,16 +298,16 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
             if (diff_pos.empty()) {
                 // identical overlap -> add corresponding edge
                 if (pos_i == pos_j && node_i < node_j) {
-                    missing_edges.push_back(std::make_pair(i, j));
+                    missing_edges.push_back(std::make_pair(node_i, node_j));
                 }
                 else if (pos_i == pos_j && node_i > node_j) {
-                    missing_edges.push_back(std::make_pair(j, i));
+                    missing_edges.push_back(std::make_pair(node_j, node_i));
                 }
                 else if (pos_i < pos_j) {
-                    missing_edges.push_back(std::make_pair(i, j));
+                    missing_edges.push_back(std::make_pair(node_i, node_j));
                 }
                 else {
-                    missing_edges.push_back(std::make_pair(j, i));
+                    missing_edges.push_back(std::make_pair(node_j, node_i));
                 }
             }
         }
@@ -365,9 +322,9 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
         std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
         std::vector< int > & startpos_vec,
-        std::vector< std::pair< node_id_t, node_id_t > > & missing_edges) {
+        std::vector< node_pair_t > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
-    std::cout << "buildDiffListIn" << std::endl;
+//    std::cout << "buildDiffListIn" << std::endl;
     std::list< int > diff_list;
     std::vector< int > pos_vec;
     for (auto node : neighbors) {
@@ -441,16 +398,16 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
             if (diff_pos.empty()) {
                 // identical overlap -> add corresponding edge
                 if (pos_i == pos_j && node_i < node_j) {
-                    missing_edges.push_back(std::make_pair(i, j));
+                    missing_edges.push_back(std::make_pair(node_i, node_j));
                 }
                 else if (pos_i == pos_j && node_i > node_j) {
-                    missing_edges.push_back(std::make_pair(j, i));
+                    missing_edges.push_back(std::make_pair(node_j, node_i));
                 }
                 else if (pos_i < pos_j) {
-                    missing_edges.push_back(std::make_pair(i, j));
+                    missing_edges.push_back(std::make_pair(node_i, node_j));
                 }
                 else {
-                    missing_edges.push_back(std::make_pair(j, i));
+                    missing_edges.push_back(std::make_pair(node_j, node_i));
                 }
             }
         }
@@ -473,8 +430,8 @@ std::vector< int > BranchReduction::findDiffPos(std::string seq1, std::string se
     while (it1 != seq1.end()) {
         if (*it1 != *it2) {
             diff_pos.push_back(pos);
-            if (diff_pos.size() == 3) {
-                // store at most 3 positions per sequence pair
+            if (diff_pos.size() == 100) {
+                // store at most 100 positions per sequence pair
                 return diff_pos;
             }
         }
@@ -492,7 +449,7 @@ std::vector< int > BranchReduction::findDiffPos(std::string seq1, std::string se
 
 bool BranchReduction::checkReadEvidence(std::string contig, int startpos, std::string read, int index, std::list< int > diff_list) {
     // check if subread agrees with contig on diff_list positions
-    bool true_evidence = true;
+    bool true_evidence = false;
     int read_start = startpos + index;
     int read_end = read_start + read.size();
     int contig_start = startpos;
@@ -507,12 +464,270 @@ bool BranchReduction::checkReadEvidence(std::string contig, int startpos, std::s
             continue;
         }
         // check if read agrees with contig base
-        std::cout << diff_pos << " " << startpos << " " << index << " " << contig.size() << " " << read.size() << std::endl;
+//        std::cout << diff_pos << " " << startpos << " " << index << " " << contig.size() << " " << read.size() << std::endl;
         if (read.at(diff_pos - read_start) != contig.at(diff_pos - contig_start)) {
             // disagreement --> false evidence
             true_evidence = false;
             break; // no need to continue checking
         }
+        else {
+            true_evidence = true; // at least one diff_pos covered
+        }
     }
     return true_evidence;
+}
+
+void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t > > final_branch_in,
+    std::vector< std::list< node_id_t > > final_branch_out) {
+    // find all branching components by following in-branches connected to out-branches
+    // and vice versa
+    std::cout << "findBranchingComponents" << std::endl;
+    std::unordered_map< node_id_t, bool > visited_in_branches;
+    std::unordered_map< node_id_t, bool > visited_out_branches;
+    std::unordered_map< node_id_t, std::list< node_id_t > > branch_in_map;
+    std::unordered_map< node_id_t, std::list< node_id_t > > branch_out_map;
+    // store all branches in a dict for easy access
+    for (auto branch : final_branch_in) {
+        if (branch.empty()) {
+            continue;
+        }
+        node_id_t node = branch.front();
+        branch.pop_front();
+        visited_in_branches.insert(std::make_pair(node, false));
+        branch_in_map.insert(std::make_pair(node, branch));
+    }
+    for (auto branch : final_branch_out) {
+        if (branch.empty()) {
+            continue;
+        }
+        node_id_t node = branch.front();
+        branch.pop_front();
+        visited_out_branches.insert(std::make_pair(node, false));
+        branch_out_map.insert(std::make_pair(node, branch));
+    }
+    // now build components
+    for (auto branch : branch_in_map) {
+        node_id_t node = branch.first;
+        if (visited_in_branches.at(node)) {
+            continue;
+        }
+        std::list< node_id_t > neighbors = branch.second;
+        std::vector< node_pair_t > new_component;
+        for (auto in_neighbor : neighbors) {
+            assert (node != in_neighbor);
+            node_pair_t node_pair = std::make_pair(in_neighbor, node);
+            new_component.push_back(node_pair);
+        }
+        visited_in_branches.at(node) = true;
+        extendComponentOut(new_component, neighbors, visited_in_branches,
+            visited_out_branches, branch_in_map, branch_out_map);
+        std::sort(new_component.begin(), new_component.end(),
+            [](node_pair_t pair1, node_pair_t pair2) {
+                if (pair1.first != pair2.first) {
+                    return pair1.first < pair2.first;
+                }
+                else {
+                    return pair1.second < pair2.second;
+                }
+            });
+        auto end_it = std::unique(new_component.begin(), new_component.end());
+        new_component.resize(std::distance(new_component.begin(), end_it));
+        branching_components.push_back(new_component);
+    }
+    // process remaining out-branches; since we already did all in-branches, the
+    // remaining components are trivial
+    for (auto branch : branch_out_map) {
+        node_id_t node = branch.first;
+        if (visited_out_branches.at(node) || visited_in_branches.find(node) != visited_in_branches.end()) {
+            continue;
+        }
+        std::list< node_id_t > neighbors = branch.second;
+        std::vector< node_pair_t > new_component;
+        for (auto out_neighbor : neighbors) {
+            assert (node != out_neighbor);
+            node_pair_t node_pair = std::make_pair(node, out_neighbor);
+            new_component.push_back(node_pair);
+        }
+        branching_components.push_back(new_component);
+        visited_out_branches.at(node) = true;
+    }
+    return;
+}
+
+void BranchReduction::extendComponentOut(std::vector< node_pair_t > & component,
+    std::list< node_id_t > neighbors,
+    std::unordered_map< node_id_t, bool > & visited_in_branches,
+    std::unordered_map< node_id_t, bool > & visited_out_branches,
+    std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
+    std::unordered_map< node_id_t, std::list< node_id_t > > & branch_out_map) {
+    // extend component iteratively
+//    std::cout << "extendComponentOut" << std::endl;
+    for (auto node : neighbors) {
+        auto visited = visited_out_branches.find(node);
+        if (visited == visited_out_branches.end() || visited->second == true) {
+            continue;
+        }
+        std::list< node_id_t > branch = branch_out_map.at(node);
+        for (auto out_neighbor : branch) {
+            assert (node != out_neighbor);
+            node_pair_t node_pair = std::make_pair(node, out_neighbor);
+            component.push_back(node_pair);
+        }
+        visited_out_branches.at(node) = true;
+        extendComponentIn(component, branch, visited_in_branches,
+            visited_out_branches, branch_in_map, branch_out_map);
+    }
+    return;
+}
+
+void BranchReduction::extendComponentIn(std::vector< node_pair_t > & component,
+    std::list< node_id_t > neighbors,
+    std::unordered_map< node_id_t, bool > & visited_in_branches,
+    std::unordered_map< node_id_t, bool > & visited_out_branches,
+    std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
+    std::unordered_map< node_id_t, std::list< node_id_t > > & branch_out_map) {
+    // extend component iteratively
+//    std::cout << "extendComponentIn" << std::endl;
+    for (auto node : neighbors) {
+        auto visited = visited_in_branches.find(node);
+        if (visited == visited_in_branches.end() || visited->second == true) {
+            continue;
+        }
+        std::list< node_id_t > branch = branch_in_map.at(node);
+        for (auto in_neighbor : branch) {
+            assert (node != in_neighbor);
+            node_pair_t node_pair = std::make_pair(in_neighbor, node);
+            component.push_back(node_pair);
+        }
+        visited_in_branches.at(node) = true;
+        extendComponentOut(component, branch, visited_in_branches,
+            visited_out_branches, branch_in_map, branch_out_map);
+    }
+    return;
+}
+
+void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
+        std::list< node_pair_t > & edges_to_remove) {
+    // compute effective evidence per edge: remove evidence that is shared
+    // between other edges and count evidence load
+//    std::cout << "countUniqueEvidence" << std::endl;
+    std::unordered_map< safe_edge_count_t, std::list< read_id_t > > unique_evidence_per_edge;
+    std::unordered_map< safe_edge_count_t, unsigned int > index_to_mapID;
+    std::vector< bool > evidence_status;
+    unsigned int idx = 0;
+    for (auto node_pair : component) {
+        assert (node_pair.first != node_pair.second);
+        safe_edge_count_t mapID = edgeToEvidenceIndex(node_pair.first, node_pair.second);
+        index_to_mapID.insert(std::make_pair(idx, mapID));
+        auto evidence = evidence_per_edge.find(mapID);
+        if (evidence == evidence_per_edge.end()) {
+            std::cout << "mapID not found for edge " << node_pair.first << " " << node_pair.second << std::endl;
+        }
+        else {
+            if (evidence_per_edge.at(mapID).empty()) {
+                evidence_status.push_back(0);
+            }
+            else {
+                evidence_status.push_back(1);
+            }
+        }
+        unique_evidence_per_edge.insert(std::make_pair(mapID, std::list< read_id_t >()));
+        idx++;
+    }
+    unsigned int component_edge_count = evidence_status.size();
+    // filter evidence such that we only count UNIQUE read support
+    while (*std::max_element(evidence_status.begin(), evidence_status.end()) == 1) {
+        // get maximum value over all evidence iterators
+        std::vector< read_id_t > current_evidence;
+        for (unsigned int idx = 0; idx < component_edge_count; idx++) {
+            if (evidence_status.at(idx) == 1) {
+                safe_edge_count_t mapID = index_to_mapID.at(idx);
+                current_evidence.push_back(evidence_per_edge.at(mapID).front());
+            }
+        }
+        std::sort(current_evidence.begin(), current_evidence.end());
+        assert (!current_evidence.empty());
+        read_id_t current_min = current_evidence.front();
+        read_id_t current_max = current_evidence.back();
+//        std::cout << "current_max " << current_max << " current_min " << current_min << std::endl;
+        assert (current_max < 2*program_settings.original_readcount);
+        assert (current_min < 2*program_settings.original_readcount);
+        bool unique_min;
+        if (current_evidence.size() == 1) {
+            unique_min = true; // only evidence remaining so definitely unique
+        }
+        else if (current_min < current_evidence.at(1)) {
+            unique_min = true;
+        }
+        else {
+            unique_min = false;
+        }
+        for (unsigned int idx = 0; idx < component_edge_count; idx++) {
+            if (evidence_status.at(idx) == 1) {
+                safe_edge_count_t mapID = index_to_mapID.at(idx);
+                std::list< read_id_t > evidence = evidence_per_edge.at(mapID);
+                if (evidence.front() == current_min) {
+                    if (unique_min) { // keep evidence
+                        unique_evidence_per_edge.at(mapID).push_back(current_min);
+                    }
+                    evidence_per_edge.at(mapID).pop_front();
+                    if (evidence.size() == 1) {
+                        // reached end of evidence list, mark node as finished
+                        evidence_status.at(idx) = 0;
+                    }
+                }
+            }
+        }
+    }
+    // finally analyze evidence and reduce branches by removing edges with
+    // insufficient evidence
+    std::cout << "effective_evidence_counts" << std::endl;
+    for (auto ev : unique_evidence_per_edge) {
+        int count = ev.second.size();
+        std::cout << count << " ";
+        if (count < min_evidence) {
+            node_pair_t node_pair = evidenceIndexToEdge(ev.first);
+            if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
+                std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
+                exit(1);
+            }
+            edges_to_remove.push_back(node_pair);
+        }
+        node_pair_t node_pair = evidenceIndexToEdge(ev.first);
+        std::cout << "evidence load for edge " << node_pair.first << "," << node_pair.second << " : ";
+        for (auto id : ev.second) {
+            std::cout << id << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+}
+
+safe_edge_count_t BranchReduction::edgeToEvidenceIndex(node_id_t node, node_id_t neighbor) {
+    // map edge (node pair) to a unique index for storage of evidence in evidence_per_edge
+    assert (node < overlap_graph->getVertexCount());
+    assert (neighbor < overlap_graph->getVertexCount());
+    safe_edge_count_t index = node * overlap_graph->getVertexCount() + neighbor;
+    assert (index < (overlap_graph->getVertexCount())*(overlap_graph->getVertexCount()));
+    return index;
+}
+
+node_pair_t BranchReduction::evidenceIndexToEdge(safe_edge_count_t index) {
+    // map storage index back to original node pair
+    assert (index < (overlap_graph->getVertexCount())*(overlap_graph->getVertexCount()));
+    node_id_t node = floor(index / overlap_graph->getVertexCount());
+    node_id_t neighbor = index - node * overlap_graph->getVertexCount();
+//    std::cout << "index, node, neighbor: " << index << " " << node << " " << neighbor << std::endl;
+    assert (node < overlap_graph->getVertexCount());
+    assert (neighbor < overlap_graph->getVertexCount());
+    return std::make_pair(node, neighbor);
+}
+
+bool BranchReduction::compareNodepairs (node_pair_t pair1, node_pair_t pair2) {
+    if (pair1.first != pair2.first) {
+        return pair1.first < pair2.first;
+    }
+    else {
+        return pair1.second < pair2.second;
+    }
 }
