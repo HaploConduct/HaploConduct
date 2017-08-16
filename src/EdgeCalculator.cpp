@@ -454,7 +454,7 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     // edge does not yet exist, so add it now
                     overlap_graph->addEdge(*it1);
                     count++;
-                    if (program_settings.ignore_inclusions && it1->get_perc() == 100 && it1->get_mismatch_rate() < 0.0001 && it1->get_mismatch_rate() >= 0) {
+                    if (program_settings.ignore_inclusions && it1->get_perc() == 100 && it1->get_mismatch_rate() < 0.000001 && it1->get_mismatch_rate() >= 0) {
                         if (it1->get_extra_pos(1) < 0) {
                             if (it1->get_pos(1) == 0) { // otherwise not a true inclusion but simply the effect of rounding the overlap percentage
                                 overlap_graph->inclusions[v1] = 1;
