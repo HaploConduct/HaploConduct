@@ -42,7 +42,7 @@ struct ProgramSettings {
     bool cliques;
     bool graph_only;
     int fno;
-    unsigned int original_readcount;
+    unsigned long original_readcount;
     bool ignore_inclusions;
     double mismatch;
     bool optimize;
@@ -65,8 +65,8 @@ struct ProgramSettings {
 };
 
 struct IterationStats {
-    unsigned int vertex_count;
-    unsigned int edge_count;
+    unsigned long vertex_count;
+    unsigned long edge_count;
     int max_read_len;
     int min_read_len;
     int average_read_len;
@@ -85,8 +85,11 @@ struct OriginalIndex {
     bool is_paired;
 };
 
-typedef unsigned int read_id_t;
-typedef unsigned int node_id_t;
+typedef unsigned long read_id_t;
+typedef unsigned long node_id_t;
+typedef unsigned long edge_count_t;
+typedef unsigned long long safe_edge_count_t;
+typedef std::pair< node_id_t, node_id_t > node_pair_t;
 
 inline read_id_t str_to_read_id(std::string input_id)
 {

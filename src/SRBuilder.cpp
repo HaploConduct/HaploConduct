@@ -30,7 +30,7 @@
     while at the same time filling a list with the corresponding positions of these sequences in the superread.
     When finished, it returns the length of superread.
  */
-int SRBuilder::sort_vertices(std::vector<unsigned int> vertices, char type, unsigned int base_node, std::list<int> &pos_list, std::list<std::string> &seq_list, std::list<std::string> &qual_list, std::list<unsigned int> &sorted_vertices, int thread_id)
+int SRBuilder::sort_vertices(std::vector< node_id_t > vertices, char type, node_id_t base_node, std::list<int> &pos_list, std::list<std::string> &seq_list, std::list<std::string> &qual_list, std::list< node_id_t > &sorted_vertices, int thread_id)
 {
 //    std::cout << thread_id << " sort_vertices\n";
     assert (type == 'l'||type == 'r'||type == 's'); // type of the superread
@@ -83,10 +83,10 @@ int SRBuilder::sort_vertices(std::vector<unsigned int> vertices, char type, unsi
     int r_ext = 0;
 
 //    if (thread_id == 1) std::cout << thread_id << " starting for loop\n";
-    std::vector<unsigned int>::const_iterator it1;
+    std::vector< node_id_t >::const_iterator it1;
     for (it1 = vertices.begin(); it1 != vertices.end(); it1++) {
 //        if (thread_id == 1) std::cout << thread_id << " node " << *it1 << "\n";
-        unsigned int node = *it1;
+        node_id_t node = *it1;
         if (node == base_node)
             continue;
         Edge* edge = overlap_graph->getEdgeInfo(base_node, node); // Edge u->v if it exists; else v->u!!
@@ -190,7 +190,7 @@ int SRBuilder::sort_vertices(std::vector<unsigned int> vertices, char type, unsi
         std::list<int>::iterator it2;
         std::list<std::string>::iterator it3;
         std::list<std::string>::iterator it4;
-        std::list<unsigned int>::iterator it5;
+        std::list<node_id_t>::iterator it5;
         if (current_type == 'p') {
             it3 = seq_list.begin();
             it4 = qual_list.begin();
@@ -303,7 +303,7 @@ bool SRBuilder::consensus_pos(std::string nucleotides, std::string qualities, st
     double score_C = 0;
     double score_T = 0;
     double score_G = 0;
-    unsigned int k = 0;
+    unsigned int k = 0; // count overlap length excluding N's
     assert (nucleotides.length() > 0);
     assert (nucleotides.length() == qualities.length());
     for (unsigned int i = 0; i < nucleotides.length(); i++) {
@@ -533,13 +533,13 @@ int SRBuilder::consensus(int total_len, std::list<int> &pos_list, std::list<std:
 }
 
 
-std::unordered_map< unsigned int, SubreadInfo > SRBuilder::calcSubreadInfo(int trim_pos1, int trim_pos2, std::list<int> pos_list1, std::list<int> pos_list2, std::list<unsigned int> sorted_vertices1, std::list<unsigned int> sorted_vertices2) {
+std::unordered_map< node_id_t, SubreadInfo > SRBuilder::calcSubreadInfo(int trim_pos1, int trim_pos2, std::list<int> pos_list1, std::list<int> pos_list2, std::list<node_id_t> sorted_vertices1, std::list<node_id_t> sorted_vertices2) {
     assert (pos_list1.size() == sorted_vertices1.size());
     assert (pos_list2.size() == sorted_vertices2.size());
-    std::unordered_map< unsigned int, SubreadInfo > subread_map;
-    std::list< unsigned int >::const_iterator node_it = sorted_vertices1.begin();
+    std::unordered_map< node_id_t, SubreadInfo > subread_map;
+    std::list< node_id_t >::const_iterator node_it = sorted_vertices1.begin();
     for (auto pos : pos_list1) {
-        std::unordered_map< unsigned int, SubreadInfo >::iterator it;
+        std::unordered_map< node_id_t, SubreadInfo >::iterator it;
         it = subread_map.find(*node_it);
         if (it != subread_map.end()) { // left index of node already in dict, hence
             assert (trim_pos2 == -1);  // it must be a single-end superread
@@ -574,9 +574,9 @@ std::unordered_map< unsigned int, SubreadInfo > SRBuilder::calcSubreadInfo(int t
     }
     if (trim_pos2 >= 0) { // this indicates a paired-end superread, hence also add the /2 subread info
         assert (pos_list1.size() == pos_list2.size());
-        std::list< unsigned int >::const_iterator node_it2 = sorted_vertices2.begin();
+        std::list< node_id_t >::const_iterator node_it2 = sorted_vertices2.begin();
         for (auto pos : pos_list2) {
-            std::unordered_map< unsigned int, SubreadInfo >::iterator it;
+            std::unordered_map< node_id_t, SubreadInfo >::iterator it;
             it = subread_map.find(*node_it2);
             SubreadInfo& sub_info = it->second;
             assert (it != subread_map.end()); // left index of node should already exist in dict
@@ -651,7 +651,7 @@ std::vector< node_id_t > SRBuilder::sortVerticesByEndpos(std::vector< std::pair<
 }
 
 
-Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t id, int thread_id) // construct superreads from maximal cliques
+Read SRBuilder::constructSuperread(std::vector< node_id_t > clique, read_id_t id, int thread_id) // construct superreads from maximal cliques
 {
     assert (clique.size() > 1);
     // sort clique
@@ -664,10 +664,10 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
     //    Also build a set of original read IDs.
 //    clock_t t1, t2;
 //    t1 = clock();
-    std::unordered_map< unsigned int, std::unordered_map< read_id_t, long> > original_reads_per_subread;
-    std::vector<unsigned int>::const_iterator it;
+    std::unordered_map< node_id_t, std::unordered_map< read_id_t, long> > original_reads_per_subread;
+    std::vector< node_id_t >::const_iterator it;
     char superread_type = 'p';
-    unsigned int base_node = clique.at(0);
+    node_id_t base_node = clique.at(0);
     // Find a base node: any single-end read, or if there is none, then any paired-end read
     for (it = clique.begin(); it != clique.end(); it++) {
         read_id_t ID = (overlap_graph->vertex_to_read).at(*it);
@@ -687,7 +687,7 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
     int len2 = 0; // consensus sequence total length
     std::list<std::string> seq_list1, seq_list2;
     std::list<std::string> qual_list1, qual_list2;
-    std::list<unsigned int> sorted_vertices1, sorted_vertices2;
+    std::list<node_id_t> sorted_vertices1, sorted_vertices2;
     if (superread_type == 'p') {
         len1 = sort_vertices(clique, 'l', clique[0], pos_list1, seq_list1, qual_list1, sorted_vertices1, thread_id);
         len2 = sort_vertices(clique, 'r', clique[0], pos_list2, seq_list2, qual_list2, sorted_vertices2, thread_id);
@@ -733,9 +733,9 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
         }
     }
     else {
-        if (clique.size() < min_clique_size) { // min_clique_size only satisfied when considering subreads
-            subreads_needed = true;
-        }
+        // if (clique.size() < min_clique_size) { // min_clique_size only satisfied when considering subreads
+        //     subreads_needed = true;
+        // }
         trim_pos1 = consensus(len1, pos_list1, seq_list1, qual_list1, cons_seq1, cons_qual1, subreads_needed, program_settings.error_correction);
         if (superread_type == 'p') {
             trim_pos2 = consensus(len2, pos_list2, seq_list2, qual_list2, cons_seq2, cons_qual2, subreads_needed, program_settings.error_correction);
@@ -745,7 +745,7 @@ Read SRBuilder::constructSuperread(std::vector<unsigned int> clique, read_id_t i
         }
     }
     // Add subread information corresponding to the consensus read trimming
-    std::unordered_map< unsigned int, SubreadInfo > subreads_map = calcSubreadInfo(trim_pos1, trim_pos2, pos_list1, pos_list2, sorted_vertices1, sorted_vertices2);
+    std::unordered_map< node_id_t, SubreadInfo > subreads_map = calcSubreadInfo(trim_pos1, trim_pos2, pos_list1, pos_list2, sorted_vertices1, sorted_vertices2);
 
     std::unordered_map< read_id_t, OriginalIndex > original_reads;
     for (auto node_it : clique) {
@@ -900,12 +900,12 @@ Read SRBuilder::merge_self_overlap(Read superread, EdgeCalculator & edge_calcula
 }
 
 
-unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned int> >& clique_vec, read_id_t& count)
+node_id_t SRBuilder::process_cliques(const std::vector< std::vector<node_id_t> >& clique_vec, read_id_t& count)
 {
 //    std::cout << "process_cliques\n";
     std::vector<Read> pairs;
     std::vector<Read> singles;
-    unsigned int SR_count = clique_vec.size();
+    node_id_t SR_count = clique_vec.size();
     if (program_settings.verbose) {
         std::cout << SR_count << " superread computations to do.\n";
     }
@@ -920,9 +920,9 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
         std::vector<Read> pairs_this_thread;
         std::vector<Read> singles_this_thread;
 	    #pragma omp for
-	    for (unsigned int i = 0; i < SR_count; i++)
+	    for (node_id_t i = 0; i < SR_count; i++)
 	    {
-            std::vector<unsigned int> clique = clique_vec.at(i);
+            std::vector<node_id_t> clique = clique_vec.at(i);
             Read superread = constructSuperread(clique, 0, tid);
             if (superread.is_paired()) {
                 if (superread.get_seq(1) != "" && superread.get_seq(2) != "") {
@@ -961,8 +961,8 @@ unsigned int SRBuilder::process_cliques(const std::vector< std::vector<unsigned 
         std::cout << "Writing results per thread to single_SR_vec / paired_SR_vec...\n";
     }
 //    std::cout << "m_largest_read_id " << fastq_storage->m_largest_read_id << "\n";
-    unsigned int size_singles = singles.size();
-    unsigned int size_pairs = pairs.size();
+    node_id_t size_singles = singles.size();
+    node_id_t size_pairs = pairs.size();
 //    writeSinglesToFile(singles, count);
 //    writePairsToFile(pairs, count);
     single_SR_vec.insert(single_SR_vec.end(), singles.begin(), singles.end());
@@ -989,26 +989,26 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
 	int singleton_count = 0;
 
 	std::ifstream cliquefile (PATH + "cliques.txt");
-    const unsigned int cliques_per_vec = 10000000;
+    const unsigned long int cliques_per_vec = 10000000;
     if (cliquefile.is_open()) {
         std::stringstream ss;
         std::string cliqueline;
-        std::vector< std::vector< unsigned int> > SR_clique_vec;
-        unsigned int totalcount = 0;
-        unsigned int SRcount = 0;
+        std::vector< std::vector< node_id_t> > SR_clique_vec;
+        node_id_t totalcount = 0;
+        node_id_t SRcount = 0;
         boost::dynamic_bitset<> bitvec(overlap_graph->getVertexCount());
         boost::dynamic_bitset<> used_nodes(overlap_graph->getVertexCount());
         while (getline(cliquefile, cliqueline)) {
             clique_count++;
-            std::vector< unsigned int> clique;
+            std::vector< node_id_t> clique;
             std::istringstream iss(cliqueline);
-            unsigned int node;
+            node_id_t node;
             while (iss >> node) { // this automatically filters out comment lines because they can't be written to int
                 clique.push_back(node);
             }
 
             if (program_settings.remove_multi_occ) { // filter out nodes that have occurred in previous cliques
-                std::vector< unsigned int > filtered_clique;
+                std::vector< node_id_t > filtered_clique;
                 for (auto node_it : clique) {
                     if (used_nodes[node_it] == 0) {
                         filtered_clique.push_back(node_it);
@@ -1066,15 +1066,15 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
 
         // mark vertices that appear in superreads
         std::deque<Read>::const_iterator it;
-        std::list<unsigned int>::const_iterator itv;
+        std::list<node_id_t>::const_iterator itv;
         for (it = single_SR_vec.begin(); it != single_SR_vec.end(); it++) {
-            std::list< unsigned int > clique = it->get_sorted_clique(0);
+            std::list< node_id_t > clique = it->get_sorted_clique(0);
             for (auto node : clique) {
                 bitvec[node] = 1;
             }
         }
         for (it = paired_SR_vec.begin(); it != paired_SR_vec.end(); it++) {
-            std::list< unsigned int > clique = it->get_sorted_clique(1);
+            std::list< node_id_t > clique = it->get_sorted_clique(1);
             for (auto node : clique) {
                 bitvec[node] = 1;
             }
@@ -1087,7 +1087,7 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
         writeSinglesToFile(single_SR_vec, count);
 
         // Run through bitvector of nodes: if not visited, add to trivial_SR_vec
-        for (unsigned int v = 0; v < (overlap_graph->getVertexCount()); v++) {
+        for (node_id_t v = 0; v < (overlap_graph->getVertexCount()); v++) {
             if (visited[v] == 0) {
                 read_id_t ID = (overlap_graph->vertex_to_read).at(v);
                 Read* read = fastq_storage->get_read(ID);
@@ -1141,7 +1141,7 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
                         trivial_SR_vec.push_back(rev_read);
                     }
                 }
-                nodes_to_new_IDs.insert(std::pair<unsigned int, read_id_t>(v, count)); // create a map from old IDs to new IDs
+                nodes_to_new_IDs.insert(std::pair<node_id_t, read_id_t>(v, count)); // create a map from old IDs to new IDs
                 count++;
             }
         }
@@ -1174,8 +1174,8 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
 
 	read_id_t count = 0;
 	std::vector< std::vector< node_id_t > > SR_merge_vec = overlap_graph->getEdgesForMerging();
-    unsigned int totalcount = SR_merge_vec.size();
-    unsigned int SRcount = process_cliques(SR_merge_vec, count);
+    node_id_t totalcount = SR_merge_vec.size();
+    node_id_t SRcount = process_cliques(SR_merge_vec, count);
     SR_merge_vec.clear();
     if (program_settings.verbose) {
         std::cout << "Total number of edges considered: " << totalcount << "\n";
@@ -1185,15 +1185,15 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
     // mark vertices that appear in superreads
     boost::dynamic_bitset<> bitvec(overlap_graph->getVertexCount());
     std::deque<Read>::const_iterator it;
-    std::list<unsigned int>::const_iterator itv;
+    std::list<node_id_t>::const_iterator itv;
     for (it = single_SR_vec.begin(); it != single_SR_vec.end(); it++) {
-        std::list< unsigned int > clique = it->get_sorted_clique(0);
+        std::list< node_id_t > clique = it->get_sorted_clique(0);
         for (auto node : clique) {
             bitvec[node] = 1;
         }
     }
     for (it = paired_SR_vec.begin(); it != paired_SR_vec.end(); it++) {
-        std::list< unsigned int > clique = it->get_sorted_clique(1);
+        std::list< node_id_t > clique = it->get_sorted_clique(1);
         for (auto node : clique) {
             bitvec[node] = 1;
         }
@@ -1204,7 +1204,7 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
     count = 0;
     writeSinglesToFile(single_SR_vec, count);
     // Run through bitvector of nodes: if not visited, add to trivial_SR_vec
-    for (unsigned int v = 0; v < (overlap_graph->getVertexCount()); v++) {
+    for (node_id_t v = 0; v < (overlap_graph->getVertexCount()); v++) {
         if (visited[v] == 0) {
             read_id_t ID = (overlap_graph->vertex_to_read).at(v);
             Read* read = fastq_storage->get_read(ID);
@@ -1220,14 +1220,14 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                                    // but since there are none also no overlaps will be added.
                 continue;
             }
-            else if (read->is_tip() && program_settings.store_tips_separately) {
+            else if (program_settings.ignore_inclusions && overlap_graph->inclusions[v] == 1) {
                 // corresponds to tip node in overlap graph
                 // store separately and eventually write sequences to fastq
                 visited[v] = 1;
                 tips_vec.push_back(*read);
                 continue;
             }
-            else if (program_settings.ignore_inclusions && overlap_graph->inclusions[v] == 1) {
+            else if (read->is_tip() && program_settings.store_tips_separately) {
                 // corresponds to tip node in overlap graph
                 // store separately and eventually write sequences to fastq
                 visited[v] = 1;
@@ -1272,7 +1272,7 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                     trivial_SR_vec.push_back(rev_read);
                 }
             }
-            nodes_to_new_IDs.insert(std::pair<unsigned int, read_id_t>(v, count)); // create a map from old IDs to new IDs
+            nodes_to_new_IDs.insert(std::pair<node_id_t, read_id_t>(v, count)); // create a map from old IDs to new IDs
             count++;
         }
     }

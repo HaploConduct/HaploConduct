@@ -26,7 +26,7 @@
 struct OverlapCandidate {
     Read* SR1;
     Read* SR2;
-    unsigned int common_node;
+    node_id_t common_node;
     read_id_t original_id;
 };
 
@@ -44,32 +44,32 @@ private:
     std::deque<Read> paired_SR_vec;
     std::deque<Read> trivial_SR_vec;
     std::deque<Read> tips_vec;
-    std::map<unsigned int, read_id_t> nodes_to_new_IDs; // dictionary to get from nodes to new IDs
+    std::map<node_id_t, read_id_t> nodes_to_new_IDs; // dictionary to get from nodes to new IDs
     std::string PATH;
     ProgramSettings program_settings;
     boost::dynamic_bitset<> visited;
     std::deque< std::vector< Read* > > nodes_to_SR;
-    unsigned int new_read_count; // including trivial superreads
+    node_id_t new_read_count; // including trivial superreads
 
     double phred_to_prob(const int phred);
-    int sort_vertices(std::vector<unsigned int> vertices, char type, unsigned int base_node, std::list<int> &pos_list, std::list<std::string> &seq_list, std::list<std::string> &qual_list, std::list<unsigned int> &sorted_vertices, int thread_id);
+    int sort_vertices(std::vector< node_id_t > vertices, char type, node_id_t base_node, std::list<int> &pos_list, std::list<std::string> &seq_list, std::list<std::string> &qual_list, std::list<node_id_t> &sorted_vertices, int thread_id);
     int consensus(int total_len, std::list<int> &pos_list, std::list<std::string> &seq_list, std::list<std::string> &qual_list, std::string &cons_seq, std::string &cons_qual, bool subreads_needed, bool error_correction);
     bool consensus_pos(std::string nucleotides, std::string qualities, std::string &cons_seq, std::string& cons_qual);
-    Read constructSuperread(std::vector<unsigned int> clique, read_id_t id, int thread_id);
-    unsigned int process_cliques(const std::vector< std::vector<unsigned int> >& clique_vec, read_id_t& count);
-    std::unordered_map< unsigned int, SubreadInfo > calcSubreadInfo(int trim_pos1, int trim_pos2, std::list<int> pos_list1, std::list<int> pos_list2, std::list<unsigned int> sorted_vertices1, std::list<unsigned int> sorted_vertices2);
+    Read constructSuperread(std::vector<node_id_t> clique, read_id_t id, int thread_id);
+    node_id_t process_cliques(const std::vector< std::vector<node_id_t> >& clique_vec, read_id_t& count);
+    std::unordered_map< node_id_t, SubreadInfo > calcSubreadInfo(int trim_pos1, int trim_pos2, std::list<int> pos_list1, std::list<int> pos_list2, std::list<node_id_t> sorted_vertices1, std::list<node_id_t> sorted_vertices2);
     void filter_subreads(int num, node_id_t base_node, std::list< node_id_t > & sorted_vertices, std::list<int> & pos_list, std::list< std::string > & seq_list, std::list< std::string > & qual_list, std::list<int> & new_pos_list, std::list< std::string> & new_seq_list, std::list< std::string > & new_qual_list);
     std::vector< node_id_t > sortVerticesByEndpos(std::vector< std::pair<node_id_t, int> > pairs);
     Read merge_self_overlap(Read superread, EdgeCalculator & edge_calculator);
 
     // FindNextOverlaps.cpp: induce overlaps from current edges
     std::vector< std::set< read_id_t > > overlaps_found;
-    void updateOverlap(Edge edge_info, unsigned int& copied_count, unsigned int& u2SR_count, unsigned int& v2SR_count, unsigned int& SR2SR_count, std::set< std::string >& overlap_set);
-    int findCliqueIndex(unsigned int node, Read* superread, bool leftside, bool second_occ);
+    void updateOverlap(Edge edge_info, edge_count_t& copied_count, edge_count_t& u2SR_count, edge_count_t& v2SR_count, edge_count_t& SR2SR_count, std::set< std::string >& overlap_set);
+    int findCliqueIndex(node_id_t node, Read* superread, bool leftside, bool second_occ);
     bool computeOverlapData(Read* superread1, Read* superread2, int idx1l, int idx1r, int idx2l, int idx2r, Edge edge, int &new_pos1, int &new_pos2, char &ord1, char &ord2, std::string &type1, std::string &type2, int& overlap_perc, int& overlap_len1, int& overlap_len2);
-    void processOverlaps(const std::vector<Edge>& edge_vec, unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set);
-    void reconsiderEdgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set);
-    void reconsiderNonedgeOverlaps(unsigned int& total_copied_count, unsigned int& total_u2SR_count, unsigned int& total_v2SR_count, unsigned int& total_SR2SR_count, std::set< std::string >& final_overlap_set);
+    void processOverlaps(const std::vector<Edge>& edge_vec, edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
+    void reconsiderEdgeOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
+    void reconsiderNonedgeOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
     // FindNextOverlaps2.cpp: induce overlaps from common sub-reads
     Overlap deduceOverlap(OverlapCandidate candidate);
     boost::dynamic_bitset<> buildBitvec(Read* superread);
@@ -77,7 +77,7 @@ private:
     void bitvecApproach();
     // FindNextOverlaps3.cpp: induce overlaps from common ORIGINAL reads
     Overlap getInducedOverlap(Read* SR1, Read* SR2);
-    void nodeDictApproach(std::unordered_map< read_id_t, unsigned int > original_to_index);
+    void nodeDictApproach(std::unordered_map< read_id_t, node_id_t > original_to_index);
     Overlap deduceOverlap(OverlapCandidate candidate, read_id_t original_id);
 
 public:
@@ -91,9 +91,9 @@ public:
 		PATH = ps.output_dir;
 		program_settings = ps;
 //		std::cout << "SRBuilder is being created.\n";
-        unsigned int V = overlap_graph->getVertexCount();
+        node_id_t V = overlap_graph->getVertexCount();
         if (program_settings.fno == 3) {
-            unsigned int s = program_settings.original_readcount;
+            node_id_t s = program_settings.original_readcount;
             nodes_to_SR = std::deque< std::vector< Read* >> (s, std::vector< Read*>());
         }
         else {
@@ -124,11 +124,11 @@ public:
     void findNextOverlaps3();
 
     // statistics for log file
-    unsigned int clique_count;
-    unsigned int SR_singles_count;
-    unsigned int SR_paired_count;
-    unsigned int SR_trivials_count;
-    unsigned int next_overlaps_count;
+    node_id_t clique_count;
+    node_id_t SR_singles_count;
+    node_id_t SR_paired_count;
+    node_id_t SR_trivials_count;
+    edge_count_t next_overlaps_count;
 };
 
 

@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
         ("ignore_inclusions", po::value< bool > (&program_settings.ignore_inclusions)->default_value(false), "set to true in order to ignore full inclusion overlaps")
         ("graph_only", po::value< bool > (&program_settings.graph_only)->default_value(false), "set to true when you only want to do the graph construction")
         ("FNO", po::value< int > (&program_settings.fno)->default_value(2), "set the FindNextOverlaps function desired")
-        ("original_readcount", po::value< unsigned int > (&program_settings.original_readcount), "the number of original reads")
+        ("original_readcount", po::value< node_id_t > (&program_settings.original_readcount), "the number of original reads")
         ("mismatch", po::value< double > (&program_settings.mismatch)->default_value(0), "minimal score per position in overlap")
         ("optimize", po::value< bool > (&program_settings.optimize)->default_value(true), "optimize FNO by not reconsidering non-edge overlaps")
         ("no_inclusion_overlaps", po::value< bool > (&program_settings.no_inclusions)->default_value(false), "do not add full inclusion overlaps")
@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 
     // Construct overlap graph and add a vertex for each read in fastq storage.
     t0 = get_timestamp();
-    unsigned int graph_size;
+    node_id_t graph_size;
     if (program_settings.add_duplicates) {
         graph_size = 2*(fastq_storage->get_readcount());
     }
@@ -243,14 +243,14 @@ int main(int argc, char *argv[])
     std::vector<Read *> read_vector = fastq_storage->m_read_vec; // contains all reads: first single-end, then paired-end
     for (auto read_iterator : read_vector){
         read_id_t id = read_iterator->get_read_id();
-        unsigned int vertex_id = overlap_graph->addVertex(id);
+        node_id_t vertex_id = overlap_graph->addVertex(id);
         read_iterator->set_vertex_id(/*normal=*/ true, vertex_id);
     }
 
     if (program_settings.add_duplicates) { // also add a vertex for each reverse complementary read
         for (auto read_iterator : read_vector) {
             read_id_t id = read_iterator->get_read_id();
-            unsigned int vertex_id = overlap_graph->addVertex(id);
+            node_id_t vertex_id = overlap_graph->addVertex(id);
             read_iterator->set_vertex_id(/*normal=*/ false, vertex_id);
         }
     }
@@ -289,11 +289,11 @@ int main(int argc, char *argv[])
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
 
-    // Remove transitive edges as specified by program settings, if any
-    overlap_graph->removeTransitiveEdges();
-
     // build a GFA file for analyzing the graph with Bandage
     overlap_graph->write2GFA(program_settings.output_dir + "graph.gfa");
+
+    // Remove transitive edges as specified by program settings, if any
+    overlap_graph->removeTransitiveEdges();
 
     overlap_graph->buildOriginalsDict();
     // Reduce branches in the graph by evaluating read evidence
@@ -320,7 +320,7 @@ int main(int argc, char *argv[])
     }
     // Find branches (remove if specified)
     if (program_settings.remove_branches) {
-        overlap_graph->removeTips();
+//        overlap_graph->removeTips();
         overlap_graph->removeBranches();
     }
     // else {
@@ -428,7 +428,8 @@ int main(int argc, char *argv[])
         overlapcount = std::to_string(count);
     }
     else if (program_settings.fno == 2) {
-        superread_builder->findNextOverlaps2();
+        std::cout << "FNO2 no longer supported, use FNO1 or FNO3" << std::endl;
+//        superread_builder->findNextOverlaps2();
         overlapcount = ".";
     }
     else {
