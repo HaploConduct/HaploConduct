@@ -25,8 +25,8 @@ private:
     bool m_is_paired; // indicates if paired-end read
     bool m_is_super; // indicates if superread
 	read_id_t m_read_id; // read identifier
-    unsigned int m_vertex_id_N; // vertex id in overlap graph, NORMAL ORIENTATION
-    unsigned int m_vertex_id_R; // vertex id in overlap graph, REVERSE ORIENTATION
+    node_id_t m_vertex_id_N; // vertex id in overlap graph, NORMAL ORIENTATION
+    node_id_t m_vertex_id_R; // vertex id in overlap graph, REVERSE ORIENTATION
 	std::string m_seq1, m_seq2; // nucleotide sequences (/1 and /2, respectively)
 	std::string m_phred1, m_phred2; // Phred scores (/1 and /2, respectively)
 	bool node_N_set;
@@ -34,11 +34,11 @@ private:
     bool m_is_tip;
 
     // only for superreads:
-    std::list< unsigned int > sorted_vertices1; // list of clique nodes ordered by index in superread for /1 seq
-    std::list< unsigned int > sorted_vertices2; // similar for /2 seq
+    std::list< node_id_t > sorted_vertices1; // list of clique nodes ordered by index in superread for /1 seq
+    std::list< node_id_t > sorted_vertices2; // similar for /2 seq
 //    std::set< read_id_t > original_read_set; // set containing all read IDs of ORIGINAL reads that are part of the superread
     std::unordered_map< read_id_t, OriginalIndex > original_read_indexes; // dict mapping ORIGINAL read IDs that are part of the superread to the corresponding index(es)
-    std::unordered_map< unsigned int, SubreadInfo > subreadMap; // dict mapping node to subread details
+    std::unordered_map< node_id_t, SubreadInfo > subreadMap; // dict mapping node to subread details
 
 //	std::list<unsigned int> m_clique_sorted1; // sorted clique (in current graph) corresponding to read indexes, given by read IDs, for /1 seq
 //	std::list<unsigned int> m_clique_sorted2; // similar for /2 seq
@@ -77,7 +77,7 @@ public:
         m_is_tip = true;
     }
 
-    void set_vertex_id(bool normal, unsigned int id) {
+    void set_vertex_id(bool normal, read_id_t id) {
         if (normal) {
             m_vertex_id_N = id;
             node_N_set = true;
@@ -96,7 +96,7 @@ public:
 		return m_read_id;
     }
 
-    unsigned int get_vertex_id(bool normal) const {
+    read_id_t get_vertex_id(bool normal) const {
         if (normal) {
             assert (node_N_set);
             return m_vertex_id_N;
@@ -234,7 +234,7 @@ public:
     }
 
     // only for superreads:
-	std::list< unsigned int > get_sorted_clique(int i) const {
+	std::list< node_id_t > get_sorted_clique(int i) const {
 	    assert (m_is_super);
 	    if (!m_is_paired) {
 	        assert (i == 0);
@@ -254,7 +254,7 @@ public:
 		}
     }
 
-    void set_sorted_clique(int i, std::list< unsigned int > sorted_clique) {
+    void set_sorted_clique(int i, std::list< node_id_t > sorted_clique) {
 	    assert (m_is_super);
 	    if (!m_is_paired) {
 	        assert (i == 0);
@@ -281,17 +281,17 @@ public:
 	    original_read_indexes = read_ids;
     }
 
-    void set_subread_map(std::unordered_map< unsigned int, SubreadInfo > map) {
+    void set_subread_map(std::unordered_map< node_id_t, SubreadInfo > map) {
 	    assert (m_is_super);
         subreadMap = map;
     }
 
-    std::unordered_map< unsigned int, SubreadInfo > get_subreadMap() {
+    std::unordered_map< node_id_t, SubreadInfo > get_subreadMap() {
         assert (m_is_super);
         return subreadMap;
     }
 
-    SubreadInfo get_subread_info(unsigned int node) const {
+    SubreadInfo get_subread_info(node_id_t node) const {
 	    assert (m_is_super);
         assert (!subreadMap.empty());
         if (subreadMap.find(node) == subreadMap.end()) {

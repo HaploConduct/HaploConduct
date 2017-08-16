@@ -80,7 +80,7 @@ public:
     boost::dynamic_bitset<> inclusions; // 1 if involved in inclusion
 
     // OverlapGraph.cpp: graph functions
-	unsigned int addVertex(read_id_t read_ID);
+	node_id_t addVertex(read_id_t read_ID);
     void addEdge(Edge edge);
     Edge removeEdge(node_id_t v, node_id_t w);
     double checkEdge(node_id_t v, node_id_t w, bool reverse_allowed=true);

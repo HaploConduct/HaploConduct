@@ -151,7 +151,7 @@ Edge OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
 double OverlapGraph::checkEdge(node_id_t v, node_id_t w, bool reverse_allowed) {
 //    std::cout << "In checkEdge()" << std::endl;
 	std::list< Edge >::const_iterator it;
-	if (!adj_out[v].empty()) {
+	if (!adj_out.at(v).empty()) {
 	    for (it = adj_out[v].begin(); it != adj_out[v].end(); it++) {
 		    if (it->get_vertex(2) == w) {
 		        assert (it->get_score() >= program_settings.edge_threshold || program_settings.merge_contigs);
@@ -160,7 +160,7 @@ double OverlapGraph::checkEdge(node_id_t v, node_id_t w, bool reverse_allowed) {
 	        }
 	    }
     }
-    if (reverse_allowed && !adj_out[w].empty()) {
+    if (reverse_allowed && !adj_out.at(w).empty()) {
 	    for (it = adj_out[w].begin(); it != adj_out[w].end(); it++) {
 		    if (it->get_vertex(2) == v) {
 		        assert (it->get_score() >= program_settings.edge_threshold || program_settings.merge_contigs);
