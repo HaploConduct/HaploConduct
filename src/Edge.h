@@ -28,8 +28,8 @@ private:
     Read* read1; // pointer to read corresponding to vertex1
     Read* read2; // pointer to read corresponding to vertex2
     char ord; // in case of PAIRED-PAIRED overlap denotes the read that comes first in overlap2
-    unsigned int vertex1; // out-vertex
-    unsigned int vertex2; // in-vertex
+    node_id_t vertex1; // out-vertex
+    node_id_t vertex2; // in-vertex
     int overlap_perc; // overlap percentage
     int overlap_len; // overlap length
     int overlap_len1; // overlap length of /1 read; overlap_len1 + overlap_len2 = overlap_len
@@ -122,12 +122,12 @@ public:
 
     double get_score() const { return score; }
 
-    void set_vertices(unsigned int v1, unsigned int v2) {
+    void set_vertices(node_id_t v1, node_id_t v2) {
         vertex1 = v1;
         vertex2 = v2;
     }
 
-    unsigned int get_vertex(int i) const {
+    node_id_t get_vertex(int i) const {
         assert (i == 1 || i == 2);
         if (i == 1) {
             return vertex1;
