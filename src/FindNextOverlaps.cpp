@@ -813,6 +813,80 @@ void SRBuilder::reconsiderNonedgeOverlaps(edge_count_t& total_copied_count, edge
 }
 
 
+void SRBuilder::findInclusionOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set) {
+    // deduce overlaps that have been missed due to inclusions
+    if (program_settings.verbose) {
+        std::cout << "findInclusionOverlaps...\n";
+    }
+    std::vector<Edge> edge_vec;
+    for (auto edge_list : overlap_graph->inclusion_edges) {
+        unsigned int l = edge_list.size();
+        for (unsigned int i=0; i<l; i++) {
+            for (unsigned int j=i+1; j<l; j++) {
+                Edge edge1 = edge_list.at(i);
+                Edge edge2 = edge_list.at(j);
+                double score = program_settings.edge_threshold; // overlap score
+                int pos1;
+                int pos2 = 0; // no PE-overlaps allowed
+                bool ori1; // 1 if NORMAL, 0 if REVERSE (vertex 1)
+                bool ori2; // similar for vertex 2
+                Read* read1; // pointer to read corresponding to vertex1
+                Read* read2; // pointer to read corresponding to vertex2
+                std::string ord = "-";
+                node_id_t node1;
+                node_id_t node2;
+                int len;
+                int perc;
+                // build induced edge
+                if (edge1.get_vertex(1) == edge2.get_vertex(1)) {
+                    continue; // irrelevant: does not induce edge u->v
+                }
+                else if (edge1.get_vertex(1) == edge2.get_vertex(2)) {
+                    node1 = edge2.get_vertex(1);
+                    node2 = edge1.get_vertex(2);
+                    read1 = edge2.get_read(1);
+                    read2 = edge1.get_read(2);
+                    pos1 = edge2.get_pos(1);
+                    ori1 = edge2.get_ori(1);
+                    ori2 = edge1.get_ori(2);
+                }
+                else if (edge1.get_vertex(2) == edge2.get_vertex(1)) {
+                    node1 = edge1.get_vertex(1);
+                    node2 = edge2.get_vertex(2);
+                    read1 = edge1.get_read(1);
+                    read2 = edge2.get_read(2);
+                    pos1 = edge1.get_pos(1);
+                    ori1 = edge1.get_ori(1);
+                    ori2 = edge2.get_ori(2);
+                }
+                else {
+                    assert (edge1.get_vertex(2) == edge2.get_vertex(2));
+                    continue; // irrelevant: does not induce edge u->v
+                }
+                // check if there are paired-end reads involved
+                if (read1->is_paired() || read2->is_paired()) {
+                    continue; // TODO: paired-end overlaps
+                }
+                len = std::min(read1->get_len()-pos1, read2->get_len());
+                perc = (int)floor(100 * len / std::min(read1->get_len(), read2->get_len()));
+                Edge new_edge(score, pos1, pos2, ori1, ori2, ord, read1, read2);
+                new_edge.set_vertices(node1, node2);
+                new_edge.set_perc(perc);
+                new_edge.set_len(len, 0);
+                if (overlap_graph->checkEdge(node1, node2, true) == -1) {
+                    // edge doesn't exist yet
+                    edge_vec.push_back(new_edge);
+                }
+            }
+        }
+    }
+    if (edge_vec.size() > 0) {
+        processOverlaps(edge_vec, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
+        edge_vec.clear();
+    }
+}
+
+
 unsigned long SRBuilder::findNextOverlaps() {
     if (program_settings.verbose) {
         std::cout << "findNextOverlaps...\n";
@@ -854,6 +928,11 @@ unsigned long SRBuilder::findNextOverlaps() {
         if (program_settings.verbose) {
             std::cout << "Old overlaps have been reconsidered...\n";
         }
+    }
+    findInclusionOverlaps(total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
+    if (program_settings.verbose) {
+        std::cout << "Edges missed due to inclusions have been deduced...\n";
+        std::cout << "Number of final overlaps: " << final_overlap_set.size() << std::endl;
     }
     std::set< std::string >::const_iterator it_ss;
     std::string filename = PATH + "overlaps.txt";

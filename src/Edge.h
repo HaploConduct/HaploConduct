@@ -66,7 +66,7 @@ public:
         mismatch_rate = mm_rate;
     }
 
-    double get_mismatch_rate() {
+    double get_mismatch_rate() const {
         assert ((mismatch_rate >= 0 && mismatch_rate <= 1) || mismatch_rate == -1);
         return mismatch_rate;
     }

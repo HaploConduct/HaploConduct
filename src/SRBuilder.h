@@ -70,6 +70,7 @@ private:
     void processOverlaps(const std::vector<Edge>& edge_vec, edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
     void reconsiderEdgeOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
     void reconsiderNonedgeOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
+    void findInclusionOverlaps(edge_count_t& total_copied_count, edge_count_t& total_u2SR_count, edge_count_t& total_v2SR_count, edge_count_t& total_SR2SR_count, std::set< std::string >& final_overlap_set);
     // FindNextOverlaps2.cpp: induce overlaps from common sub-reads
     Overlap deduceOverlap(OverlapCandidate candidate);
     boost::dynamic_bitset<> buildBitvec(Read* superread);

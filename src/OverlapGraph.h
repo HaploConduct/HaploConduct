@@ -78,6 +78,7 @@ public:
     std::vector<read_id_t> vertex_to_read; // get read id from vertex id
     boost::dynamic_bitset<> vertex_orientations; // 1 if forward, 0 if reverse
     boost::dynamic_bitset<> inclusions; // 1 if involved in inclusion
+    std::vector< std::vector< Edge > > inclusion_edges;
 
     // OverlapGraph.cpp: graph functions
 	node_id_t addVertex(read_id_t read_ID);
