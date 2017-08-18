@@ -45,18 +45,12 @@ void BranchReduction::readBasedBranchReduction() {
     std::set< node_id_t > branch_out;
     // find all branches in the graph and process one by one
     overlap_graph->findBranchfreeGraph(sorted_adj_in, sorted_adj_out, branch_in, branch_out);
-    std::list< node_pair_t > edges_to_remove;
-    // std::vector< std::list< node_id_t > > final_branch_in;
-    // std::vector< std::list< node_id_t > > final_branch_out;
-    // for (unsigned int i=0; i < overlap_graph->getVertexCount(); i++) {
-    //     final_branch_in.push_back(std::list< node_id_t >());
-    //     final_branch_in.push_back(std::list< node_id_t >());
-    // }
+    std::list< Edge > missing_edges;
     std::vector< std::list< node_id_t > > final_branch_in (overlap_graph->getVertexCount(), std::list< node_id_t >());
     for (auto node : branch_in) {
         bool outbranch = false;
         std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
-            edges_to_remove, outbranch);
+            missing_edges, outbranch);
         if (!branch.empty()) {
             final_branch_in.at(node) = branch;
         }
@@ -65,15 +59,22 @@ void BranchReduction::readBasedBranchReduction() {
     for (auto node : branch_out) {
         bool outbranch = true;
         std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
-            edges_to_remove, outbranch);
+            missing_edges, outbranch);
         if (!branch.empty()) {
             final_branch_out.at(node) = branch;
         }
     }
-    // find branching components and build list of branching edges with
-    // insufficient UNIQUE evidence
-    findBranchingComponents(final_branch_in, final_branch_out);
+    // add missing edges to vector of removed branching edges, to ensure that
+    // they will be found in the next iteration
+    for (auto edge : missing_edges) {
+        overlap_graph->branching_edges.push_back(edge);
+    }
+    // find branching components; components with false branches (i.e. missing edges)
+    // are skipped automatically and all edges removed
+    std::list< node_pair_t > edges_to_remove;
+    findBranchingComponents(final_branch_in, final_branch_out, edges_to_remove);
     std::cout << "Final evidence_per_edge.size() = " << evidence_per_edge.size() << std::endl;
+    // select UNIQUE evidence and add edges with insufficient evidence to edges_to_remove
     for (auto component : branching_components) {
         countUniqueEvidence(component, edges_to_remove);
     }
@@ -94,7 +95,7 @@ void BranchReduction::readBasedBranchReduction() {
 }
 
 std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
-        std::list< node_pair_t > & edges_to_remove, bool outbranch) {
+        std::list< Edge > & missing_edges, bool outbranch) {
 //    std::cout << "findBranchingEvidence" << std::endl;
     assert (neighbors.size() > 1);
     std::list< node_id_t > final_branch (neighbors.begin(), neighbors.end());
@@ -103,10 +104,10 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
     std::vector< std::string > sequence_vec;
     std::vector< int > startpos_vec;
     std::list< int > diff_list;
-    std::vector< node_pair_t > missing_edges;
+    std::vector< node_pair_t > missing_inclusion_edges;
     std::vector< node_id_t > neighbors_vec(neighbors.begin(), neighbors.end());
     if (outbranch) {
-        diff_list = buildDiffListOut(node1, neighbors_vec, sequence_vec, startpos_vec, missing_edges);
+        diff_list = buildDiffListOut(node1, neighbors_vec, sequence_vec, startpos_vec, missing_inclusion_edges, missing_edges);
     }
     else {
         diff_list = buildDiffListIn(node1, neighbors_vec, sequence_vec, startpos_vec, missing_edges);
@@ -167,27 +168,32 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
             if (result2) {
                 read_id_t joint_id = program_settings.original_readcount + std::min(subread_id, subread_id_PE);
                 evidence_list.push_back(joint_id);
+                std::cout << "paired evidence found!" << std::endl;
             }
         }
         evidence_list.sort();
         evidence_list.unique();
         evidence_per_neighbor.insert(std::make_pair(node2, evidence_list));
     }
-    // take care of 'missing edges' by removing all edges from 'missing branches'
-    for (auto node_pair : missing_edges) {
-        // remove evidence from node2
-        evidence_per_neighbor.at(node_pair.second).clear();
-        final_branch.remove(node_pair.second);
-        // identify newly created branches and remove corresponding edges;
-        // these branches will be resolved at a next iteration of ViralQuasispecies
-        node_id_t outnode = node_pair.first;
-        node_id_t innode = node_pair.second;
-        for (auto out_edge : overlap_graph->adj_out.at(outnode)) {
-            edges_to_remove.push_back(std::make_pair(outnode, out_edge.get_vertex(2)));
+    // take care of 'missing edges' due to inclusions
+    for (auto node_pair : missing_inclusion_edges) {
+        evidence_per_neighbor.at(node_pair.first).clear();
+        if (neighbors.size() == 2) { // no actual branch
+            final_branch.clear();
         }
-        for (auto in_edge : overlap_graph->adj_in.at(innode)) {
-            edges_to_remove.push_back(std::make_pair(in_edge, innode));
+        else { // real branch, only remove inclusion node
+            final_branch.remove(node_pair.first);
         }
+        // // identify newly created branches and remove corresponding edges;
+        // // these branches will be resolved at a next iteration of ViralQuasispecies
+        // node_id_t outnode = node_pair.first;
+        // node_id_t innode = node_pair.second;
+        // for (auto out_edge : overlap_graph->adj_out.at(outnode)) {
+        //     edges_to_remove.push_back(std::make_pair(outnode, out_edge.get_vertex(2)));
+        // }
+        // for (auto in_edge : overlap_graph->adj_in.at(innode)) {
+        //     edges_to_remove.push_back(std::make_pair(in_edge, innode));
+        // }
     }
     // store evidence in evidence_per_edge vector (private class member)
     std::list< node_id_t >::const_iterator branch_it = final_branch.begin();
@@ -234,10 +240,12 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
         std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
         std::vector< int > & startpos_vec,
-        std::vector< node_pair_t > & missing_edges) {
+        std::vector< node_pair_t > & missing_inclusion_edges,
+        std::list< Edge > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
 //    std::cout << "buildDiffListOut" << std::endl;
     std::list< int > diff_list;
+    std::vector< Edge* > edge_vec;
     for (auto node : neighbors) {
         Edge* edge = overlap_graph->getEdgeInfo(node1, node, /*reverse_allowed*/ false);
         int pos = edge->get_pos(1);
@@ -246,6 +254,7 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
         std::string sequence = read->get_seq(0);
         sequence_vec.push_back(sequence);
         startpos_vec.push_back(pos);
+        edge_vec.push_back(edge);
     }
     // do all pairwise sequence comparisons until a difference is found;
     /* note: could be done more efficiently by evaluating all sequences in one
@@ -271,7 +280,8 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
             assert (node_i != node_j);
             if (pos_i < pos_j) {
                 relative_pos = pos_j - pos_i;
-                if (relative_pos >= int(seq_i.size())) {
+                if (relative_pos > int(seq_i.size() - program_settings.min_overlap_len)) {
+                    missing_inclusion_edges.push_back(std::make_pair(node_i, node_j));
                     continue;
                 }
                 len = std::min(seq_i.size()-relative_pos, seq_j.size());
@@ -282,7 +292,8 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
             }
             else {
                 relative_pos = pos_i - pos_j;
-                if (relative_pos >= int(seq_j.size())) {
+                if (relative_pos > int(seq_j.size() - program_settings.min_overlap_len)) {
+                    missing_inclusion_edges.push_back(std::make_pair(node_j, node_i));
                     continue;
                 }
                 len = std::min(seq_j.size()-relative_pos, seq_i.size());
@@ -296,19 +307,44 @@ std::list< int > BranchReduction::buildDiffListOut(node_id_t node1,
                 diff_list.push_back(pos + startpos);
             }
             if (diff_pos.empty()) {
-                // identical overlap -> add corresponding edge
-                if (pos_i == pos_j && node_i < node_j) {
-                    missing_edges.push_back(std::make_pair(node_i, node_j));
-                }
-                else if (pos_i == pos_j && node_i > node_j) {
-                    missing_edges.push_back(std::make_pair(node_j, node_i));
-                }
-                else if (pos_i < pos_j) {
-                    missing_edges.push_back(std::make_pair(node_i, node_j));
+                // identical overlap -> add corresponding edge; NOTE: this should hardly occur!
+                double score = program_settings.edge_threshold; // overlap score
+                int pos1 = relative_pos;
+                int pos2 = 0; // no PE-overlaps allowed
+                bool ori1; // 1 if NORMAL, 0 if REVERSE (vertex 1)
+                bool ori2; // similar for vertex 2
+                Read* read1; // pointer to read corresponding to vertex1
+                Read* read2; // pointer to read corresponding to vertex2
+                std::string ord = "-";
+                node_id_t vertex1; // out-vertex
+                node_id_t vertex2; // in-vertex
+                int overlap_perc = (int)floor(100 * len / std::min(seq_i.size(), seq_j.size())) ;
+
+                if (pos_i < pos_j || (pos_i == pos_j && node_i < node_j)) {
+                    // node_i first
+                    ori1 = edge_vec.at(i)->get_ori(2);
+                    ori2 = edge_vec.at(j)->get_ori(2);
+                    read1 = edge_vec.at(i)->get_read(2);
+                    read2 = edge_vec.at(j)->get_read(2);
+                    vertex1 = node_i;
+                    vertex2 = node_j;
                 }
                 else {
-                    missing_edges.push_back(std::make_pair(node_j, node_i));
+                    // node_j first
+                    ori1 = edge_vec.at(j)->get_ori(2);
+                    ori2 = edge_vec.at(i)->get_ori(2);
+                    read1 = edge_vec.at(j)->get_read(2);
+                    read2 = edge_vec.at(i)->get_read(2);
+                    vertex1 = node_j;
+                    vertex2 = node_i;
                 }
+                Edge new_edge(score, pos1, pos2, ori1, ori2, ord, read1, read2);
+                new_edge.set_vertices(vertex1, vertex2);
+                new_edge.set_perc(overlap_perc);
+                new_edge.set_len(len, 0);
+                missing_edges.push_back(new_edge);
+                // mark node as false out branch
+                false_out_branches.insert(node1);
             }
         }
     }
@@ -322,11 +358,12 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
         std::vector< node_id_t > neighbors,
         std::vector< std::string > & sequence_vec,
         std::vector< int > & startpos_vec,
-        std::vector< node_pair_t > & missing_edges) {
+        std::list< Edge > & missing_edges) {
     // build a list of all FIRST difference positions between any pair of branch sequences
 //    std::cout << "buildDiffListIn" << std::endl;
     std::list< int > diff_list;
     std::vector< int > pos_vec;
+    std::vector< Edge* > edge_vec;
     for (auto node : neighbors) {
         Edge* edge = overlap_graph->getEdgeInfo(node, node1, /*reverse_allowed*/ false);
         int pos = edge->get_pos(1);
@@ -335,6 +372,7 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
         std::string sequence = read->get_seq(0);
         sequence_vec.push_back(sequence);
         pos_vec.push_back(pos);
+        edge_vec.push_back(edge);
     }
     /* since we are dealing wint an in-branch, we need to infer the startpos_vec entries
         once we have those positions, we can proceed similar to the out-branch case,
@@ -367,9 +405,7 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
             pos_j = startpos_vec.at(j);
             if (pos_i < pos_j) {
                 relative_pos = pos_j - pos_i;
-                if (relative_pos >= int(seq_i.size())) {
-                    continue;
-                }
+                assert (relative_pos <= int(seq_i.size() - program_settings.min_overlap_len)); // in-branches can't be the result of inclusions
                 len = std::min(seq_i.size()-relative_pos, seq_j.size());
                 subseq_i = seq_i.substr(relative_pos, len);
                 subseq_j = seq_j.substr(0, len);
@@ -380,9 +416,7 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
             }
             else {
                 relative_pos = pos_i - pos_j;
-                if (relative_pos >= int(seq_j.size())) {
-                    continue;
-                }
+                assert (relative_pos <= int(seq_j.size() - program_settings.min_overlap_len)); // in-branches can't be the result of inclusions
                 len = std::min(seq_j.size()-relative_pos, seq_i.size());
                 subseq_i = seq_i.substr(0, len);
                 subseq_j = seq_j.substr(relative_pos, len);
@@ -396,19 +430,44 @@ std::list< int > BranchReduction::buildDiffListIn(node_id_t node1,
                 diff_list.push_back(len - pos + startpos);
             }
             if (diff_pos.empty()) {
-                // identical overlap -> add corresponding edge
-                if (pos_i == pos_j && node_i < node_j) {
-                    missing_edges.push_back(std::make_pair(node_i, node_j));
-                }
-                else if (pos_i == pos_j && node_i > node_j) {
-                    missing_edges.push_back(std::make_pair(node_j, node_i));
-                }
-                else if (pos_i < pos_j) {
-                    missing_edges.push_back(std::make_pair(node_i, node_j));
+                // identical overlap -> add corresponding edge; NOTE: this should hardly occur!
+                double score = program_settings.edge_threshold; // overlap score
+                int pos1 = relative_pos;
+                int pos2 = 0; // no PE-overlaps allowed
+                bool ori1; // 1 if NORMAL, 0 if REVERSE (vertex 1)
+                bool ori2; // similar for vertex 2
+                Read* read1; // pointer to read corresponding to vertex1
+                Read* read2; // pointer to read corresponding to vertex2
+                std::string ord = "-";
+                node_id_t vertex1; // out-vertex
+                node_id_t vertex2; // in-vertex
+                int overlap_perc = (int)floor(100 * len / std::min(seq_i.size(), seq_j.size()));
+
+                if (pos_i < pos_j || (pos_i == pos_j && node_i < node_j)) {
+                    // node_i first
+                    ori1 = edge_vec.at(i)->get_ori(1);
+                    ori2 = edge_vec.at(j)->get_ori(1);
+                    read1 = edge_vec.at(i)->get_read(1);
+                    read2 = edge_vec.at(j)->get_read(1);
+                    vertex1 = node_i;
+                    vertex2 = node_j;
                 }
                 else {
-                    missing_edges.push_back(std::make_pair(node_j, node_i));
+                    // node_j first
+                    ori1 = edge_vec.at(j)->get_ori(1);
+                    ori2 = edge_vec.at(i)->get_ori(1);
+                    read1 = edge_vec.at(j)->get_read(1);
+                    read2 = edge_vec.at(i)->get_read(1);
+                    vertex1 = node_j;
+                    vertex2 = node_i;
                 }
+                Edge new_edge(score, pos1, pos2, ori1, ori2, ord, read1, read2);
+                new_edge.set_vertices(vertex1, vertex2);
+                new_edge.set_perc(overlap_perc);
+                new_edge.set_len(len, 0);
+                missing_edges.push_back(new_edge);
+                // also mark branch node as false
+                false_in_branches.insert(node1);
             }
         }
     }
@@ -478,7 +537,8 @@ bool BranchReduction::checkReadEvidence(std::string contig, int startpos, std::s
 }
 
 void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t > > final_branch_in,
-    std::vector< std::list< node_id_t > > final_branch_out) {
+    std::vector< std::list< node_id_t > > final_branch_out,
+    std::list< node_pair_t > & edges_to_remove) {
     // find all branching components by following in-branches connected to out-branches
     // and vice versa
     std::cout << "findBranchingComponents" << std::endl;
@@ -513,13 +573,20 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
         }
         std::list< node_id_t > neighbors = branch.second;
         std::vector< node_pair_t > new_component;
+        bool has_false_branch;
+        if (false_in_branches.find(node) != false_in_branches.end()) {
+            has_false_branch = true;
+        }
+        else {
+            has_false_branch = false;
+        }
         for (auto in_neighbor : neighbors) {
             assert (node != in_neighbor);
             node_pair_t node_pair = std::make_pair(in_neighbor, node);
             new_component.push_back(node_pair);
         }
         visited_in_branches.at(node) = true;
-        extendComponentOut(new_component, neighbors, visited_in_branches,
+        extendComponentOut(new_component, neighbors, has_false_branch, visited_in_branches,
             visited_out_branches, branch_in_map, branch_out_map);
         std::sort(new_component.begin(), new_component.end(),
             [](node_pair_t pair1, node_pair_t pair2) {
@@ -532,7 +599,16 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
             });
         auto end_it = std::unique(new_component.begin(), new_component.end());
         new_component.resize(std::distance(new_component.begin(), end_it));
-        branching_components.push_back(new_component);
+        if (has_false_branch) {
+            // component contains a false branch due to a missing edge;
+            // remove entire component and add missing edge at next iteration
+            for (auto node_pair : new_component) {
+                edges_to_remove.push_back(node_pair);
+            }
+        }
+        else {
+            branching_components.push_back(new_component);
+        }
     }
     // process remaining out-branches; since we already did all in-branches, the
     // remaining components are trivial
@@ -548,14 +624,21 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
             node_pair_t node_pair = std::make_pair(node, out_neighbor);
             new_component.push_back(node_pair);
         }
-        branching_components.push_back(new_component);
+        if (false_out_branches.find(node) != false_out_branches.end()) {
+            for (auto node_pair : new_component) {
+                edges_to_remove.push_back(node_pair);
+            }
+        }
+        else {
+            branching_components.push_back(new_component);
+        }
         visited_out_branches.at(node) = true;
     }
     return;
 }
 
 void BranchReduction::extendComponentOut(std::vector< node_pair_t > & component,
-    std::list< node_id_t > neighbors,
+    std::list< node_id_t > neighbors, bool & has_false_branch,
     std::unordered_map< node_id_t, bool > & visited_in_branches,
     std::unordered_map< node_id_t, bool > & visited_out_branches,
     std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
@@ -567,6 +650,9 @@ void BranchReduction::extendComponentOut(std::vector< node_pair_t > & component,
         if (visited == visited_out_branches.end() || visited->second == true) {
             continue;
         }
+        if (false_out_branches.find(node) != false_out_branches.end()) {
+            has_false_branch = true;
+        }
         std::list< node_id_t > branch = branch_out_map.at(node);
         for (auto out_neighbor : branch) {
             assert (node != out_neighbor);
@@ -574,14 +660,14 @@ void BranchReduction::extendComponentOut(std::vector< node_pair_t > & component,
             component.push_back(node_pair);
         }
         visited_out_branches.at(node) = true;
-        extendComponentIn(component, branch, visited_in_branches,
+        extendComponentIn(component, branch, has_false_branch, visited_in_branches,
             visited_out_branches, branch_in_map, branch_out_map);
     }
     return;
 }
 
 void BranchReduction::extendComponentIn(std::vector< node_pair_t > & component,
-    std::list< node_id_t > neighbors,
+    std::list< node_id_t > neighbors, bool & has_false_branch,
     std::unordered_map< node_id_t, bool > & visited_in_branches,
     std::unordered_map< node_id_t, bool > & visited_out_branches,
     std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
@@ -593,6 +679,9 @@ void BranchReduction::extendComponentIn(std::vector< node_pair_t > & component,
         if (visited == visited_in_branches.end() || visited->second == true) {
             continue;
         }
+        if (false_in_branches.find(node) != false_in_branches.end()) {
+            has_false_branch = true;
+        }
         std::list< node_id_t > branch = branch_in_map.at(node);
         for (auto in_neighbor : branch) {
             assert (node != in_neighbor);
@@ -600,7 +689,7 @@ void BranchReduction::extendComponentIn(std::vector< node_pair_t > & component,
             component.push_back(node_pair);
         }
         visited_in_branches.at(node) = true;
-        extendComponentOut(component, branch, visited_in_branches,
+        extendComponentOut(component, branch, has_false_branch, visited_in_branches,
             visited_out_branches, branch_in_map, branch_out_map);
     }
     return;

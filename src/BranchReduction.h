@@ -16,6 +16,7 @@
 #include <set>
 #include <iostream>
 #include <algorithm>
+#include <unordered_set>
 
 #include "Overlap.h"
 #include "Types.h"
@@ -36,15 +37,17 @@ private:
     int min_evidence;
     std::vector< std::vector< node_pair_t > > branching_components;
     std::unordered_map< safe_edge_count_t, std::list< read_id_t > > evidence_per_edge;
+    std::unordered_set< node_id_t > false_in_branches;
+    std::unordered_set< node_id_t > false_out_branches;
     // functions BranchReduction.cpp
     void extendComponentOut(std::vector< node_pair_t > & component,
-        std::list< node_id_t > neighbors,
+        std::list< node_id_t > neighbors, bool & has_false_branch,
         std::unordered_map< node_id_t, bool > & visited_in_branches,
         std::unordered_map< node_id_t, bool > & visited_out_branches,
         std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
         std::unordered_map< node_id_t, std::list< node_id_t > > & branch_out_map);
     void extendComponentIn(std::vector< node_pair_t > & component,
-        std::list< node_id_t > neighbors,
+        std::list< node_id_t > neighbors, bool & has_false_branch,
         std::unordered_map< node_id_t, bool > & visited_in_branches,
         std::unordered_map< node_id_t, bool > & visited_out_branches,
         std::unordered_map< node_id_t, std::list< node_id_t > > & branch_in_map,
@@ -71,22 +74,24 @@ public:
     // BranchReduction.cpp
     void readBasedBranchReduction();
     std::list< node_id_t > findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
-            std::list< node_pair_t > & edges_to_remove,
+            std::list< Edge > & missing_edges,
             bool outbranch);
     std::list< int > buildDiffListOut(node_id_t node1,
             std::vector< node_id_t > neighbors,
             std::vector< std::string > & sequence_vec,
             std::vector< int > & startpos_vec,
-            std::vector< node_pair_t > & missing_edges);
+            std::vector< node_pair_t > & missing_inclusion_edges,
+            std::list< Edge > & missing_edges);
     std::list< int > buildDiffListIn(node_id_t node1,
             std::vector< node_id_t > neighbors,
             std::vector< std::string > & sequence_vec,
             std::vector< int > & startpos_vec,
-            std::vector< node_pair_t > & missing_edges);
+            std::list< Edge > & missing_edges);
     std::vector< int > findDiffPos(std::string seq1, std::string seq2);
     bool checkReadEvidence(std::string contig, int startpos, std::string read, int index, std::list< int > diff_list);
     void findBranchingComponents(std::vector< std::list< node_id_t > > final_branch_in,
-        std::vector< std::list< node_id_t > > final_branch_out);
+        std::vector< std::list< node_id_t > > final_branch_out,
+        std::list< node_pair_t > & edges_to_remove);
     void countUniqueEvidence(std::vector< node_pair_t > component,
         std::list< node_pair_t > & edges_to_remove);
     bool compareNodepairs (node_pair_t pair1, node_pair_t pair2);
