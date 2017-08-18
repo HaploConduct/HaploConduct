@@ -404,7 +404,7 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
             if (edge.get_score() > program_settings.edge_threshold) {
                 edges_this_thread.push_back(edge); // add edge to vector
             }
-            else if (edge.get_mismatch_rate() != -1 && edge.get_mismatch_rate() < program_settings.merge_contigs) {
+            else if (edge.get_mismatch_rate() != -1 && edge.get_mismatch_rate() <= program_settings.merge_contigs) {
                 edges_this_thread.push_back(edge);
             }
             else if (edge.get_score() > program_settings.ov_threshold && edge.get_mismatch_rate() != -1) {
