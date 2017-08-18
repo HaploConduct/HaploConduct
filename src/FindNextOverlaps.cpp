@@ -623,7 +623,8 @@ void SRBuilder::reconsiderEdgeOverlaps(edge_count_t& total_copied_count, edge_co
     }
     // also reconsider the tips/branching edges that were removed without
     // checking for evidence (i.e. if minimum evidence = 0)
-    if (program_settings.branch_min_ev == 0) {
+//    if (program_settings.branch_min_ev == 0) {
+    if (true) {
         std::vector< Edge > additional_edges = overlap_graph->branching_edges;
         processOverlaps(additional_edges, total_copied_count, total_u2SR_count, total_v2SR_count, total_SR2SR_count, final_overlap_set);
     }
