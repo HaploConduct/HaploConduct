@@ -154,6 +154,9 @@ double OverlapGraph::checkEdge(node_id_t v, node_id_t w, bool reverse_allowed) {
 	if (!adj_out.at(v).empty()) {
 	    for (it = adj_out[v].begin(); it != adj_out[v].end(); it++) {
 		    if (it->get_vertex(2) == w) {
+                if (!(it->get_score() >= program_settings.edge_threshold || program_settings.merge_contigs)) {
+                    std::cout << "score " << it->get_score() << std::endl;
+                }
 		        assert (it->get_score() >= program_settings.edge_threshold || program_settings.merge_contigs);
 //  		    std::cout << "Edge found" << std::endl;
 			    return it->get_score();
