@@ -20,19 +20,19 @@ Otherwise, make sure PE_count = 0.
 
 APPROACH:
 Identify all branches in the graph and for every branch u->(v_0,...,v_k):
-1. Compute a list of all FIRST difference positions between any pair of
+1. Compute a list of all FIRST k difference positions between any pair of
     branch sequences --> diff_list
 2. For all i, find all common subreads between u and v_i, where PE read IDs from
     the same fragment are considered identical (i.e. modulo #PE). For all common
     subreads, check if the corresponding sequence is identical to the contig
     sequence at all positions of diff_list. If so, add to the "evidence set" of
     edge i.
-3. Compute the shared evidence set, which is the intersection of evidence sets
-    of all edges.
-4. For all i, compute the relative evidence set by removing all initial reads
-    appearing in the shared evidence set
-5. If the maximal relative evidence is greater that the given threshold, remove
-    all branching edges that do not have sufficient evidence.
+3. Find all branching components by following in-branches connected to
+    out-branches and vice versa.
+4. For every component, take the intersection of evidence for edges which appear
+    twice (once an in-branch, once an out-branch). Then compute the unique
+    evidence set per edge by comparing evidence from all edges in the component.
+5. Remove all branching edges that do not have sufficient unique evidence.
 */
 
 void BranchReduction::readBasedBranchReduction() {
