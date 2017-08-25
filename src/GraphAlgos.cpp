@@ -48,10 +48,13 @@ void OverlapGraph::reduceDiploidBranching() {
     /* Reduce the number of branches in the overlap graph using the fact that
        the assembly should be diploid. */
     std::vector< std::list< node_id_t > > unique_out_extensions;
+    int min_diploid_overlap = 30;
     // find all uniquely out-extending edges
     for (auto adj_list : adj_out) {
         // if out-degree = 1 -> keep edge
-        if (adj_list.size() == 1) {
+        if (adj_list.size() == 1
+                && adj_list.front().get_len(0) >= min_diploid_overlap
+                && adj_list.front().get_mismatch_rate() < 0.000001) {
             Edge edge = adj_list.front();
             node_id_t outneighbor = edge.get_vertex(2);
             unique_out_extensions.push_back(std::list< node_id_t >{outneighbor});
