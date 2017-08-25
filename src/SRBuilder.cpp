@@ -656,7 +656,7 @@ Read SRBuilder::constructSuperread(std::vector< node_id_t > clique, read_id_t id
     assert (clique.size() > 1);
     // sort clique
     std::sort(clique.begin(), clique.end());
-//  std::cout << "constructSuperread\n";
+//    std::cout << "constructSuperread\n";
     // 1. Determine the superread type and find a base read:
     //     Superread is single-end iff any of its subreads is single-end; in this case
     //     we use a single-end subreads as base read. If the superread is paired-end,
@@ -748,16 +748,29 @@ Read SRBuilder::constructSuperread(std::vector< node_id_t > clique, read_id_t id
     std::unordered_map< node_id_t, SubreadInfo > subreads_map = calcSubreadInfo(trim_pos1, trim_pos2, pos_list1, pos_list2, sorted_vertices1, sorted_vertices2);
 
     std::unordered_map< read_id_t, OriginalIndex > original_reads;
+    // update existing subread (originals) indexes
     for (auto node_it : clique) {
-        read_id_t ID = (overlap_graph->vertex_to_read).at(node_it);
-        if (!program_settings.first_it) { // update existing subread (originals) indexes
-            std::unordered_map< read_id_t, OriginalIndex > subreads = (overlap_graph->original_ID_dict).at(ID);
-            SubreadInfo sub_info = subreads_map.at(node_it);
-            int idx1 = sub_info.index1 - sub_info.startpos1;
-            int idx2 = sub_info.index2 - sub_info.startpos2;
-            for (auto it : subreads) {
-                read_id_t original_ID = it.first;
-                OriginalIndex original_index = it.second;
+        read_id_t subID = (overlap_graph->vertex_to_read).at(node_it);
+        Read* subread_ptr = fastq_storage->get_read(subID);
+        bool forward = (overlap_graph->getOrientation(node_it));
+        std::unordered_map< read_id_t, OriginalIndex > subreads = (overlap_graph->original_ID_dict).at(subID);
+        SubreadInfo sub_info = subreads_map.at(node_it);
+        int idx1 = sub_info.index1 - sub_info.startpos1;
+        int idx2 = sub_info.index2 - sub_info.startpos2;
+        for (auto it : subreads) {
+            read_id_t original_ID = it.first;
+            if (original_reads.find(original_ID) != original_reads.end()) {
+                continue; // subread already inserted by other node
+            }
+            OriginalIndex original_index = it.second;
+            original_index.forward = (original_index.forward == forward);
+            if (program_settings.first_it) {
+                original_index.index1 = idx1;
+                if (original_index.is_paired) {
+                    original_index.index2 = idx2;
+                }
+            }
+            else if (forward) {
                 original_index.index1 += idx1;
                 if (original_index.is_paired) {
                     if (sub_info.index2 >= 0) {
@@ -767,24 +780,66 @@ Read SRBuilder::constructSuperread(std::vector< node_id_t > clique, read_id_t id
                         original_index.index2 += idx1;
                     }
                 }
-                original_reads.insert(std::make_pair(original_ID, original_index));
             }
+            else {
+                if (original_index.is_paired) {
+                    if (subread_ptr->is_paired()) {
+                        original_index.index1 = subread_ptr->get_seq(1).size() + idx1 - (original_index.len1 + original_index.index1);
+                        if (len2 > 0 || sub_info.index2 >= 0) {
+                            original_index.index2 = subread_ptr->get_seq(2).size() + idx2 - (original_index.len2 + original_index.index2);
+                        }
+                        else {
+                            original_index.index2 = subread_ptr->get_seq(2).size() + idx1 - (original_index.len2 + original_index.index2);
+                        }
+                    }
+                    else {
+                        original_index.index1 = subread_ptr->get_seq(0).size() + idx1 - (original_index.len1 + original_index.index1);
+                        original_index.index2 = subread_ptr->get_seq(0).size() + idx1 - (original_index.len2 + original_index.index2);
+                    }
+                }
+                else {
+                    original_index.index1 = subread_ptr->get_seq(0).size() + idx1 - (original_index.len1 + original_index.index1);
+
+                }
+            }
+            original_reads.insert(std::make_pair(original_ID, original_index));
         }
-        else { // create original subread index information
-            SubreadInfo sub_info = subreads_map.at(node_it);
-            OriginalIndex original_index;
-            if (sub_info.index2 == -1) { // single-end read
-                original_index.is_paired = 0;
-                original_index.index1 = sub_info.index1 - sub_info.startpos1;
-            }
-            else { // paired-end read
-                assert (sub_info.index2 >= 0);
-                original_index.is_paired = 1;
-                original_index.index1 = sub_info.index1 - sub_info.startpos1;
-                original_index.index2 = sub_info.index2 - sub_info.startpos2;
-            }
-            original_reads.insert(std::make_pair(ID, original_index)); // at first iteration all subreads are trivial
-        }
+        // if (!program_settings.first_it) { // update existing subread (originals) indexes
+        //     std::unordered_map< read_id_t, OriginalIndex > subreads = (overlap_graph->original_ID_dict).at(ID);
+        //     SubreadInfo sub_info = subreads_map.at(node_it);
+        //     int idx1 = sub_info.index1 - sub_info.startpos1;
+        //     int idx2 = sub_info.index2 - sub_info.startpos2;
+        //     for (auto it : subreads) {
+        //         read_id_t original_ID = it.first;
+        //         OriginalIndex original_index = it.second;
+        //         original_index.index1 += idx1;
+        //         original_index.forward = (original_index.forward == forward);
+        //         if (original_index.is_paired) {
+        //             if (sub_info.index2 >= 0) {
+        //                 original_index.index2 += idx2;
+        //             }
+        //             else {
+        //                 original_index.index2 += idx1;
+        //             }
+        //         }
+        //         original_reads.insert(std::make_pair(original_ID, original_index));
+        //     }
+        // }
+        // else { // create original subread index information
+        //     SubreadInfo sub_info = subreads_map.at(node_it);
+        //     OriginalIndex original_index;
+        //     if (sub_info.index2 == -1) { // single-end read
+        //         original_index.is_paired = 0;
+        //         original_index.index1 = sub_info.index1 - sub_info.startpos1;
+        //     }
+        //     else { // paired-end read
+        //         assert (sub_info.index2 >= 0);
+        //         original_index.is_paired = 1;
+        //         original_index.index1 = sub_info.index1 - sub_info.startpos1;
+        //         original_index.index2 = sub_info.index2 - sub_info.startpos2;
+        //     }
+        //     original_reads.insert(std::make_pair(ID, original_index)); // at first iteration all subreads are trivial
+        // }
     }
 
 //    t2 = clock();
@@ -1104,21 +1159,22 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
                     continue;
                 }
                 std::unordered_map< read_id_t, OriginalIndex > subreads;
-                if (program_settings.first_it) {
-                    OriginalIndex original_index;
-                    original_index.index1 = 0;
-                    if (read->is_paired()) {
-                        original_index.is_paired = 1;
-                        original_index.index2 = 0;
-                    }
-                    else {
-                        original_index.is_paired = 0;
-                    }
-                    subreads.insert(std::make_pair(ID, original_index)); // trivial subread
-                }
-                else {
-                    subreads = (overlap_graph->original_ID_dict).at(ID);
-                }
+                subreads = (overlap_graph->original_ID_dict).at(ID);
+                // if (program_settings.first_it) {
+                //     OriginalIndex original_index;
+                //     original_index.index1 = 0;
+                //     if (read->is_paired()) {
+                //         original_index.is_paired = 1;
+                //         original_index.index2 = 0;
+                //     }
+                //     else {
+                //         original_index.is_paired = 0;
+                //     }
+                //     subreads.insert(std::make_pair(ID, original_index)); // trivial subread
+                // }
+                // else {
+                //     subreads = (overlap_graph->original_ID_dict).at(ID);
+                // }
                 assert (subreads.size() > 0);
 //                if (v == read->get_vertex_id(/*normal*/ true)) {
                 if (overlap_graph->getOrientation(v)) { // forward read
@@ -1130,14 +1186,33 @@ void SRBuilder::cliquesToSuperreads() // construct superreads from maximal cliqu
                 else {
                     // reverse reads are only allowed at the first iteration, so we copy the read into a new (forward) read
 //                    assert (v == read->get_vertex_id(/*normal*/ false));
+                    std::unordered_map< read_id_t, OriginalIndex > updated_subreads;
                     if (read->is_paired()) {
                         Read rev_read(true, true, count, read->get_rev_comp(2), read->get_rev_comp(1), read->get_rev_phred(2), read->get_rev_phred(1));
-                        rev_read.set_original_reads(subreads);
+                        // update subread indexes because of reversal
+                        for (auto sub_it : subreads) {
+                            OriginalIndex original_index = sub_it.second;
+                            original_index.forward = !original_index.forward;
+                            original_index.index1 = read->get_seq(1).size() - (original_index.index1 + original_index.len1);
+                            original_index.index2 = read->get_seq(2).size() - (original_index.index2 + original_index.len2);
+                            updated_subreads.insert(std::make_pair(sub_it.first, original_index));
+                        }
+                        rev_read.set_original_reads(updated_subreads);
                         trivial_SR_vec.push_back(rev_read);
                     }
                     else {
                         Read rev_read(false, true, count, read->get_rev_comp(0), "", read->get_rev_phred(0), "");
-                        rev_read.set_original_reads(subreads);
+                        // update subread indexes because of reversal
+                        for (auto sub_it : subreads) {
+                            OriginalIndex original_index = sub_it.second;
+                            original_index.forward = !original_index.forward;
+                            original_index.index1 = read->get_seq(0).size() - (original_index.index1 + original_index.len1);
+                            if (original_index.is_paired) {
+                                original_index.index2 = read->get_seq(0).size() - (original_index.index2 + original_index.len2);
+                            }
+                            updated_subreads.insert(std::make_pair(sub_it.first, original_index));
+                        }
+                        rev_read.set_original_reads(updated_subreads);
                         trivial_SR_vec.push_back(rev_read);
                     }
                 }
@@ -1235,21 +1310,22 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
                 continue;
             }
             std::unordered_map< read_id_t, OriginalIndex > subreads;
-            if (program_settings.first_it) {
-                OriginalIndex original_index;
-                original_index.index1 = 0;
-                if (read->is_paired()) {
-                    original_index.is_paired = 1;
-                    original_index.index2 = 0;
-                }
-                else {
-                    original_index.is_paired = 0;
-                }
-                subreads.insert(std::make_pair(ID, original_index)); // trivial subread
-            }
-            else {
-                subreads = (overlap_graph->original_ID_dict).at(ID);
-            }
+            subreads = (overlap_graph->original_ID_dict).at(ID);
+            // if (program_settings.first_it) {
+            //     OriginalIndex original_index;
+            //     original_index.index1 = 0;
+            //     if (read->is_paired()) {
+            //         original_index.is_paired = 1;
+            //         original_index.index2 = 0;
+            //     }
+            //     else {
+            //         original_index.is_paired = 0;
+            //     }
+            //     subreads.insert(std::make_pair(ID, original_index)); // trivial subread
+            // }
+            // else {
+            //     subreads = (overlap_graph->original_ID_dict).at(ID);
+            // }
             assert (subreads.size() > 0);
 //                if (v == read->get_vertex_id(/*normal*/ true)) {
             if (overlap_graph->getOrientation(v)) { // forward read
@@ -1261,14 +1337,33 @@ void SRBuilder::mergeAlongEdges() // construct superreads from high quality edge
             else {
                 // reverse reads are only allowed at the first iteration, so we copy the read into a new (forward) read
 //                    assert (v == read->get_vertex_id(/*normal*/ false));
+                std::unordered_map< read_id_t, OriginalIndex > updated_subreads;
                 if (read->is_paired()) {
                     Read rev_read(true, true, count, read->get_rev_comp(2), read->get_rev_comp(1), read->get_rev_phred(2), read->get_rev_phred(1));
-                    rev_read.set_original_reads(subreads);
+                    // update subread indexes because of reversal
+                    for (auto sub_it : subreads) {
+                        OriginalIndex original_index = sub_it.second;
+                        original_index.forward = !original_index.forward;
+                        original_index.index1 = read->get_seq(1).size() - (original_index.index1 + original_index.len1);
+                        original_index.index2 = read->get_seq(2).size() - (original_index.index2 + original_index.len2);
+                        updated_subreads.insert(std::make_pair(sub_it.first, original_index));
+                    }
+                    rev_read.set_original_reads(updated_subreads);
                     trivial_SR_vec.push_back(rev_read);
                 }
                 else {
                     Read rev_read(false, true, count, read->get_rev_comp(0), "", read->get_rev_phred(0), "");
-                    rev_read.set_original_reads(subreads);
+                    // update subread indexes because of reversal
+                    for (auto sub_it : subreads) {
+                        OriginalIndex original_index = sub_it.second;
+                        original_index.forward = !original_index.forward;
+                        original_index.index1 = read->get_seq(0).size() - (original_index.index1 + original_index.len1);
+                        if (original_index.is_paired) {
+                            original_index.index2 = read->get_seq(0).size() - (original_index.index2 + original_index.len2);
+                        }
+                        updated_subreads.insert(std::make_pair(sub_it.first, original_index));
+                    }
+                    rev_read.set_original_reads(updated_subreads);
                     trivial_SR_vec.push_back(rev_read);
                 }
             }
@@ -1333,6 +1428,8 @@ void SRBuilder::writeTrivialsToFile() { // note that the trivial superreads have
     std::deque<Read> paired_trivials;
     for (it = trivial_SR_vec.begin(); it != trivial_SR_vec.end(); it++) {
         read_id_t ID = it->get_read_id();
+        std::string ori;
+        int len1;
         if (it->is_paired()) {
             outfile1 << "@" << ID << "\n";
             outfile1 << it->get_seq(1) << "\n";
@@ -1353,9 +1450,14 @@ void SRBuilder::writeTrivialsToFile() { // note that the trivial superreads have
         originals << ID;
         for (auto subread_it : subreads) {
             OriginalIndex original_index = subread_it.second;
-            originals << "\t" << subread_it.first << ":" << original_index.index1;
+            ori = original_index.forward ? "+" : "-";
+            len1 = original_index.len1;
+            originals << "\t" << subread_it.first << ":" << ori << ":" << original_index.index1;
             if (original_index.is_paired) {
-                originals << "," << original_index.index2;
+                originals << "," << original_index.index2 << ":" << len1 << "," << original_index.len2;
+            }
+            else {
+                originals << ":" << len1;
             }
         }
         originals << "\n";
@@ -1377,6 +1479,8 @@ void SRBuilder::writeSinglesToFile(std::deque<Read>& singles, read_id_t& count) 
     for (it = singles.begin(); it != singles.end(); it++) {
         read_id_t ID = count++;
         it->set_read_id(ID);
+        std::string ori;
+        int len1;
         outfile << "@" << ID << "\n";
         outfile << it->get_seq(0) << "\n";
         outfile << "+\n";
@@ -1386,9 +1490,14 @@ void SRBuilder::writeSinglesToFile(std::deque<Read>& singles, read_id_t& count) 
         originals << ID;
         for (auto subread_it : subreads) {
             OriginalIndex original_index = subread_it.second;
-            originals << "\t" << subread_it.first << ":" << original_index.index1;
+            ori = original_index.forward ? "+" : "-";
+            len1 = original_index.len1;
+            originals << "\t" << subread_it.first << ":" << ori << ":" << original_index.index1;
             if (original_index.is_paired) {
-                originals << "," << original_index.index2;
+                originals << "," << original_index.index2 << ":" << len1 << "," << original_index.len2;
+            }
+            else {
+                originals << ":" << len1;
             }
         }
         originals << "\n";
@@ -1410,6 +1519,8 @@ void SRBuilder::writePairsToFile(std::deque<Read>& pairs, read_id_t& count) {
     for (it = pairs.begin(); it != pairs.end(); it++) {
         read_id_t ID = count++;
         it->set_read_id(ID);
+        std::string ori;
+        int len1;
         std::string seq1 = it->get_seq(1);
         std::string seq2 = it->get_seq(2);
         assert (seq1.size() > 0);
@@ -1427,9 +1538,14 @@ void SRBuilder::writePairsToFile(std::deque<Read>& pairs, read_id_t& count) {
         originals << ID;
         for (auto subread_it : subreads) {
             OriginalIndex original_index = subread_it.second;
-            originals << "\t" << subread_it.first << ":" << original_index.index1;
+            ori = original_index.forward ? "+" : "-";
+            len1 = original_index.len1;
+            originals << "\t" << subread_it.first << ":" << ori << ":" << original_index.index1;
             if (original_index.is_paired) {
-                originals << "," << original_index.index2;
+                originals << "," << original_index.index2 << ":" << len1 << "," << original_index.len2;
+            }
+            else {
+                originals << ":" << len1;
             }
         }
         originals << "\n";
