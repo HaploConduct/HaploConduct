@@ -73,7 +73,6 @@ void BranchReduction::readBasedBranchReduction() {
     // are skipped automatically and all edges removed
     std::list< node_pair_t > edges_to_remove;
     findBranchingComponents(final_branch_in, final_branch_out, edges_to_remove);
-    std::cout << "Final evidence_per_edge.size() = " << evidence_per_edge.size() << std::endl;
     // select UNIQUE evidence and add edges with insufficient evidence to edges_to_remove
     for (auto component : branching_components) {
         countUniqueEvidence(component, edges_to_remove);
@@ -81,17 +80,26 @@ void BranchReduction::readBasedBranchReduction() {
     // remove duplicates from edges_to_remove
     edges_to_remove.sort();
     edges_to_remove.unique();
-    // now remove all selected edges from overlap graph
-    for (auto node_pair : edges_to_remove) {
-//        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
-        if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
-            std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
-            exit(1);
-        }
-        Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
-        overlap_graph->branching_edges.push_back(edge);
+
+    if (program_settings.diploid && edges_to_remove.size() == overlap_graph->getEdgeCount()) {
+        // no edges remaining, try with diploid branch reduction instead
+        overlap_graph->removeTips();
+        overlap_graph->reduceDiploidBranching();
+        overlap_graph->removeBranches();
     }
-    std::cout << edges_to_remove.size() << " edges removed" << std::endl;
+    else {
+        // now remove all selected edges from overlap graph
+        for (auto node_pair : edges_to_remove) {
+    //        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
+            if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
+                std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
+                exit(1);
+            }
+            Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
+            overlap_graph->branching_edges.push_back(edge);
+        }
+//        std::cout << edges_to_remove.size() << " edges removed" << std::endl;
+    }
 }
 
 std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
@@ -117,7 +125,9 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
     std::unordered_map< node_id_t, std::list< read_id_t > > evidence_per_neighbor;
     std::vector< std::string >::const_iterator seq_it = sequence_vec.begin();
     std::vector< int >::const_iterator startpos_it = startpos_vec.begin();
+    assert (overlap_graph->getOrientation(node1)); // read orientations already resolved in earlier iterations
     for (auto node2 : neighbors) {
+        assert (overlap_graph->getOrientation(node2)); // read orientations already resolved in earlier iterations
         // find common subreads from originals dict
         std::list< read_id_t > evidence_list;
         std::string contig = *seq_it;
@@ -150,25 +160,38 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
             bool result1 = false;
             if (common_subread != subreads1.end()) {
                 Read* original_read = original_fastq->get_read(subread_id);
-                std::string sequence = original_read->get_seq(0);
                 int index = subread.second.index1;
+                std::string sequence;
+                if (subread.second.forward) {
+                    sequence = original_read->get_seq(0);
+                }
+                else {
+                    sequence = build_rev_comp(original_read->get_seq(0));
+                }
                 result1 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
-            if (result1) {
+            if (result1) { // single-end evidence found
+                assert (subread_id < 2*program_settings.original_readcount);
                 evidence_list.push_back(subread_id);
             }
             // now also try its mate
             bool result2 = false;
             if (common_PE != subreads1.end()) {
-                Read* original_read = original_fastq->get_read(subread_id_PE);
-                std::string sequence = original_read->get_seq(0);
+                Read* original_read = original_fastq->get_read(subread_id);
+                std::string sequence;
                 int index = subread.second.index1;
+                if (subread.second.forward) {
+                    sequence = original_read->get_seq(0);
+                }
+                else {
+                    sequence = build_rev_comp(original_read->get_seq(0));
+                }
                 result2 = checkReadEvidence(contig, startpos, sequence, index, diff_list);
             }
-            if (result2) {
+            if (result2) { // paired-end evidence found
                 read_id_t joint_id = program_settings.original_readcount + std::min(subread_id, subread_id_PE);
+                assert (joint_id < 2*program_settings.original_readcount);
                 evidence_list.push_back(joint_id);
-                std::cout << "paired evidence found!" << std::endl;
             }
         }
         evidence_list.sort();
@@ -203,6 +226,11 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
             // neighbor also in final_branch so we store its evidence
             std::unordered_map< safe_edge_count_t, std::list< read_id_t > >::iterator ev_it;
             std::list< read_id_t > current_evidence = evidence_per_neighbor.at(neighbor);
+            // std::cout << "current evidence for " << node1 << " " << neighbor << std::endl;
+            // for (auto id : current_evidence) {
+            //     std::cout << id << " ";
+            // }
+            // std::cout << std::endl;
             safe_edge_count_t index;
             if (outbranch) {
                 index = edgeToEvidenceIndex(node1, neighbor);
@@ -215,15 +243,18 @@ std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, s
                 // intersect evidence sets
                 std::list< read_id_t > existing_evidence = ev_it->second;
                 std::list< read_id_t >::iterator it2 = existing_evidence.begin();
+                std::list< read_id_t > intersection;
                 while (it2 != existing_evidence.end()) {
                     auto find_ev = std::find(current_evidence.begin(), current_evidence.end(), *it2);
-                    if (find_ev == current_evidence.end()) {
-                        it2 = ev_it->second.erase(it2);
+                    if (find_ev != current_evidence.end()) {
+                        intersection.push_back(*it2);
                     }
-                    else {
-                        it2++;
-                    }
+                    // else {
+                    //     it2 = ev_it->second.erase(it2);
+                    // }
+                    it2++;
                 }
+                evidence_per_edge.at(index) = intersection;
             }
             else {
                 // insert new evidence set
@@ -498,10 +529,6 @@ std::vector< int > BranchReduction::findDiffPos(std::string seq1, std::string se
         it2++;
         pos++;
     }
-    if (diff_pos.empty()) {
-        // no difference found -> return sequence length
-        std::cout << "no difference found, len = " << seq1.size() << std::endl;
-    }
     return diff_pos;
 }
 
@@ -523,7 +550,6 @@ bool BranchReduction::checkReadEvidence(std::string contig, int startpos, std::s
             continue;
         }
         // check if read agrees with contig base
-//        std::cout << diff_pos << " " << startpos << " " << index << " " << contig.size() << " " << read.size() << std::endl;
         if (read.at(diff_pos - read_start) != contig.at(diff_pos - contig_start)) {
             // disagreement --> false evidence
             true_evidence = false;
@@ -541,7 +567,7 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
     std::list< node_pair_t > & edges_to_remove) {
     // find all branching components by following in-branches connected to out-branches
     // and vice versa
-    std::cout << "findBranchingComponents" << std::endl;
+    //std::cout << "findBranchingComponents" << std::endl;
     std::unordered_map< node_id_t, bool > visited_in_branches;
     std::unordered_map< node_id_t, bool > visited_out_branches;
     std::unordered_map< node_id_t, std::list< node_id_t > > branch_in_map;
@@ -703,9 +729,14 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
     std::unordered_map< safe_edge_count_t, std::list< read_id_t > > unique_evidence_per_edge;
     std::unordered_map< safe_edge_count_t, unsigned int > index_to_mapID;
     std::vector< bool > evidence_status;
+    bool typical_double_branch; // are we in a typical double branch situation (4 edges, 2 in-branches, 2 out-branches)
+    std::set< node_id_t > in_nodes;
+    std::set< node_id_t > out_nodes;
     unsigned int idx = 0;
     for (auto node_pair : component) {
         assert (node_pair.first != node_pair.second);
+        in_nodes.insert(node_pair.second);
+        out_nodes.insert(node_pair.first);
         safe_edge_count_t mapID = edgeToEvidenceIndex(node_pair.first, node_pair.second);
         index_to_mapID.insert(std::make_pair(idx, mapID));
         auto evidence = evidence_per_edge.find(mapID);
@@ -723,6 +754,12 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
         unique_evidence_per_edge.insert(std::make_pair(mapID, std::list< read_id_t >()));
         idx++;
     }
+    if (component.size() == 4 && in_nodes.size() == 2 && out_nodes.size() == 2) {
+        typical_double_branch = true;
+    }
+    else {
+        typical_double_branch = false;
+    }
     unsigned int component_edge_count = evidence_status.size();
     // filter evidence such that we only count UNIQUE read support
     while (*std::max_element(evidence_status.begin(), evidence_status.end()) == 1) {
@@ -731,6 +768,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
         for (unsigned int idx = 0; idx < component_edge_count; idx++) {
             if (evidence_status.at(idx) == 1) {
                 safe_edge_count_t mapID = index_to_mapID.at(idx);
+                assert (!evidence_per_edge.at(mapID).empty());
                 current_evidence.push_back(evidence_per_edge.at(mapID).front());
             }
         }
@@ -768,28 +806,100 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             }
         }
     }
+    // try to resolve typical branches
+    if (program_settings.diploid && typical_double_branch) {
+        //std::cout << "typical double branch" << std::endl;
+        std::vector< node_pair_t > supported_edges;
+        std::vector< node_pair_t > unsupported_edges;
+        int max_count = 0;
+        node_pair_t max_edge;
+        for (auto ev : unique_evidence_per_edge) {
+            node_pair_t node_pair = evidenceIndexToEdge(ev.first);
+            std::list< read_id_t > evidence = ev.second;
+            evidence.sort();
+            evidence.unique();
+            int count = evidence.size();
+            if (count > max_count) {
+                max_count = count;
+                max_edge = node_pair;
+            }
+            if (count > 0) {
+                supported_edges.push_back(node_pair);
+            }
+            else {
+                unsupported_edges.push_back(node_pair);
+            }
+            // std::cout << "evidence load for edge " << node_pair.first << "," << node_pair.second << " : ";
+            // for (auto id : evidence) {
+            //     std::cout << id << " ";
+            // }
+            // std::cout << std::endl;
+        }
+        if (supported_edges.size() == 1) {
+            // keep this edge and it's non-conflicting buddy
+            std::cout << "1 supported edge" << std::endl;
+            for (auto remove_pair : unsupported_edges) {
+                if (remove_pair.first == max_edge.first ||
+                    remove_pair.second == max_edge.second)
+                {
+                    edges_to_remove.push_back(remove_pair);
+                }
+            }
+            return;
+        }
+        else if (supported_edges.size() == 2 &&
+                 supported_edges.at(0).first != supported_edges.at(1).first &&
+                 supported_edges.at(0).second != supported_edges.at(1).second)
+        {
+            std::cout << "2 supported edges" << std::endl;
+            for (auto remove_pair : unsupported_edges) {
+                edges_to_remove.push_back(remove_pair);
+            }
+            return;
+        }
+        else if (supported_edges.size() >= 2) {
+            std::cout << "keep max edge: " << max_edge.first << " " << max_edge.second << std::endl;
+            // keep the edge of maximum support and it's non-conflicting buddy
+            for (auto remove_pair : unsupported_edges) {
+                edges_to_remove.push_back(remove_pair);
+            }
+            for (auto remove_pair : supported_edges) {
+                if (remove_pair != max_edge && (
+                    remove_pair.first == max_edge.first ||
+                    remove_pair.second == max_edge.second))
+                {
+                    edges_to_remove.push_back(remove_pair);
+                }
+            }
+            return;
+        }
+    }
     // finally analyze evidence and reduce branches by removing edges with
     // insufficient evidence
-    std::cout << "effective_evidence_counts" << std::endl;
+    //std::cout << "effective_evidence_counts" << std::endl;
+    node_id_t node1, node2;
+    node_pair_t node_pair;
     for (auto ev : unique_evidence_per_edge) {
-        int count = ev.second.size();
-        std::cout << count << " ";
+        node_pair_t node_pair = evidenceIndexToEdge(ev.first);
+        node1 = node_pair.first;
+        node2 = node_pair.second;
+        std::list< read_id_t > evidence = ev.second;
+        evidence.sort();
+        evidence.unique();
+        int count = evidence.size();
         if (count < min_evidence) {
-            node_pair_t node_pair = evidenceIndexToEdge(ev.first);
-            if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
-                std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
+            if (overlap_graph->checkEdge(node1, node2, false) < 0) {
+                std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node2, node1, false) << std::endl;
                 exit(1);
             }
             edges_to_remove.push_back(node_pair);
         }
-        node_pair_t node_pair = evidenceIndexToEdge(ev.first);
-        std::cout << "evidence load for edge " << node_pair.first << "," << node_pair.second << " : ";
-        for (auto id : ev.second) {
-            std::cout << id << " ";
-        }
-        std::cout << std::endl;
+        // std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
+        // for (auto id : evidence) {
+        //     std::cout << id << " ";
+        // }
+        // std::cout << std::endl;
     }
-    std::cout << std::endl;
 }
 
 safe_edge_count_t BranchReduction::edgeToEvidenceIndex(node_id_t node, node_id_t neighbor) {
@@ -806,7 +916,6 @@ node_pair_t BranchReduction::evidenceIndexToEdge(safe_edge_count_t index) {
     assert (index < (overlap_graph->getVertexCount())*(overlap_graph->getVertexCount()));
     node_id_t node = floor(index / overlap_graph->getVertexCount());
     node_id_t neighbor = index - node * overlap_graph->getVertexCount();
-//    std::cout << "index, node, neighbor: " << index << " " << node << " " << neighbor << std::endl;
     assert (node < overlap_graph->getVertexCount());
     assert (neighbor < overlap_graph->getVertexCount());
     return std::make_pair(node, neighbor);
