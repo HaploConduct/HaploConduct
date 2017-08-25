@@ -113,9 +113,9 @@ def combine_contigs(split_num, paired_to_single, paired_to_paired):
                             new_contig_id = str(int(contig_id) + split_start)
                             new_line = [new_contig_id]
                             for subread_info in split_line[1:]:
-                                [ID, poslist] = subread_info.split(':')
+                                [ID, ori, poslist, lenlist] = subread_info.split(':')
                                 new_subread_id = renamed2originals[ID]
-                                new_info = new_subread_id + ':' + poslist
+                                new_info = new_subread_id + ':' + ori + ':' + poslist + ':' + lenlist
                                 new_line.append(new_info)
                             new_subreads_file.write('\t'.join(new_line) + '\n')
                         else:
@@ -125,11 +125,12 @@ def combine_contigs(split_num, paired_to_single, paired_to_paired):
                             new_line_1 = [new_contig_id_1]
                             new_line_2 = [new_contig_id_2]
                             for subread_info in split_line[1:]:
-                                [ID, poslist] = subread_info.split(':')
+                                [ID, ori, poslist, lenlist] = subread_info.split(':')
                                 new_subread_id = renamed2originals[ID]
                                 [index1, index2] = poslist.split(',')
-                                new_info_1 = new_subread_id + ':' + index1
-                                new_info_2 = new_subread_id + ':' + index2
+                                [len1, len2] = lenlist.split(',')
+                                new_info_1 = new_subread_id + ':' + ori + ':' + index1 + ':' + len1
+                                new_info_2 = new_subread_id + ':' + ori + ':' + index2 + ':' + len2
                                 new_line_1.append(new_info_1)
                                 new_line_2.append(new_info_2)
                             new_subreads_file.write('\t'.join(new_line_1) + '\n')
@@ -143,9 +144,9 @@ def combine_contigs(split_num, paired_to_single, paired_to_paired):
                             continue
                         new_line = [new_contig_id]
                         for subread_info in split_line[1:]:
-                            [ID, poslist] = subread_info.split(':')
+                            [ID, ori, poslist, lenlist] = subread_info.split(':')
                             new_subread_id = renamed2originals[ID]
-                            new_info = new_subread_id + ':' + poslist
+                            new_info = new_subread_id + ':' + ori + ':' + poslist + ':' + lenlist
                             new_line.append(new_info)
                         new_subreads_file.write('\t'.join(new_line) + '\n')
             current_SE_contigs += singles_count
