@@ -666,8 +666,10 @@ void OverlapGraph::buildOriginalsDict() {
         std::pair< read_id_t, OriginalIndex > ID_idx_pair;
         OriginalIndex original_index;
         original_index.index1 = 0;
+        original_index.forward = true;
         for (auto read_it : fastq_storage->m_singles_vec) {
             original_index.is_paired = 0;
+            original_index.len1 = read_it.get_seq(0).size();
             ID = read_it.get_read_id();
             std::unordered_map< read_id_t, OriginalIndex > originals_map;
             ID_idx_pair = std::make_pair(ID, original_index);
@@ -677,6 +679,8 @@ void OverlapGraph::buildOriginalsDict() {
         for (auto read : fastq_storage->m_paired_vec) {
             original_index.index2 = 0;
             original_index.is_paired = 1;
+            original_index.len1 = read.get_seq(1).size();
+            original_index.len2 = read.get_seq(2).size();
             ID = read.get_read_id();
             std::unordered_map< read_id_t, OriginalIndex > originals_map;
             ID_idx_pair = std::make_pair(ID, original_index);
@@ -701,15 +705,19 @@ void OverlapGraph::buildOriginalsDict() {
                     std::pair< read_id_t, OriginalIndex > ID_idx_pair;
                     std::vector< std::string > tmp_vec;
                     boost::algorithm::split(tmp_vec, info, boost::is_any_of(":,"), boost::token_compress_on);
-                    assert (tmp_vec.size() == 2 || tmp_vec.size() == 3);
+                    assert (tmp_vec.size() == 4 || tmp_vec.size() == 6);
                     read_id_t original_ID = str_to_read_id(tmp_vec[0]);
                     OriginalIndex original_index;
-                    original_index.index1 = std::stol(tmp_vec[1]);
-                    if (tmp_vec.size() == 3) {
-                        original_index.index2 = std::stol(tmp_vec[2]);
+                    original_index.forward = (tmp_vec[1] == "+");
+                    original_index.index1 = std::stol(tmp_vec[2]);
+                    if (tmp_vec.size() == 6) {
+                        original_index.index2 = std::stol(tmp_vec[3]);
+                        original_index.len1 = std::stoi(tmp_vec[4]);
+                        original_index.len2 = std::stoi(tmp_vec[5]);
                         original_index.is_paired = 1;
                     }
                     else {
+                        original_index.len1 = std::stoi(tmp_vec[3]);
                         original_index.is_paired = 0;
                     }
                     ID_idx_pair = std::make_pair(original_ID, original_index);
