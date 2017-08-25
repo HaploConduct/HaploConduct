@@ -119,27 +119,27 @@ public:
         return m_is_super;
     }
 
-	static std::string build_rev_comp(std::string seq) {
-	    std::string::reverse_iterator it;
-	    std::string rev_comp = "";
-        for (it = seq.rbegin(); it != seq.rend(); it++) {
-            if (*it == 'A')
-                rev_comp.append("T");
-            else if (*it == 'T')
-                rev_comp.append("A");
-            else if (*it == 'C')
-                rev_comp.append("G");
-            else if (*it == 'G')
-                rev_comp.append("C");
-            else if (*it == 'N')
-                rev_comp.append("N");
-            else {
-                std::cerr << "Invalid sequence character. Aborting.\n";
-                exit(1);
-            }
-        }
-        return rev_comp;
-    }
+	// static std::string build_rev_comp(std::string seq) {
+	//     std::string::reverse_iterator it;
+	//     std::string rev_comp = "";
+    //     for (it = seq.rbegin(); it != seq.rend(); it++) {
+    //         if (*it == 'A')
+    //             rev_comp.append("T");
+    //         else if (*it == 'T')
+    //             rev_comp.append("A");
+    //         else if (*it == 'C')
+    //             rev_comp.append("G");
+    //         else if (*it == 'G')
+    //             rev_comp.append("C");
+    //         else if (*it == 'N')
+    //             rev_comp.append("N");
+    //         else {
+    //             std::cerr << "Invalid sequence character. Aborting.\n";
+    //             exit(1);
+    //         }
+    //     }
+    //     return rev_comp;
+    // }
 
 	std::string get_seq(int i) const {
 	    if (!m_is_paired) {
