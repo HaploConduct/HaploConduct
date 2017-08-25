@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
         ("remove_multi_occ", po::value< bool > (&program_settings.remove_multi_occ)->default_value(false), "remove clique nodes when used before, so use nodes at most once; to be used at merging iterations using cliques")
         ("remove_trans", po::value< unsigned int > (&program_settings.remove_trans)->default_value(0), "choose to (0) keep all edges, (1) remove transitive edges, (2) to remove double transitive edges, or (3) to remove triple transitive edges.")
         ("remove_branches", po::value< bool > (&program_settings.remove_branches)->default_value(false), "remove branches from overlap graph")
+        ("remove_tips", po::value< bool > (&program_settings.remove_tips)->default_value(true), "remove tips from overlap graph to reduce branching")
         ("min_read_len", po::value< unsigned int > (&program_settings.min_read_len)->default_value(0), "set the minimum read length (bp) for allowing edges")
         ("max_tip_len", po::value< unsigned int > (&program_settings.max_tip_len)->default_value(150), "set the maximum extension length for a node to be considered a tip")
         ("separate_tips", po::value< bool > (&program_settings.store_tips_separately)->default_value(true), "store tip-sequences in a separate file, away from the contigs")
@@ -289,13 +290,23 @@ int main(int argc, char *argv[])
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
 
-    // build a GFA file for analyzing the graph with Bandage
-    overlap_graph->write2GFA(program_settings.output_dir + "graph.gfa");
-
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
 
+    // build a GFA file for analyzing the graph with Bandage
+    overlap_graph->write2GFA(program_settings.output_dir + "graph.gfa");
+
     overlap_graph->buildOriginalsDict();
+
+    // // Remove edges to obtain a diploid assembly
+    // if (program_settings.diploid) {
+    //     overlap_graph->reduceDiploidBranching();
+    // }
+    
+    // Remove tips
+    if (program_settings.remove_tips) {
+        overlap_graph->removeTips();
+    }
     // Reduce branches in the graph by evaluating read evidence
     if (program_settings.branch_min_ev > 0) {
         // Adjust program settings to read from original input files
@@ -313,14 +324,8 @@ int main(int argc, char *argv[])
             fastq_storage, original_fastq, program_settings, overlap_graph);
         branch_reduction.readBasedBranchReduction();
     }
-
-    // Remove edges to obtain a diploid assembly
-    if (program_settings.diploid) {
-        overlap_graph->reduceDiploidBranching();
-    }
-    // Find branches (remove if specified)
-    if (program_settings.remove_branches) {
-//        overlap_graph->removeTips();
+    else if (program_settings.remove_branches) {
+        // Find and remove all branches
         overlap_graph->removeBranches();
     }
     // else {
