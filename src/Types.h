@@ -51,6 +51,7 @@ struct ProgramSettings {
     bool remove_multi_occ;
     unsigned int remove_trans;
     bool remove_branches;
+    bool remove_tips;
     unsigned int min_read_len;
     std::string base_path;
     bool verbose;
@@ -80,9 +81,12 @@ struct SubreadInfo {
 };
 
 struct OriginalIndex {
-    long index1;
-    long index2;
+    long index1; // index of original read (/1) within contig (can be negative due to error correction)
+    long index2; // index of original read (/2) within contig
     bool is_paired;
+    bool forward; // orientation of original read within contig
+    int len1; // length of original sequence (/1)
+    int len2; // length of original sequence (/2)
 };
 
 typedef unsigned long read_id_t;
@@ -99,6 +103,28 @@ inline read_id_t str_to_read_id(std::string input_id)
 inline std::string read_id_to_str(read_id_t id)
 {
     return std::to_string(id);
+}
+
+inline std::string build_rev_comp(std::string seq) {
+    std::string::reverse_iterator it;
+    std::string rev_comp = "";
+    for (it = seq.rbegin(); it != seq.rend(); it++) {
+        if (*it == 'A')
+            rev_comp.append("T");
+        else if (*it == 'T')
+            rev_comp.append("A");
+        else if (*it == 'C')
+            rev_comp.append("G");
+        else if (*it == 'G')
+            rev_comp.append("C");
+        else if (*it == 'N')
+            rev_comp.append("N");
+        else {
+            std::cerr << "Invalid sequence character. Aborting.\n";
+            exit(1);
+        }
+    }
+    return rev_comp;
 }
 
 #endif /* TYPES_H_ */
