@@ -81,7 +81,8 @@ void BranchReduction::readBasedBranchReduction() {
     edges_to_remove.sort();
     edges_to_remove.unique();
 
-    if (program_settings.diploid && edges_to_remove.size() == overlap_graph->getEdgeCount()) {
+    if (false) {
+//    if (program_settings.diploid && edges_to_remove.size() == overlap_graph->getEdgeCount()) {
         // no edges remaining, try with diploid branch reduction instead
         overlap_graph->removeTips();
         overlap_graph->reduceDiploidBranching();
@@ -859,7 +860,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
         }
         else if (supported_edges.size() >= 2) {
             std::cout << "keep max edge: " << max_edge.first << " " << max_edge.second << std::endl;
-            // keep the edge of maximum support and it's non-conflicting buddy
+            // keep the edge of maximum support and it's non-conflicting buddy (if it exists)
             for (auto remove_pair : unsupported_edges) {
                 edges_to_remove.push_back(remove_pair);
             }
