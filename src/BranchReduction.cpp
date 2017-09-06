@@ -641,7 +641,15 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
     // remaining components are trivial
     for (auto branch : branch_out_map) {
         node_id_t node = branch.first;
-        if (visited_out_branches.at(node) || visited_in_branches.find(node) != visited_in_branches.end()) {
+        if (visited_out_branches.at(node)) {
+            continue;
+        }
+        else if (visited_in_branches.find(node) != visited_in_branches.end()) {
+            // don't allow merging a node on both sides in the same iteration
+            // TODO: only remove out-branch if in-branch is actually kept
+            for (auto innode : branch.second) {
+                edges_to_remove.push_back(std::make_pair(branch.first, innode));
+            }
             continue;
         }
         std::list< node_id_t > neighbors = branch.second;
@@ -755,7 +763,9 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
         unique_evidence_per_edge.insert(std::make_pair(mapID, std::list< read_id_t >()));
         idx++;
     }
-    if (component.size() == 4 && in_nodes.size() == 2 && out_nodes.size() == 2) {
+    // check if we have a typical diploid branch: 4 nodes of which 2 in-nodes
+    // and 2 out-nodes, connected by 3 or 4 edges
+    if ((component.size() == 3 || component.size() == 4) && in_nodes.size() == 2 && out_nodes.size() == 2) {
         typical_double_branch = true;
     }
     else {
@@ -810,13 +820,22 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
     // try to resolve typical branches
     if (program_settings.diploid && typical_double_branch) {
         //std::cout << "typical double branch" << std::endl;
+        std::vector< std::pair<safe_edge_count_t, int> > pairs;
+        for (auto ev : unique_evidence_per_edge) {
+            pairs.push_back(std::make_pair(ev.first, ev.second.size()));
+        }
+        std::sort(pairs.begin(), pairs.end(), [=](const std::pair<safe_edge_count_t, int>& a, const std::pair<safe_edge_count_t, int>& b)
+        {
+            return a.second < b.second;
+        }
+        );
         std::vector< node_pair_t > supported_edges;
         std::vector< node_pair_t > unsupported_edges;
         int max_count = 0;
         node_pair_t max_edge;
-        for (auto ev : unique_evidence_per_edge) {
-            node_pair_t node_pair = evidenceIndexToEdge(ev.first);
-            std::list< read_id_t > evidence = ev.second;
+        for (auto ev_idx : pairs) {
+            node_pair_t node_pair = evidenceIndexToEdge(ev_idx.first);
+            std::list< read_id_t > evidence = unique_evidence_per_edge.at(ev_idx.first);
             evidence.sort();
             evidence.unique();
             int count = evidence.size();
@@ -825,7 +844,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
                 max_edge = node_pair;
             }
             if (count > 0) {
-                supported_edges.push_back(node_pair);
+                supported_edges.push_back(node_pair); // supported edges are now ordered by evidence load
             }
             else {
                 unsupported_edges.push_back(node_pair);
@@ -858,18 +877,78 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             }
             return;
         }
-        else if (supported_edges.size() >= 2) {
-            std::cout << "keep max edge: " << max_edge.first << " " << max_edge.second << std::endl;
-            // keep the edge of maximum support and it's non-conflicting buddy (if it exists)
-            for (auto remove_pair : unsupported_edges) {
-                edges_to_remove.push_back(remove_pair);
+        else if (supported_edges.size() == 2) {
+            // keep both if their evidence loads differ by at most 0.5*min_evidence
+            // otherwise keep the max edge
+            assert (pairs.size() >= 2);
+            bool keep_complement = false;
+            if (pairs.at(0).second - pairs.at(1).second > 0.5*min_evidence) {
+                edges_to_remove.push_back(supported_edges.at(1));
+                keep_complement = true;
             }
+            for (auto remove_pair : unsupported_edges) {
+                if (!keep_complement || remove_pair.first == max_edge.first ||
+                    remove_pair.second == max_edge.second)
+                {
+                    edges_to_remove.push_back(remove_pair);
+                }
+            }
+            return;
+        }
+        else if (supported_edges.size() > 2) {
+            // keep the non-conflicting pair of edges of highest support
+            // first try max_edge + complement
+            int load1 = 0;
+            int load2 = 0;
+            int i = 0;
             for (auto remove_pair : supported_edges) {
                 if (remove_pair != max_edge && (
                     remove_pair.first == max_edge.first ||
                     remove_pair.second == max_edge.second))
                 {
-                    edges_to_remove.push_back(remove_pair);
+                    load2 += pairs.at(i).second;
+                }
+                else {
+                    load1 += pairs.at(i).second;
+                }
+                i++;
+            }
+            if (load1 >= load2) {
+                // keep max_edge and complement
+                for (auto remove_pair : unsupported_edges) {
+                    if (remove_pair != max_edge && (
+                        remove_pair.first == max_edge.first ||
+                        remove_pair.second == max_edge.second))
+                    {
+                        edges_to_remove.push_back(remove_pair);
+                    }
+                }
+                for (auto remove_pair : supported_edges) {
+                    if (remove_pair != max_edge && (
+                        remove_pair.first == max_edge.first ||
+                        remove_pair.second == max_edge.second))
+                    {
+                        edges_to_remove.push_back(remove_pair);
+                    }
+                }
+            }
+            else {
+                // keep alternative edge pair
+                for (auto remove_pair : unsupported_edges) {
+                    if (remove_pair == max_edge || (
+                        remove_pair.first != max_edge.first &&
+                        remove_pair.second != max_edge.second))
+                    {
+                        edges_to_remove.push_back(remove_pair);
+                    }
+                }
+                for (auto remove_pair : supported_edges) {
+                    if (remove_pair == max_edge || (
+                        remove_pair.first != max_edge.first &&
+                        remove_pair.second != max_edge.second))
+                    {
+                        edges_to_remove.push_back(remove_pair);
+                    }
                 }
             }
             return;
@@ -895,11 +974,13 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             }
             edges_to_remove.push_back(node_pair);
         }
-        // std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
-        // for (auto id : evidence) {
-        //     std::cout << id << " ";
-        // }
-        // std::cout << std::endl;
+        if (true) {
+            std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
+            for (auto id : evidence) {
+                std::cout << id << " ";
+            }
+            std::cout << std::endl;
+        }
     }
 }
 
