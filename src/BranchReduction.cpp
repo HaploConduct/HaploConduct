@@ -7,6 +7,8 @@
 // Description : Use read evidence to reduce branches in the overlap graph
 //============================================================================
 
+#include <math.h> /* floor */
+
 #include "BranchReduction.h"
 
 /*
