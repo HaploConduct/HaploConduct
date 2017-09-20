@@ -63,6 +63,7 @@ struct ProgramSettings {
     int branch_min_ev;
     unsigned int branch_SE_c;
     unsigned int branch_PE_c;
+    bool careful;
 };
 
 struct IterationStats {

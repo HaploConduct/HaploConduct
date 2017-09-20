@@ -93,6 +93,7 @@ int main(int argc, char *argv[])
         ("branch_min_ev", po::value< int > (&program_settings.branch_min_ev)->default_value(0), "minimum evidence required when applying read-based branch reduction")
         ("branch_SE_c", po::value< unsigned int > (&program_settings.branch_SE_c)->default_value(0), "number of single-end input reads in original fastq")
         ("branch_PE_c", po::value< unsigned int > (&program_settings.branch_PE_c)->default_value(0), "number of paired-end input reads in original fastq")
+        ("careful_diploid", po::value< bool > (&program_settings.careful)->default_value(true), "more careful merging in diploid mode (test)")
         ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
@@ -302,7 +303,7 @@ int main(int argc, char *argv[])
     // if (program_settings.diploid) {
     //     overlap_graph->reduceDiploidBranching();
     // }
-    
+
     // Remove tips
     if (program_settings.remove_tips) {
         overlap_graph->removeTips();
@@ -317,6 +318,12 @@ int main(int argc, char *argv[])
         // Now read and store original fastq file(s)
         FastqStorage* input_fastq = new FastqStorage(original_input);
         std::shared_ptr<FastqStorage> original_fastq(input_fastq);
+        if (program_settings.branch_SE_c + 2*program_settings.branch_PE_c
+            != original_fastq->get_readcount()) {
+                std::cout << "branch_SE_c: " << program_settings.branch_SE_c << std::endl;
+                std::cout << "branch_PE_c: " << program_settings.branch_PE_c << std::endl;
+                std::cout << "original fastq: " << program_settings.original_fastq << std::endl;
+            }
         assert (program_settings.branch_SE_c + 2*program_settings.branch_PE_c
             == original_fastq->get_readcount());
         // Use original fastq to resolve branches using read evidence
