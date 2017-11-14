@@ -46,22 +46,30 @@ void BranchReduction::readBasedBranchReduction() {
     std::set< node_id_t > branch_in;
     std::set< node_id_t > branch_out;
     // find all branches in the graph and process one by one
-    overlap_graph->findBranchfreeGraph(sorted_adj_in, sorted_adj_out, branch_in, branch_out);
+    overlap_graph->findBranchfreeGraph(
+        sorted_adj_in, sorted_adj_out, branch_in, branch_out
+    );
     std::list< Edge > missing_edges;
-    std::vector< std::list< node_id_t > > final_branch_in (overlap_graph->getVertexCount(), std::list< node_id_t >());
+    std::vector< std::list< node_id_t > > final_branch_in (
+        overlap_graph->getVertexCount(), std::list< node_id_t >()
+    );
     for (auto node : branch_in) {
         bool outbranch = false;
-        std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_in.at(node),
-            missing_edges, outbranch);
+        std::list< node_id_t > branch = findBranchingEvidence(
+            node, sorted_adj_in.at(node), missing_edges, outbranch
+        );
         if (!branch.empty()) {
             final_branch_in.at(node) = branch;
         }
     }
-    std::vector< std::list< node_id_t > > final_branch_out (overlap_graph->getVertexCount(), std::list< node_id_t >());
+    std::vector< std::list< node_id_t > > final_branch_out (
+        overlap_graph->getVertexCount(), std::list< node_id_t >()
+    );
     for (auto node : branch_out) {
         bool outbranch = true;
-        std::list< node_id_t > branch = findBranchingEvidence(node, sorted_adj_out.at(node),
-            missing_edges, outbranch);
+        std::list< node_id_t > branch = findBranchingEvidence(
+            node, sorted_adj_out.at(node), missing_edges, outbranch
+        );
         if (!branch.empty()) {
             final_branch_out.at(node) = branch;
         }
@@ -75,9 +83,72 @@ void BranchReduction::readBasedBranchReduction() {
     // are skipped automatically and all edges removed
     std::list< node_pair_t > edges_to_remove;
     findBranchingComponents(final_branch_in, final_branch_out, edges_to_remove);
+
+    // keep track of neighboring components
+    std::vector< std::set< unsigned int > > neighboring_components;
+    if (program_settings.careful) {
+        // build a map of nodes to components
+        std::map< node_id_t, std::set< unsigned int > > nodes_to_components;
+        for (node_id_t node=0; node < overlap_graph->getVertexCount(); node++) {
+            nodes_to_components.insert(
+                std::make_pair(node, std::set< unsigned int >{})
+            );
+        }
+        unsigned int idx = 0;
+        for (auto component : branching_components) {
+            for (auto node_pair : component) {
+                nodes_to_components.at(node_pair.first).emplace(idx);
+                nodes_to_components.at(node_pair.second).emplace(idx);
+            }
+            idx++;
+        }
+        // now lookup nodes and keep track of neighboring components
+        for (auto component : branching_components) {
+            std::set< unsigned int > neighbors;
+            for (auto node_pair : component) {
+                std::set< unsigned int > s1, s2;
+                s1 = nodes_to_components.at(node_pair.first);
+                neighbors.insert(s1.begin(), s1.end());
+                s2 = nodes_to_components.at(node_pair.second);
+                neighbors.insert(s2.begin(), s2.end());
+            }
+            neighboring_components.push_back(neighbors);
+        }
+    }
+    else {
+        for (auto component : branching_components) {
+            std::set< unsigned int > neighbors;
+            neighboring_components.push_back(neighbors);
+        }
+    }
+
+    // keep track of components for which edges were kept
+    std::set< unsigned int > components_kept;
+
     // select UNIQUE evidence and add edges with insufficient evidence to edges_to_remove
+    unsigned int idx = 0;
     for (auto component : branching_components) {
-        countUniqueEvidence(component, edges_to_remove);
+        std::set< unsigned int > neighbors = neighboring_components.at(idx);
+        bool skip = false;
+        for (auto comp_idx : neighbors) {
+            if (comp_idx == idx) {
+                continue;
+            }
+            else if (components_kept.find(comp_idx) != components_kept.end()) {
+                edges_to_remove.insert(
+                    edges_to_remove.end(), component.begin(), component.end()
+                );
+                skip = true;
+                continue;
+            }
+        }
+        if (!skip) {
+            bool keep = countUniqueEvidence(component, edges_to_remove);
+            if (keep) {
+                components_kept.insert(idx);
+            }
+        }
+        idx++;
     }
     // remove duplicates from edges_to_remove
     edges_to_remove.sort();
@@ -664,16 +735,16 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
         if (visited_out_branches.at(node)) {
             continue;
         }
-        else if (program_settings.careful &&
-            visited_in_branches.find(node) != visited_in_branches.end() &&
-            visited_in_branches.at(node)) {
-            // don't allow merging a node on both sides in the same iteration
-            // TODO: only remove out-branch if in-branch is actually kept
-            for (auto innode : branch.second) {
-                edges_to_remove.push_back(std::make_pair(branch.first, innode));
-            }
-            continue;
-        }
+        // else if (program_settings.careful &&
+        //     visited_in_branches.find(node) != visited_in_branches.end() &&
+        //     visited_in_branches.at(node)) {
+        //     // don't allow merging a node on both sides in the same iteration
+        //     // TODO: only remove out-branch if in-branch is actually kept
+        //     for (auto innode : branch.second) {
+        //         edges_to_remove.push_back(std::make_pair(branch.first, innode));
+        //     }
+        //     continue;
+        // }
         std::list< node_id_t > neighbors = branch.second;
         std::vector< node_pair_t > new_component;
         for (auto out_neighbor : neighbors) {
@@ -752,7 +823,7 @@ void BranchReduction::extendComponentIn(std::vector< node_pair_t > & component,
     return;
 }
 
-void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
+bool BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
         std::list< node_pair_t > & edges_to_remove) {
     // compute effective evidence per edge: remove evidence that is shared
     // between other edges and count evidence load
@@ -764,6 +835,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
     std::set< node_id_t > in_nodes;
     std::set< node_id_t > out_nodes;
     unsigned int idx = 0;
+    bool keep_component; // return value: true if any edges are kept, false otherwise
     for (auto node_pair : component) {
         assert (node_pair.first != node_pair.second);
         in_nodes.insert(node_pair.second);
@@ -877,6 +949,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             // }
             // std::cout << std::endl;
         }
+        keep_component = supported_edges.size() > 0; // return value indicating whether any edges were kept
         if (supported_edges.size() == 1) {
             // keep this edge and it's non-conflicting buddy
             std::cout << "1 supported edge" << std::endl;
@@ -887,7 +960,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
                     edges_to_remove.push_back(remove_pair);
                 }
             }
-            return;
+            return keep_component;
         }
         else if (supported_edges.size() == 2 &&
                  supported_edges.at(0).first != supported_edges.at(1).first &&
@@ -897,7 +970,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             for (auto remove_pair : unsupported_edges) {
                 edges_to_remove.push_back(remove_pair);
             }
-            return;
+            return keep_component;
         }
         else if (supported_edges.size() == 2) {
             // keep both if their evidence loads differ by at most 0.5*min_evidence
@@ -915,7 +988,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
                     edges_to_remove.push_back(remove_pair);
                 }
             }
-            return;
+            return keep_component;
         }
         else if (supported_edges.size() > 2) {
             // keep the non-conflicting pair of edges of highest support
@@ -973,7 +1046,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
                     }
                 }
             }
-            return;
+            return keep_component;
         }
     }
     // finally analyze evidence and reduce branches by removing edges with
@@ -981,6 +1054,7 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
     //std::cout << "effective_evidence_counts" << std::endl;
     node_id_t node1, node2;
     node_pair_t node_pair;
+    keep_component = false; // gets updated below, indicating whether any edges are kept
     for (auto ev : unique_evidence_per_edge) {
         node_pair_t node_pair = evidenceIndexToEdge(ev.first);
         node1 = node_pair.first;
@@ -996,12 +1070,16 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             }
             edges_to_remove.push_back(node_pair);
         }
+        else {
+            keep_component = true;
+        }
         std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
         for (auto id : evidence) {
             std::cout << id << " ";
         }
         std::cout << std::endl;
     }
+    return keep_component;
 }
 
 safe_edge_count_t BranchReduction::edgeToEvidenceIndex(node_id_t node, node_id_t neighbor) {

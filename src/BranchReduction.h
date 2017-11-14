@@ -92,7 +92,7 @@ public:
     void findBranchingComponents(std::vector< std::list< node_id_t > > final_branch_in,
         std::vector< std::list< node_id_t > > final_branch_out,
         std::list< node_pair_t > & edges_to_remove);
-    void countUniqueEvidence(std::vector< node_pair_t > component,
+    bool countUniqueEvidence(std::vector< node_pair_t > component,
         std::list< node_pair_t > & edges_to_remove);
     bool compareNodepairs (node_pair_t pair1, node_pair_t pair2);
 };
