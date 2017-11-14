@@ -705,29 +705,30 @@ void BranchReduction::findBranchingComponents(std::vector< std::list< node_id_t 
                 edges_to_remove.push_back(node_pair);
             }
         }
-        else if (program_settings.careful && new_component.size() == 2) {
-            size2_components.push_back(new_component);
-            visited_in_branches.at(node) = false;
-        }
+        // else if (program_settings.careful && new_component.size() == 2) {
+        //     size2_components.push_back(new_component);
+        //     visited_in_branches.at(node) = false;
+        // }
         else {
             branching_components.push_back(new_component);
         }
     }
-    for (auto comp : size2_components) {
-        node_id_t node = comp.at(0).second;
-        if (visited_out_branches.find(node) != visited_out_branches.end() &&
-            visited_out_branches.at(node)) {
-            // don't allow merging a node on both sides in the same iteration
-            // TODO: only remove out-branch if in-branch is actually kept
-            for (auto node_pair : comp) {
-                edges_to_remove.push_back(node_pair);
-            }
-        }
-        else {
-            branching_components.push_back(comp);
-            visited_in_branches.at(node) = true;
-        }
-    }
+    // for (auto comp : size2_components) {
+    //     node_id_t node = comp.at(0).second;
+    //     if (visited_out_branches.find(node) != visited_out_branches.end() &&
+    //         visited_out_branches.at(node)) {
+    //         // don't allow merging a node on both sides in the same iteration
+    //         // TODO: only remove out-branch if in-branch is actually kept
+    //         for (auto node_pair : comp) {
+    //             edges_to_remove.push_back(node_pair);
+    //         }
+    //     }
+    //     else {
+    //         branching_components.push_back(comp);
+    //         visited_in_branches.at(node) = true;
+    //     }
+    // }
+    
     // process remaining out-branches; since we already did all in-branches, the
     // remaining components are trivial
     for (auto branch : branch_out_map) {
