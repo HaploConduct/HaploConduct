@@ -83,26 +83,24 @@ void BranchReduction::readBasedBranchReduction() {
     edges_to_remove.sort();
     edges_to_remove.unique();
 
-    if (false) {
-//    if (program_settings.diploid && edges_to_remove.size() == overlap_graph->getEdgeCount()) {
-        // no edges remaining, try with diploid branch reduction instead
-        overlap_graph->removeTips();
-        overlap_graph->reduceDiploidBranching();
-        overlap_graph->removeBranches();
-    }
-    else {
-        // now remove all selected edges from overlap graph
-        for (auto node_pair : edges_to_remove) {
-    //        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
-            if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
-                std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
-                exit(1);
-            }
-            Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
-            overlap_graph->branching_edges.push_back(edge);
+//     if (false) {
+// //    if (program_settings.diploid && edges_to_remove.size() == overlap_graph->getEdgeCount()) {
+//         // no edges remaining, try with diploid branch reduction instead
+//         overlap_graph->removeTips();
+//         overlap_graph->reduceDiploidBranching();
+//         overlap_graph->removeBranches();
+//     }
+    // now remove all selected edges from overlap graph
+    for (auto node_pair : edges_to_remove) {
+//        std::cout << "removing " << node_pair.first << " " << node_pair.second << std::endl;
+        if (overlap_graph->checkEdge(node_pair.first, node_pair.second, false) < 0) {
+            std::cout << "edge not found, reverse: " << overlap_graph->checkEdge(node_pair.second, node_pair.first, false) << std::endl;
+            exit(1);
         }
-//        std::cout << edges_to_remove.size() << " edges removed" << std::endl;
+        Edge edge = overlap_graph->removeEdge(node_pair.first, node_pair.second);
+        overlap_graph->branching_edges.push_back(edge);
     }
+//        std::cout << edges_to_remove.size() << " edges removed" << std::endl;
 }
 
 std::list< node_id_t > BranchReduction::findBranchingEvidence(node_id_t node1, std::list< node_id_t > neighbors,
@@ -998,13 +996,11 @@ void BranchReduction::countUniqueEvidence(std::vector< node_pair_t > component,
             }
             edges_to_remove.push_back(node_pair);
         }
-        if (true) {
-            std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
-            for (auto id : evidence) {
-                std::cout << id << " ";
-            }
-            std::cout << std::endl;
+        std::cout << "evidence load for edge " << node1 << "," << node2 << " : ";
+        for (auto id : evidence) {
+            std::cout << id << " ";
         }
+        std::cout << std::endl;
     }
 }
 
