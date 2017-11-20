@@ -90,10 +90,11 @@ int main(int argc, char *argv[])
         ("diploid", po::value< bool > (&program_settings.diploid)->default_value(false), "apply edge filtering for diploid genomes")
         ("relax_PE_edges", po::value< bool > (&program_settings.relax_PE_edges)->default_value(false), "relax edge restrictions for paired-end overlaps")
         ("original_fastq", po::value< std::string > (&program_settings.original_fastq)->default_value(""), "original reads for applying read-based branch reduction")
-        ("branch_min_ev", po::value< int > (&program_settings.branch_min_ev)->default_value(0), "minimum evidence required when applying read-based branch reduction")
+        // ("branch_min_ev", po::value< int > (&program_settings.branch_min_ev)->default_value(0), "minimum evidence required when applying read-based branch reduction")
+        ("branch_reduction", po::value< bool > (&program_settings.branch_reduction)->default_value(false), "average coverage (sequencing depth) per haplotype, necessary information for read-based branch reduction (skipped otherwise)")
         ("branch_SE_c", po::value< unsigned int > (&program_settings.branch_SE_c)->default_value(0), "number of single-end input reads in original fastq")
         ("branch_PE_c", po::value< unsigned int > (&program_settings.branch_PE_c)->default_value(0), "number of paired-end input reads in original fastq")
-        ("careful_diploid", po::value< bool > (&program_settings.careful)->default_value(true), "more careful merging in diploid mode (test)")
+        ("careful_diploid", po::value< bool > (&program_settings.careful)->default_value(true), "more careful merging by avoiding neighboring components")
         ("verbose,v", po::value< bool > (&program_settings.verbose)->default_value(false), "output additional information during assembly")
     ;
 
@@ -309,7 +310,7 @@ int main(int argc, char *argv[])
         overlap_graph->removeTips();
     }
     // Reduce branches in the graph by evaluating read evidence
-    if (program_settings.branch_min_ev > 0) {
+    if (program_settings.branch_reduction > 0) {
         // Adjust program settings to read from original input files
         ProgramSettings original_input = program_settings;
         original_input.singles_file = program_settings.original_fastq;

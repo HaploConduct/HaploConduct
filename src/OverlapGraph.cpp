@@ -179,16 +179,17 @@ double OverlapGraph::checkEdge(node_id_t v, node_id_t w, bool reverse_allowed) {
 
 // return pointer to edge v->w if it exists, otherwise w->v
 Edge* OverlapGraph::getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed) {
+    //std::cout << "getEdgeInfo " << v << ", " << w << std::endl;
 	std::list< Edge >::iterator it;
-	if (!adj_out[v].empty()) {
-	    for (it = adj_out[v].begin(); it != adj_out[v].end(); it++) {
+	if (!adj_out.at(v).empty()) {
+	    for (it = adj_out.at(v).begin(); it != adj_out.at(v).end(); it++) {
 		    if (it->get_vertex(2) == w) {
 			    return &(*it);
 	        }
         }
     }
-    if (reverse_allowed && !adj_out[w].empty()) {
-        for (it = adj_out[w].begin(); it != adj_out[w].end(); it++) {
+    if (reverse_allowed && !adj_out.at(w).empty()) {
+        for (it = adj_out.at(w).begin(); it != adj_out.at(w).end(); it++) {
 		    if (it->get_vertex(2) == v) {
 			    return &(*it);
 	        }

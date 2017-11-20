@@ -68,7 +68,8 @@ def main():
     advanced.add_argument('--average_read_len', dest='average_read_len', type=float, help='average length of the input reads; will be computed from the input if not specified')
 #    advanced.add_argument('--no_filtering', dest='filtering', action='store_false', help='disable kallisto-based filtering of contigs')
     advanced.add_argument('--max_tip_len', dest='max_tip_len', type=int, help='maximum extension length for a sequence to be called a tip')
-    advanced.add_argument('--min_evidence', dest='min_evidence', type=int, required=True, help='minimum number of uniquely matching reads to resolve branches')
+    #advanced.add_argument('--min_evidence', dest='min_evidence', type=int, required=True, help='minimum number of uniquely matching reads to resolve branches')
+    advanced.add_argument('--hap_cov', dest='hap_cov', type=int, required=True, help='average coverage per haplotype')
     split_mode = parser.add_argument_group('split mode')
     split_mode.add_argument('--original_SE_count', dest='original_SE_count', type=int, default=-1, help='number of single-end sequences in input before splitting')
     split_mode.add_argument('--original_PE_count', dest='original_PE_count', type=int, default=-1, help='number of paired-end sequences in input before splitting')
@@ -144,7 +145,7 @@ Author: %s
             sys.exit(1)
 
         if args.reference:
-            # run estimate_strain_count.py
+            # run estimate_strain_count
             run_strain_count(args.reference, final_contig_file, base_path)
             FNULL.close()
             return # No assembly, so we are done!
@@ -335,6 +336,11 @@ Author: %s
         PE_count = p_seq_count
     original_readcount = SE_count + PE_count
 
+    readlen = 150
+    intseg = 100
+    stddev = 10
+    hcov = args.hap_cov
+
     # Run SAVAGE Stage a: error correction and initial contig formation
     if args.assembly:
         print "***************"
@@ -345,9 +351,10 @@ Author: %s
         verbose = "false"
         error_rate = 0
         min_read_len = 0
-        min_evidence = args.min_evidence
-        branch_reduction = [min_evidence, SE_count, int(PE_count/2)]
+        # min_evidence = args.min_evidence
+        branch_reduction = [args.hap_cov, SE_count, int(PE_count/2)]
         EC = "true" if args.error_correction else "false"
+        build_threshold_table(readlen, intseg, stddev, hcov, base_path)
         run_savage_assembly(EC, args.min_overlap_len, min_overlap_len_EC, args.min_clique_size, min_read_len, max_tip_len, branch_reduction, error_rate, args.threads, original_readcount, diploid, base_path, verbose)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py assembly/singles.fastq contigs.fasta" % base_path, shell=True)
@@ -393,9 +400,10 @@ Author: %s
         EC = "false"
         error_rate = args.merge_contigs
         min_read_len = 0
-        min_evidence = max(1, args.min_evidence-1)
+        # min_evidence = max(1, args.min_evidence-1)
         min_clique_size = 2
-        branch_reduction = [min_evidence, SE_count, int(PE_count/2)]
+        branch_reduction = [args.hap_cov, SE_count, int(PE_count/2)]
+        build_threshold_table(readlen, intseg, stddev, hcov, base_path)
         run_savage_assembly(EC, min_overlap_len, min_overlap_len, min_clique_size, min_read_len, max_tip_len, branch_reduction, error_rate, args.threads, original_readcount, diploid, base_path, verbose)
         os.chdir('..')
         if os.path.exists('diploid/singles.fastq'):
@@ -496,7 +504,11 @@ def preprocessing_denovo(min_overlap_len, sfo_err, threads, base_path):
     sys.stdout.flush()
     sfo_len = min_overlap_len
     # run sfoverlap
-    subprocess.check_call("rust-overlaps -i -r -w %d s_p1_p2.fasta sfoverlaps.out %f %d" % (threads, sfo_err, sfo_len), shell=True)
+    try:
+        subprocess.check_call("rust-overlaps -i -r -w %d s_p1_p2.fasta sfoverlaps.out %f %d 1> /dev/null" % (threads, sfo_err, sfo_len), shell=True)
+    except subprocess.CalledProcessError as e:
+        print "ERROR: rust-overlaps not installed"
+        sys.exit(1)
     # run postprocessing scripts
     print "- Processing output",
     sys.stdout.flush()
@@ -520,9 +532,9 @@ def preprocessing_ref(min_overlap_len, reference, base_path):
 def run_sfo(fasta, sfo_err, base_path, min_overlap_len, threads, s_count, p_count, overlaps_file, reversals):
 #    print "sfo_err: ", sfo_err
     if reversals:
-        subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
     else:
-        subprocess.check_call("rust-overlaps -w %d -i %s sfoverlaps.out %f %d" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        subprocess.check_call("rust-overlaps -w %d -i %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, s_count, p_count), shell=True)
     subprocess.check_call("rm sfoverlaps.out", shell=True)
     return
@@ -718,7 +730,7 @@ def run_savage_assembly(EC, min_overlap_len, min_overlap_len_EC, min_clique_size
     # one final iteration to remove singletons and tips from contig file
     final_it = True
     cliques = "false"
-    remove_tips = "true"
+    remove_tips = "false" #"true"
     branch_red = [0, 0, 0]
     if read_counts[-1] > 0:
         stats = run_viralquasispecies(stats, "singles.fastq", "overlaps.txt", min_overlap_len, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
@@ -738,8 +750,9 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
     if EC=="true":
         keep_singletons = 1000
     elif diploid=="true" and final_it:
-        max_tip_len *= 2
+        #max_tip_len *= 2
         keep_singletons = max_tip_len
+        #keep_singletons = 0
     else:
         keep_singletons = 0
     remove_branches = "true" if cliques=="false" else "false"
@@ -749,7 +762,7 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
     separate_tips = "true" if final_it else "false"
     remove_inclusions = "true" if (final_it and diploid=="true") else "false"
 #    remove_tips = "true" if final_it and diploid=="true" else "false"
-    [branch_min_ev, branch_SE_c, branch_PE_c] = branch_reduction
+    [hap_cov, branch_SE_c, branch_PE_c] = branch_reduction
     if verbose == 'true':
         print "\n*********************"
         print "**** Iteration %d ****" %iteration
@@ -781,9 +794,9 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
         "--diploid=%s" % diploid,
         "--min_qual=0" # never insert N's
     ]
-    if branch_min_ev > 0:
+    if hap_cov > 0:
+        shell_command.append("--branch_reduction=true")
         shell_command.append("--original_fastq=%s" % original_fastq)
-        shell_command.append("--branch_min_ev=%s" % branch_min_ev)
         shell_command.append("--branch_SE_c=%s" % branch_SE_c)
         shell_command.append("--branch_PE_c=%s" % branch_PE_c)
     subprocess.check_call(shell_command)
@@ -853,6 +866,35 @@ def analyze_coverage():
         return max_cov
     else:
         return 0
+
+def build_threshold_table(readlen, intseg, stddev, hcov, base_path):
+    filename = "evidence_threshold_table.tsv"
+    if os.path.isfile(filename):
+        # threshold table file exists, check if it has the right parameters
+        params = {}
+        with open(filename, 'r') as f:
+            for line in f:
+                if line[0] != '#':
+                    continue
+                line = line.rstrip('\n').split()
+                if len(line) != 3:
+                    continue
+                params[line[1]] = int(line[2])
+        if (readlen == params["readlen"] and intseg == params["intseg"] and
+                stddev == params["stddev"] and hcov == params["hcov"]):
+            # correct file exists
+            return
+    print "Building the evidence threshold table..."
+    # build a new table
+    shell_command = "{}/scripts/min_ev_table.py".format(base_path)
+    shell_command += " -l {}".format(readlen)
+    shell_command += " -i {}".format(intseg)
+    shell_command += " --stddev {}".format(stddev)
+    shell_command += " --hcov {}".format(hcov)
+    shell_command += " -o {}".format(filename)
+    subprocess.check_call(shell_command, shell=True)
+    return
+
 
 
 if __name__ == '__main__':

@@ -60,7 +60,7 @@ struct ProgramSettings {
     bool store_tips_separately;
     bool relax_PE_edges;
     std::string original_fastq;
-    int branch_min_ev;
+    bool branch_reduction;
     unsigned int branch_SE_c;
     unsigned int branch_PE_c;
     bool careful;
