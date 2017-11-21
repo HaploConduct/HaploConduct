@@ -51,6 +51,9 @@ def main():
     basic.add_argument('-m_EC', '--min_overlap_len_EC', dest='min_overlap_len_EC', type=int, help='minimum overlap length required between reads during error correction')
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
+    basic.add_argument('--hap_cov', dest='hap_cov', type=float, required=True, help='average coverage per haplotype')
+    basic.add_argument('--intseg', dest='intseg', type=float, required=True, help='mean internal segment size for paired-end input (can be negative)')
+    basic.add_argument('--stddev', dest='stddev', type=float, required=True, help='standard deviation of internal segment size for paired-end input')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
     advanced = parser.add_argument_group('advanced arguments')
@@ -69,7 +72,6 @@ def main():
 #    advanced.add_argument('--no_filtering', dest='filtering', action='store_false', help='disable kallisto-based filtering of contigs')
     advanced.add_argument('--max_tip_len', dest='max_tip_len', type=int, help='maximum extension length for a sequence to be called a tip')
     #advanced.add_argument('--min_evidence', dest='min_evidence', type=int, required=True, help='minimum number of uniquely matching reads to resolve branches')
-    advanced.add_argument('--hap_cov', dest='hap_cov', type=int, required=True, help='average coverage per haplotype')
     split_mode = parser.add_argument_group('split mode')
     split_mode.add_argument('--original_SE_count', dest='original_SE_count', type=int, default=-1, help='number of single-end sequences in input before splitting')
     split_mode.add_argument('--original_PE_count', dest='original_PE_count', type=int, default=-1, help='number of paired-end sequences in input before splitting')
@@ -336,9 +338,9 @@ Author: %s
         PE_count = p_seq_count
     original_readcount = SE_count + PE_count
 
-    readlen = 150
-    intseg = 100
-    stddev = 10
+    readlen = average_read_len
+    intseg = args.intseg
+    stddev = args.stddev
     hcov = args.hap_cov
 
     # Run SAVAGE Stage a: error correction and initial contig formation
