@@ -177,14 +177,15 @@ int main(int argc, char *argv[])
     logfile << program_settings.paired2_file << "\n";
     logfile << program_settings.overlaps_file << "\n\n";
     logfile << "Output directory: " << program_settings.output_dir << "\n";
+    logfile << "Base path: " <<  program_settings.base_path << "\n";
     logfile << "Maximum number of overlaps: " <<  program_settings.max_overlaps << "\n";
     logfile << "Threads: " <<  program_settings.n_threads << "\n";
     logfile << "Minimum clique size: " <<  program_settings.min_clique_size << "\n";
-//    logfile << "Minimum base quality (superreads): " <<  program_settings.min_qual << "\n";
+    logfile << "Minimum base quality (superreads): " <<  program_settings.min_qual << "\n";
     logfile << "Minimal overlap percentage: " <<  program_settings.min_overlap_perc << "\n";
     logfile << "Minimal overlap length: " <<  program_settings.min_overlap_len << "\n";
     logfile << "Edge threshold: " <<  program_settings.edge_threshold << "\n";
-    logfile << "Overlap threshold (to be reconsidered): " <<  program_settings.ov_threshold << "\n";
+    logfile << "Overlap threshold: " <<  program_settings.ov_threshold << "\n";
     logfile << "First it: " <<  program_settings.first_it << "\n";
     logfile << "Add duplicates: " <<  program_settings.add_duplicates << "\n";
     logfile << "Resolve read orientations: " <<  program_settings.resolve_orientations << "\n";
@@ -203,6 +204,17 @@ int main(int argc, char *argv[])
     logfile << "Remove transitive edges: " << program_settings.remove_trans << "\n";
     logfile << "Minimal read length: " <<  program_settings.min_read_len << "\n";
     logfile << "Remove branches: " <<  program_settings.remove_branches << "\n";
+    logfile << "Remove tips: " <<  program_settings.remove_tips << "\n";
+    logfile << "Maximal tip length: " <<  program_settings.max_tip_len << "\n";
+    logfile << "Store tips separately: " <<  program_settings.store_tips_separately << "\n";
+    logfile << "Relax PE edges: " <<  program_settings.relax_PE_edges << "\n";
+    logfile << "Original fastq: " <<  program_settings.original_fastq << "\n";
+    logfile << "Branch reduction: " <<  program_settings.branch_reduction << "\n";
+    logfile << "Branch SE count: " <<  program_settings.branch_SE_c << "\n";
+    logfile << "Branch PE count: " <<  program_settings.branch_PE_c << "\n";
+    logfile << "Diploid: " <<  program_settings.diploid << "\n";
+    logfile << "Careful diploid mode: " <<  program_settings.careful << "\n";
+    logfile << "Verbose: " <<  program_settings.verbose << "\n";
     logfile.close();
 
     // define timestamps
