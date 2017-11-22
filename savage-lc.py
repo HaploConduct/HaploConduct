@@ -52,8 +52,8 @@ def main():
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
     basic.add_argument('--hap_cov', dest='hap_cov', type=float, required=True, help='average coverage per haplotype')
-    basic.add_argument('--intseg', dest='intseg', type=float, required=True, help='mean internal segment size for paired-end input (can be negative)')
-    basic.add_argument('--stddev', dest='stddev', type=float, required=True, help='standard deviation of internal segment size for paired-end input')
+    basic.add_argument('--insert_size', dest='insert_size', type=float, required=True, help='mean insert size for paired-end input')
+    basic.add_argument('--stddev', dest='stddev', type=float, required=True, help='standard deviation of insert size for paired-end input')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
     advanced = parser.add_argument_group('advanced arguments')
@@ -338,8 +338,9 @@ Author: %s
         PE_count = p_seq_count
     original_readcount = SE_count + PE_count
 
+    assert args.insert_size > 0
     readlen = average_read_len
-    intseg = args.intseg
+    intseg = args.insert_size - 2*readlen # internal segment size, can be negative
     stddev = args.stddev
     hcov = args.hap_cov
 
