@@ -253,9 +253,7 @@ std::pair< std::list< node_id_t >, int > BranchReduction::findBranchingEvidence(
     std::unordered_map< node_id_t, std::list< read_id_t > > evidence_per_neighbor;
     std::vector< std::string >::const_iterator seq_it = sequence_vec.begin();
     std::vector< int >::const_iterator startpos_it = startpos_vec.begin();
-    assert (overlap_graph->getOrientation(node1)); // read orientations already resolved in earlier iterations
     for (auto node2 : neighbors) {
-        assert (overlap_graph->getOrientation(node2)); // read orientations already resolved in earlier iterations
         // find common subreads from originals dict
         std::list< read_id_t > evidence_list;
         std::string contig = *seq_it;
@@ -412,7 +410,13 @@ std::pair< std::list< int >, int > BranchReduction::buildDiffListOut(
         int pos = edge->get_pos(1);
         Read* read = edge->get_read(2);
         assert (!read->is_paired());
-        std::string sequence = read->get_seq(0);
+        std::string sequence;
+        if (overlap_graph->getOrientation(node1)) {
+            sequence = read->get_seq(0);
+        }
+        else {
+            sequence = read->get_rev_comp(0);
+        }
         sequence_vec.push_back(sequence);
         startpos_vec.push_back(pos);
         edge_vec.push_back(edge);
@@ -548,7 +552,13 @@ std::pair< std::list< int >, int > BranchReduction::buildDiffListIn(
         int pos = edge->get_pos(1);
         Read* read = edge->get_read(1);
         assert (!read->is_paired());
-        std::string sequence = read->get_seq(0);
+        std::string sequence;
+        if (overlap_graph->getOrientation(node1)) {
+            sequence = read->get_seq(0);
+        }
+        else {
+            sequence = read->get_rev_comp(0);
+        }
         sequence_vec.push_back(sequence);
         pos_vec.push_back(pos);
         edge_vec.push_back(edge);

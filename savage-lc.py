@@ -534,6 +534,7 @@ def preprocessing_ref(min_overlap_len, reference, base_path):
 
 def run_sfo(fasta, sfo_err, base_path, min_overlap_len, threads, s_count, p_count, overlaps_file, reversals):
 #    print "sfo_err: ", sfo_err
+    reversals = True # test!
     if reversals:
         subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
     else:
@@ -749,7 +750,7 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
     [iteration, read_counts, overlap_counts, edge_counts, max_read_lengths] = stats
     selfpath = sys.path[0]
     viralquasispecies = selfpath + "/bin/ViralQuasispecies"
-    COPYFILES = True
+    COPYFILES = False
     if EC=="true":
         keep_singletons = 1000
     elif diploid=="true" and final_it:
