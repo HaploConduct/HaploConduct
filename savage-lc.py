@@ -40,6 +40,7 @@ For the complete manual, please visit https://bitbucket.org/jbaaijens/savage
 
 InputStruct = namedtuple("InputStruct", "input_s input_p1 input_p2 read_len fragmentsize stddev")
 original_fastq = ""
+denovo = True
 
 def main():
     parser = ArgumentParser(description=usage, formatter_class=RawTextHelpFormatter)
@@ -50,12 +51,13 @@ def main():
     basic.add_argument('-m', '--min_overlap_len', dest='min_overlap_len', type=int, default=50, help='minimum overlap length required between reads')
     basic.add_argument('-m_EC', '--min_overlap_len_EC', dest='min_overlap_len_EC', type=int, help='minimum overlap length required between reads during error correction')
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
-    basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
+#    basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
     basic.add_argument('--hap_cov', dest='hap_cov', type=float, required=True, help='average coverage per haplotype')
     basic.add_argument('--insert_size', dest='insert_size', type=float, required=True, help='mean insert size for paired-end input')
     basic.add_argument('--stddev', dest='stddev', type=float, required=True, help='standard deviation of insert size for paired-end input')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
+    ref_guided.add_argument('--ref_guided_mode', dest='ref_guided_mode', action='store_true', help='perform reference-guided assembly')
     advanced = parser.add_argument_group('advanced arguments')
     advanced.add_argument('--no_EC', dest='error_correction', action='store_false', help='skip error correction in initial iteration (i.e. no cliques)')
     advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
@@ -111,7 +113,9 @@ Author: %s
     FNULL = open(os.devnull, 'w')
 
     # always perform de novo assembly; reference is only used for strain counting
-    denovo = True
+    global denovo;
+    denovo = False if args.ref_guided_mode else True
+
     if args.reference:
         if not os.path.exists(args.reference):
             sys.stderr.write("""\nERROR: Reference fasta not found: %s \nPlease enter full path to file.\n""" % args.reference)
@@ -259,7 +263,8 @@ Author: %s
         sys.exit(1)
 
     if args.min_overlap_len_EC is None:
-        m = 0.6*average_read_len # 60% of average input read length
+        #m = 0.6*average_read_len # 60% of average input read length
+        m = 1+0.5*average_read_len
         min_overlap_len_EC = int(round(m))
         print "Using min_overlap_len_EC =", min_overlap_len_EC
         print
@@ -671,7 +676,7 @@ def run_savage_assembly(EC, min_overlap_len, min_overlap_len_EC, min_clique_size
     remove_tips = "false"
     # run first iteration (error correction)
     if EC == "true":
-        edge_threshold = 0.97
+        edge_threshold = 0.95 #0.97
         first_it = "true"
         cliques = "true"
         stats = run_viralquasispecies(stats, "s_p1_p2.fastq", "original_overlaps.txt", min_overlap_len_EC, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
@@ -682,7 +687,7 @@ def run_savage_assembly(EC, min_overlap_len, min_overlap_len_EC, min_clique_size
         branch_red = branch_reduction
         stats = run_viralquasispecies(stats, "s_p1_p2.fastq", "original_overlaps.txt", min_overlap_len, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
     else:
-        edge_threshold = 0.97
+        edge_threshold = 0.95 #0.97
         first_it = "true"
         cliques = "true"
         stats = run_viralquasispecies(stats, "s_p1_p2.fastq", "original_overlaps.txt", min_overlap_len_EC, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
@@ -808,12 +813,13 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
         copy_files(stats[0])
     copy_log()
     # recompute overlaps on contigs
-    s_count = int(file_len('singles.fastq')/4)
-    if s_count > 0:
-        subprocess.check_call("%s/scripts/fastq2fasta.py singles.fastq singles.fasta" % selfpath, shell=True)
-        sfo_err = 0
-        reversals = True if first_it=="true" else False # allow reversals only in the first two iterations
-        run_sfo("singles.fasta", sfo_err, selfpath, next_min_overlap, threads, s_count, 0, "overlaps.txt", reversals)
+    if denovo:
+        s_count = int(file_len('singles.fastq')/4)
+        if s_count > 0:
+            subprocess.check_call("%s/scripts/fastq2fasta.py singles.fastq singles.fasta" % selfpath, shell=True)
+            sfo_err = 0
+            reversals = True if first_it=="true" else False # allow reversals only in the first two iterations
+            run_sfo("singles.fasta", sfo_err, selfpath, next_min_overlap, threads, s_count, 0, "overlaps.txt", reversals)
     # update pipeline statistics
     stats = analyze_results(stats)
     if verbose == 'true':
