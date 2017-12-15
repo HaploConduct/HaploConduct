@@ -193,12 +193,8 @@ Author: %s
     print "Total number of bases =", total_seq_len
     print "Average sequence length = %.1f" % average_read_len
     print
-#    fragmentsize = args.fragmentsize if args.fragmentsize else average_read_len
-#    stddev = args.stddev if args.stddev else 20
+
     original_readcount = s_seq_count + p_seq_count
-    fragmentsize = average_read_len
-    stddev = 20
-    input_info = InputStruct(args.input_s, args.input_p1, args.input_p2, average_read_len, fragmentsize, stddev)
 
     if args.max_tip_len is None:
         max_tip_len = int(round(average_read_len)) # average input sequence length
@@ -216,7 +212,7 @@ Author: %s
         sys.exit(1)
 
     if args.min_overlap_len_EC is None:
-        m = 0.6*average_read_len # 60% of average input read length
+        m = 2+0.5*average_read_len # 50% of average input read length
         min_overlap_len_EC = int(round(m))
         print "Using min_overlap_len_EC =", min_overlap_len_EC
         print

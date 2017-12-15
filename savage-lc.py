@@ -235,11 +235,6 @@ Author: %s
     print "Total number of bases =", total_seq_len
     print "Average sequence length = %.1f" % average_read_len
     print
-#    fragmentsize = args.fragmentsize if args.fragmentsize else average_read_len
-#    stddev = args.stddev if args.stddev else 20
-    fragmentsize = average_read_len
-    stddev = 20
-    input_info = InputStruct(args.input_s, args.input_p1, args.input_p2, average_read_len, fragmentsize, stddev)
 
     global original_fastq;
     if args.original_fastq != '':
@@ -264,7 +259,7 @@ Author: %s
 
     if args.min_overlap_len_EC is None:
         #m = 0.6*average_read_len # 60% of average input read length
-        m = 1+0.5*average_read_len
+        m = 2+0.5*average_read_len
         min_overlap_len_EC = int(round(m))
         print "Using min_overlap_len_EC =", min_overlap_len_EC
         print
@@ -547,97 +542,6 @@ def run_sfo(fasta, sfo_err, base_path, min_overlap_len, threads, s_count, p_coun
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, s_count, p_count), shell=True)
     subprocess.check_call("rm sfoverlaps.out", shell=True)
     return
-
-def freq_filtering(contig_fasta, contig_fastq, min_TPM, input_info): # fragmentsize, stddev, forward, reverse=""):
-    print "\n--- Filtering contigs ---"
-    # run kallisto
-    abundance_file = run_kallisto(contig_fasta, input_info)
-    # read TPMs from file
-    TPM_dict = {}
-    with open(abundance_file, 'r') as f:
-        c = 0
-        for line in f:
-            c += 1
-            if c == 1:
-                continue
-            [target_id, length, eff_length, est_counts, tpm] = line.split('\t')
-            TPM_dict[target_id] = float(tpm)
-
-    input_count = 0
-    output_count = 0
-
-    if min(TPM_dict.itervalues()) > min_TPM:
-        print "Nothing filtered out.\n"
-    else:
-        # rename old contig files
-        contigs_name, extension = os.path.splitext(contig_fasta)
-        renamed_fasta = contigs_name + ".unfiltered.fasta"
-        renamed_fastq = contigs_name + ".unfiltered.fastq"
-        subprocess.check_call(['mv', contig_fasta, renamed_fasta])
-        subprocess.check_call(['mv', contig_fastq, renamed_fastq])
-        # filter contig set and write to new files
-        output_fasta = open(contig_fasta, 'w')
-        output_fastq = open(contig_fastq, 'w')
-        with open(renamed_fastq, 'r') as f:
-            c = 0
-            for line in f:
-                c += 1
-                if (c % 4) == 1:
-                    # ID line
-                    id_line = line
-                    cur_id = id_line.lstrip('@').rstrip('\n')
-                elif (c % 4) == 2:
-                    # seq line
-                    seq_line = line
-                elif (c % 4) == 3:
-                    # + line
-                    continue
-                else:
-                    # qual line
-                    assert (c % 4) == 0
-                    qual_line = line
-                    input_count += 1
-                    if TPM_dict[cur_id] > min_TPM:
-                        # write to new files
-                        output_fasta.write('>' + cur_id + '\n' + seq_line)
-                        output_fastq.write(id_line + seq_line + '+\n' + qual_line)
-                        output_count += 1
-        output_fasta.close()
-        output_fastq.close()
-        os.remove(renamed_fasta)
-        os.remove(renamed_fastq)
-        print "Filtered %s down to %s contigs.\n" % (contig_fasta, output_count)
-    return
-
-def run_kallisto(contigs, input_info): #fragmentsize, stddev, forward, reverse=""):
-    kallisto = "kallisto" # kallisto executable
-    FNULL = open(os.devnull, 'w')
-    # create output directory
-    subprocess.call(['mkdir', '-p', 'frequencies'])
-    # index construction
-    contigs_name, extension = os.path.splitext(contigs)
-    index_file = 'frequencies/' + contigs_name + '.idx'
-    print "Kallisto index construction... "
-    subprocess.check_call([kallisto, 'index', '-i', index_file, contigs], stdout=FNULL, stderr=FNULL)
-    # estimate abundances
-    print "Kallisto abundance quantification... "
-    kallisto_out = 'frequencies/' + contigs_name
-    if input_info.input_s:
-        fragmentsize = str(input_info.fragmentsize)
-        stddev = str(input_info.stddev)
-        if input_info.input_p1 and input_info.input_p2:
-            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s, input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
-        else:
-            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s], stdout=FNULL, stderr=FNULL)
-    else:
-        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
-    # if reverse:
-    #     subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
-    # else:
-    #     subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', forward])
-    abundance_file = kallisto_out + '/abundance.tsv'
-    FNULL.close()
-    return abundance_file
 
 def run_strain_count(reference, contigs_fastq, base_path):
     print "Estimating strain count on %s" % contigs_fastq
