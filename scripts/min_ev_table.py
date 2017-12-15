@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 from __future__ import division
 import sys
@@ -71,7 +71,7 @@ def main():
     exp_ev_list = []
     norm_cdf = {} # store computed cdf values here for reuse (major speedup)
 
-    print("Computing expected evidence values")
+    print "Computing expected evidence values"
     #print("Evidence boundaries:", end=" ")
     while exp_ev > 0 or dist == 1:
         exp_ev = 0
@@ -94,7 +94,7 @@ def main():
         if dist > fragsize + 2*stddev:
             break
 
-    print("Compute corresponding thresholds in increasing order")
+    print "Compute corresponding thresholds in increasing order"
     # compute min_evidence values in increasing order
     ev_values = sorted(set(exp_ev_list))
     ev_to_threshold = {}
@@ -103,7 +103,7 @@ def main():
         min_ev = findMinEv(exp_ev, min_ev, seq_err, accuracy)
         ev_to_threshold[exp_ev] = min_ev
 
-    print("Write results to {}".format(args.outfile))
+    print "Write results to {}".format(args.outfile)
     # now write output
     for i, exp_ev in enumerate(exp_ev_list):
         dist = i+1
