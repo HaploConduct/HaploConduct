@@ -150,7 +150,6 @@ def choose(n,k):
     denom = reduce(op.mul, range(1, k+1))
     return numer//denom
 
-    return min_ev
 
 if __name__ == '__main__':
     sys.exit(main())
