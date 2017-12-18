@@ -286,7 +286,7 @@ int main(int argc, char *argv[])
             std::cout << "There were no edges constructed, so there is nothing to be done." << std::endl;
         }
         std::string graphfile = program_settings.output_dir + "graph.txt";
-        remove(graphfile.c_str()); // remove graph.gfa to ensure pipeline termination
+        remove(graphfile.c_str()); // remove graph file to ensure pipeline termination
         return 0;
     }
     else if (program_settings.verbose) {
@@ -403,7 +403,7 @@ int main(int argc, char *argv[])
         int system_ret = system(command.c_str());
         if(system_ret != 0){
             // The system method failed
-            std::cerr << "Adding head to file failed. Exiting..." << std::endl;
+            std::cerr << "ERROR: Quick cliques failed. Exiting..." << std::endl;
             exit(1);
         }
     }
