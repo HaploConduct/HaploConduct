@@ -793,7 +793,7 @@ def build_threshold_table(readlen, intseg, stddev, hcov, base_path):
                 line = line.rstrip('\n').split()
                 if len(line) != 3:
                     continue
-                params[line[1]] = int(line[2])
+                params[line[1]] = float(line[2])
         if (readlen == params["readlen"] and intseg == params["intseg"] and
                 stddev == params["stddev"] and hcov == params["hcov"]):
             # correct file exists
