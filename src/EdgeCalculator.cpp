@@ -449,7 +449,9 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                 if (it1->get_perc() == 100) {
                     inclusion_count++;
                 }
-                score = overlap_graph->checkEdge(v1, v2, /*reverse_allowed*/ true);
+                // score = overlap_graph->checkEdge(v1, v2, /*reverse_allowed*/ true);
+                bool opposite_orientations = (it1->get_ori(1) == it1->get_ori(2));
+                score = overlap_graph->checkEdgeWithOri(v1, v2, opposite_orientations);
                 if (score < 0) {
                     // edge does not yet exist, so add it now
                     overlap_graph->addEdge(*it1);

@@ -148,6 +148,41 @@ Edge OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
 
 
 // check if edge exists; if yes, return overlap score, if no, return -1
+double OverlapGraph::checkEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations) {
+    std::list< Edge >::const_iterator it;
+    if (!adj_out.at(v).empty()) {
+        for (it = adj_out[v].begin(); it != adj_out[v].end(); it++) {
+            if (it->get_vertex(2) == w) {
+                bool current_opp_ori = (it->get_ori(1) == it->get_ori(2));
+                if (current_opp_ori == opposite_orientations) {
+                    if (!(it->get_score() >= program_settings.edge_threshold || it->get_mismatch_rate() <= program_settings.merge_contigs)) {
+                        std::cout << "score " << it->get_score() << std::endl;
+                    }
+                    assert (it->get_score() >= program_settings.edge_threshold || it->get_mismatch_rate() <= program_settings.merge_contigs);
+                    // std::cout << "Edge found" << std::endl;
+                    return it->get_score();
+                }
+	        }
+	    }
+    }
+    if (!adj_out.at(w).empty()) {
+        for (it = adj_out[w].begin(); it != adj_out[w].end(); it++) {
+            if (it->get_vertex(2) == v) {
+                bool current_opp_ori = (it->get_ori(1) == it->get_ori(2));
+                if (current_opp_ori == opposite_orientations) {
+                    assert (it->get_score() >= program_settings.edge_threshold || it->get_mismatch_rate() <= program_settings.merge_contigs);
+                    // std::cout << "Edge found" << std::endl;
+                    return it->get_score();
+                }
+            }
+        }
+    }
+//    std::cout << "Edge not found" << std::endl;
+    return -1;
+}
+
+
+// check if edge exists; if yes, return overlap score, if no, return -1
 double OverlapGraph::checkEdge(node_id_t v, node_id_t w, bool reverse_allowed) {
 //    std::cout << "In checkEdge()" << std::endl;
 	std::list< Edge >::const_iterator it;

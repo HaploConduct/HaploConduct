@@ -85,6 +85,7 @@ public:
     void addEdge(Edge edge);
     Edge removeEdge(node_id_t v, node_id_t w);
     double checkEdge(node_id_t v, node_id_t w, bool reverse_allowed=true);
+    double checkEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations);
     Edge* getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed=true);
     unsigned int getEdgeCount();
     unsigned int getBackEdgeCount();
