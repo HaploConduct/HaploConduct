@@ -393,7 +393,7 @@ Author: %s
         paired_count = 0
         contig_count = int(file_len('contigs.fasta')/2)
         os.chdir('diploid')
-        reversals = False
+        reversals = True
         run_sfo('../contigs.fasta', args.merge_contigs, base_path, min_overlap_len, args.threads, contig_count, paired_count, "original_overlaps.txt", reversals)
         sys.stdout.flush()
         # run SAVAGE
@@ -534,7 +534,6 @@ def preprocessing_ref(min_overlap_len, reference, base_path):
 
 def run_sfo(fasta, sfo_err, base_path, min_overlap_len, threads, s_count, p_count, overlaps_file, reversals):
 #    print "sfo_err: ", sfo_err
-    reversals = True # test!
     if reversals:
         subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
     else:
@@ -722,7 +721,7 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
         if s_count > 0:
             subprocess.check_call("%s/scripts/fastq2fasta.py singles.fastq singles.fasta" % selfpath, shell=True)
             sfo_err = 0
-            reversals = True if first_it=="true" else False # allow reversals only in the first two iterations
+            reversals = True #if first_it=="true" else False # allow reversals only in the first two iterations
             run_sfo("singles.fasta", sfo_err, selfpath, next_min_overlap, threads, s_count, 0, "overlaps.txt", reversals)
     # update pipeline statistics
     stats = analyze_results(stats)
