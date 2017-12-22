@@ -293,7 +293,6 @@ int main(int argc, char *argv[])
         std::cout << overlap_graph->getEdgeCount() << " edges have been constructed in " << time_s << " seconds.\n";
     }
 //    overlap_graph->getGraphStats();
-    overlap_graph->checkDuplicateEdges();
     if (program_settings.ignore_inclusions) {
         overlap_graph->removeInclusions();
     }
@@ -303,7 +302,8 @@ int main(int argc, char *argv[])
     unsigned int conflict_count;
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
-
+    overlap_graph->checkDuplicateEdges();
+    
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
 
