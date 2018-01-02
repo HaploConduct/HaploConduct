@@ -623,23 +623,24 @@ def run_savage_assembly(EC, min_overlap_len, min_overlap_len_EC, min_clique_size
         else:
             const_read_its = 0
 
-    if diploid=="true":
-        # diploid final round with a relaxed evidence threshold after removing tips
-        const_read_its = 0
-        branch_reduction[0] = 1 #int(floor(branch_reduction[0]/2))
-#        remove_tips = "true"
-        while read_counts[-1] > 0 and overlap_counts[-1] > 0 and const_read_its < 2:
-            # apply read-based branch reduction and merge along remaining branches
-            cliques = "true"
-            branch_red = branch_reduction
-            print "iteration %d -> BranchReduction" % iteration
-            stats = run_viralquasispecies(stats, "singles.fastq", "overlaps.txt", min_overlap_len, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
-            [iteration, read_counts, overlap_counts, edge_counts, max_read_lengths] = stats # update stats
-            if read_counts[-1] == read_counts[-2]:
-                const_read_its += 1
-            else:
-                const_read_its = 0
-    # one final iteration to remove singletons and tips from contig file
+#     if diploid=="true":
+#         # diploid final round with a relaxed evidence threshold after removing tips
+#         const_read_its = 0
+#         branch_reduction[0] = 1 #int(floor(branch_reduction[0]/2))
+# #        remove_tips = "true"
+#         while read_counts[-1] > 0 and overlap_counts[-1] > 0 and const_read_its < 2:
+#             # apply read-based branch reduction and merge along remaining branches
+#             cliques = "true"
+#             branch_red = branch_reduction
+#             print "iteration %d -> BranchReduction" % iteration
+#             stats = run_viralquasispecies(stats, "singles.fastq", "overlaps.txt", min_overlap_len, min_overlap_len, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_red, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips)
+#             [iteration, read_counts, overlap_counts, edge_counts, max_read_lengths] = stats # update stats
+#             if read_counts[-1] == read_counts[-2]:
+#                 const_read_its += 1
+#             else:
+#                 const_read_its = 0
+
+    # one final iteration to remove singletons and tips (?) from contig file
     final_it = True
     cliques = "false"
     remove_tips = "false" #"true"
@@ -667,7 +668,6 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
         #keep_singletons = 0
     else:
         keep_singletons = 0
-    remove_branches = "true" if cliques=="false" else "false"
 #    fno = 3 if cliques=="true" else 1
     fno = 1
     remove_trans = 2 if EC=="true" else 1
@@ -675,6 +675,7 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
     remove_inclusions = "true" if (final_it and diploid=="true") else "false"
 #    remove_tips = "true" if final_it and diploid=="true" else "false"
     [hap_cov, branch_SE_c, branch_PE_c] = branch_reduction
+    remove_branches = "true" if (cliques=="false" or hap_cov==0) else "false"
     if verbose == 'true':
         print "\n*********************"
         print "**** Iteration %d ****" %iteration
