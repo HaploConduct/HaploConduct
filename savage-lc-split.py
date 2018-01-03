@@ -410,6 +410,7 @@ Author: %s
     savage_command += " --stddev %s" % args.stddev
     savage_command += " -m %s" % args.min_overlap_len
     savage_command += " --no_EC"
+    savage_command += " --min_clique_size=2"
     savage_command += " -t %s" % args.threads
     savage_command += " --mismatch_rate %s" % args.merge_contigs
     savage_command += " --average_read_len %s" % average_read_len
