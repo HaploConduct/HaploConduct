@@ -675,7 +675,10 @@ def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_over
     remove_inclusions = "true" if (final_it and diploid=="true") else "false"
 #    remove_tips = "true" if final_it and diploid=="true" else "false"
     [hap_cov, branch_SE_c, branch_PE_c] = branch_reduction
-    remove_branches = "true" if (cliques=="false" or hap_cov==0) else "false"
+    if (cliques=="false" or (EC=="false" and hap_cov==0)):
+        remove_branches = "true"
+    else:
+        remove_branches = "false"
     if verbose == 'true':
         print "\n*********************"
         print "**** Iteration %d ****" %iteration
