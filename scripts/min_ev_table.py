@@ -76,7 +76,7 @@ def main():
     while exp_ev > 0 or dist == 1:
         exp_ev = 0
         # count evidence from single-end sequences
-        exp_ev += hcov * max(0, fragsize - dist) / fragsize
+        exp_ev += hcov * max(0, readlen - dist) / readlen
         # count evidence from paired-end sequences;
         p_l = []
         for x in range(0, int(floor(readlen))):
