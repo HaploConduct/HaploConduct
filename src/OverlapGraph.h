@@ -84,9 +84,12 @@ public:
 	node_id_t addVertex(read_id_t read_ID);
     void addEdge(Edge edge);
     Edge removeEdge(node_id_t v, node_id_t w);
+    Edge removeEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations);
     double checkEdge(node_id_t v, node_id_t w, bool reverse_allowed=true);
     double checkEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations);
     Edge* getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed=true);
+    Edge* getEdgeInfoWithOri(node_id_t v, node_id_t w,
+            bool opposite_orientations, bool reverse_allowed=true);
     unsigned int getEdgeCount();
     unsigned int getBackEdgeCount();
     unsigned int getVertexCount();

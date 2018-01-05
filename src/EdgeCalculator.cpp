@@ -470,7 +470,7 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                 else if (it1->get_score() >= score) {
                     // new edge scores better, so replace current edge in the graph
                     doubles++;
-                    Edge* existing_edge = overlap_graph->getEdgeInfo(v1, v2, true);
+                    Edge* existing_edge = overlap_graph->getEdgeInfoWithOri(v1, v2, opposite_orientations, true);
                     if (score == it1->get_score()) {
                         // decide which edge is 'greater' to ensure deterministic behaviour
                         if (existing_edge->get_len(0) != it1->get_len(0)) {
@@ -521,10 +521,10 @@ void EdgeCalculator::process_overlaps(std::vector<Overlap> overlaps_vec)
                     }
                     int edgecount1 = overlap_graph->getEdgeCount();
                     if (existing_edge->get_vertex(1) == v1) {
-                        overlap_graph->removeEdge(v1, v2);
+                        overlap_graph->removeEdgeWithOri(v1, v2, opposite_orientations);
                     }
                     else {
-                        overlap_graph->removeEdge(v2, v1);
+                        overlap_graph->removeEdgeWithOri(v2, v1, opposite_orientations);
                     }
                     int edgecount2 = overlap_graph->getEdgeCount();
                     overlap_graph->addEdge(*it1);

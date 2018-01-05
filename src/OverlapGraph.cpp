@@ -146,6 +146,53 @@ Edge OverlapGraph::removeEdge(node_id_t v, node_id_t w) {
     return edge;
 }
 
+// Special edge removal, necessary when orientations have not yet been resolved
+Edge OverlapGraph::removeEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations) {
+//    std::cout << "Removing edge " << v << " to " << w << "... ";
+    bool found = false;
+    std::list< Edge > adj_list_v = adj_out.at(v);
+	std::list< Edge >::iterator it = adj_out.at(v).begin();
+	assert (adj_list_v.size() > 0);
+    Edge edge;
+	for (node_id_t i = 0; i < adj_list_v.size(); i++) {
+//	    std::cout << it->get_vertex(2) << " ";
+        bool current_ori = (it->get_ori(1) == it->get_ori(2));
+		if (it->get_vertex(2) == w && current_ori == opposite_orientations) {
+            edge = *it;
+		    int s1 = adj_out.at(v).size();
+			it = adj_out.at(v).erase(it);
+			int s2 = adj_out.at(v).size();
+			assert (s1 == s2 + 1);
+            edge_count--;
+            found = true;
+			break;
+	    }
+	    else {
+	        it++;
+	    }
+    }
+    if (!found) {
+        std::cerr << "Edge to be removed not found...\n";
+        std::cerr << v << " " << w << "\n";
+        exit(1);
+    }
+    std::list< node_id_t > adj_list_w = adj_in.at(w);
+    std::list< node_id_t >::iterator it2 = adj_in.at(w).begin();
+    for (node_id_t i = 0; i < adj_list_w.size(); i++) {
+		if (*it2 == v) {
+		    int s1 = adj_in[w].size();
+			it2 = adj_in[w].erase(it2);
+			int s2 = adj_in[w].size();
+			assert (s1 == s2 + 1);
+			break;
+	    }
+	    else {
+	        it2++;
+	    }
+    }
+    return edge;
+}
+
 
 // check if edge exists; if yes, return overlap score, if no, return -1
 double OverlapGraph::checkEdgeWithOri(node_id_t v, node_id_t w, bool opposite_orientations) {
@@ -226,6 +273,31 @@ Edge* OverlapGraph::getEdgeInfo(node_id_t v, node_id_t w, bool reverse_allowed) 
     if (reverse_allowed && !adj_out.at(w).empty()) {
         for (it = adj_out.at(w).begin(); it != adj_out.at(w).end(); it++) {
 		    if (it->get_vertex(2) == v) {
+			    return &(*it);
+	        }
+        }
+    }
+    std::cerr << v << " " << w << " Edge not found. Exiting.\n";
+    exit(1);
+}
+
+// return pointer to edge v->w if it exists, otherwise w->v
+Edge* OverlapGraph::getEdgeInfoWithOri(node_id_t v, node_id_t w,
+        bool opposite_orientations, bool reverse_allowed) {
+    //std::cout << "getEdgeInfo " << v << ", " << w << std::endl;
+	std::list< Edge >::iterator it;
+	if (!adj_out.at(v).empty()) {
+	    for (it = adj_out.at(v).begin(); it != adj_out.at(v).end(); it++) {
+            bool current_opp_ori = (it->get_ori(1) == it->get_ori(2));
+		    if (it->get_vertex(2) == w && current_opp_ori == opposite_orientations) {
+			    return &(*it);
+	        }
+        }
+    }
+    if (reverse_allowed && !adj_out.at(w).empty()) {
+        for (it = adj_out.at(w).begin(); it != adj_out.at(w).end(); it++) {
+            bool current_opp_ori = (it->get_ori(1) == it->get_ori(2));
+		    if (it->get_vertex(2) == v && current_opp_ori == opposite_orientations) {
 			    return &(*it);
 	        }
         }

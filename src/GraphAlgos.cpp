@@ -217,7 +217,8 @@ void OverlapGraph::vertexLabellingHeuristic(unsigned int & conflict_count) {
         for (auto edge_it : min_edges_to_be_moved) {
             node_id_t u = edge_it.get_vertex(1);
             node_id_t v = edge_it.get_vertex(2);
-            removeEdge(v,u);
+            bool opposite_ori = (edge_it.get_ori(1) == edge_it.get_ori(2));
+            removeEdgeWithOri(v, u, opposite_ori);
             addEdge(edge_it);
         }
         if (delete_count > 0) {
@@ -229,7 +230,8 @@ void OverlapGraph::vertexLabellingHeuristic(unsigned int & conflict_count) {
             for (auto edge_it : min_edges_to_be_deleted) {
                 node_id_t u = edge_it.get_vertex(1);
                 node_id_t v = edge_it.get_vertex(2);
-                removeEdge(u,v);
+                bool opposite_ori = (edge_it.get_ori(1) == edge_it.get_ori(2));
+                removeEdgeWithOri(u, v, opposite_ori);
             }
         }
         else {
