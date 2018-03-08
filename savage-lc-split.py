@@ -11,6 +11,8 @@ from time import clock
 from sets import Set
 from collections import namedtuple
 from math import floor
+from multiprocessing import Pool
+from functools import partial
 
 # ------------------------------
 
@@ -73,6 +75,9 @@ def main():
 #    advanced.add_argument('--no_filtering', dest='filtering', action='store_false', help='disable kallisto-based filtering of contigs')
     advanced.add_argument('--max_tip_len', dest='max_tip_len', type=int, help='maximum extension length for a sequence to be called a tip')
 #    advanced.add_argument('--min_evidence', dest='min_evidence', type=int, required=True, help='minimum number of uniquely matching reads to resolve branches')
+    pool = parser.add_argument_group('thread pool settings')
+    pool.add_argument('--pool_size', dest='pool_size', type=int, default=1, help='number of regions to be processed in parallel')
+    pool.add_argument('--sfo_threads', dest='sfo_threads', type=int, help='number of threads used per region')
 
     # store current working directory
     cwd = os.getcwd()
@@ -282,15 +287,19 @@ Author: %s
                 else:
                     maxdepth = max(maxdepth, int(depth))
                     continue
+            end = int(pos)
             if start > 0 and maxdepth > 2 and end-start > average_read_len:
                 chrom2regions[chrom].append([start, end])
                 print chrom, start, end
 
         # Split into regions of 10kb, overlapping by 1000 bp on either side, and
         # divide reads from fastq into separate input files
-        print "Split reads into regions of 10kb"
+        print "Split reads into regions of {}bp".format(args.split_size)
         chrom2finalsplit = {}
         for chrom, regions in chrom2regions.iteritems():
+            if any(c in chrom for c in '|/\()}}{{[]'):
+                print "ERROR: chromosome name contains |/\()}}{{[]; Exiting."
+                sys.exit(1)
             final_split = []
             length = ref_pieces[chrom]
             idx = 0
@@ -320,43 +329,47 @@ Author: %s
         # Run savage-lc on each region
         print "Run savage-lc per split region"
         original_fastq = cwd + "/assembly/s_p1_p2.fastq"
+        settings = [args, base_path, s_seq_count, p_seq_count, original_fastq,
+                        min_overlap_len_EC, average_read_len, max_tip_len]
+        pool = Pool(args.pool_size)
         for chrom, final_split in chrom2finalsplit.iteritems():
-            for [region_lb, region_ub] in final_split:
-                dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
-                if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
-                    continue
-                os.chdir(dirname)
-                # run savage-lc
-                savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
-                savage_command += " -s assembly/s_p1_p2.fastq"
-                savage_command += " --hap_cov %s" % args.hap_cov
-                savage_command += " --insert_size %s" % args.insert_size
-                savage_command += " --stddev %s" % args.stddev
-                savage_command += " --original_SE_count %s" % s_seq_count
-                savage_command += " --original_PE_count %s" % p_seq_count
-                savage_command += " --original_fastq %s" % original_fastq
-                savage_command += " -m %s" % args.min_overlap_len
-                savage_command += " -m_EC %s" % min_overlap_len_EC
-                savage_command += " -t %s" % args.threads
-                savage_command += " --mismatch_rate %s" % args.merge_contigs
-                savage_command += " --min_clique_size %s" % args.min_clique_size
-                savage_command += " --sfo_err %s" % args.sfo_err
-                savage_command += " --average_read_len %s" % average_read_len
-                savage_command += " --max_tip_len %s" % max_tip_len
-                #savage_command += " --min_evidence %s" % args.min_evidence
-                if args.diploid:
-                    if args.diploid_overlap_len:
-                        diploid_overlap_len = args.diploid_overlap_len
-                    else:
-                        diploid_overlap_len = args.min_overlap_len
-                    savage_command += " --diploid"
-                    savage_command += " --diploid_contig_len %s" % args.diploid_contig_len
-                    savage_command += " --diploid_overlap_len %s" % diploid_overlap_len
-                if args.count_strains:
-                    savage_command += " --count_strains --ref %s" % args.reference
-                savage_command += " > savage.log 2>&1"
-                subprocess.check_call(savage_command, shell=True)
-                os.chdir('../..')
+            pool.map(partial(run_savage_lc, settings, chrom), final_split)
+            # for [region_lb, region_ub] in final_split:
+                # dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
+                # if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
+                #     continue
+                # os.chdir(dirname)
+                # # run savage-lc
+                # savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
+                # savage_command += " -s assembly/s_p1_p2.fastq"
+                # savage_command += " --hap_cov %s" % args.hap_cov
+                # savage_command += " --insert_size %s" % args.insert_size
+                # savage_command += " --stddev %s" % args.stddev
+                # savage_command += " --original_SE_count %s" % s_seq_count
+                # savage_command += " --original_PE_count %s" % p_seq_count
+                # savage_command += " --original_fastq %s" % original_fastq
+                # savage_command += " -m %s" % args.min_overlap_len
+                # savage_command += " -m_EC %s" % min_overlap_len_EC
+                # savage_command += " -t %s" % args.threads
+                # savage_command += " --mismatch_rate %s" % args.merge_contigs
+                # savage_command += " --min_clique_size %s" % args.min_clique_size
+                # savage_command += " --sfo_err %s" % args.sfo_err
+                # savage_command += " --average_read_len %s" % average_read_len
+                # savage_command += " --max_tip_len %s" % max_tip_len
+                # #savage_command += " --min_evidence %s" % args.min_evidence
+                # if args.diploid:
+                #     if args.diploid_overlap_len:
+                #         diploid_overlap_len = args.diploid_overlap_len
+                #     else:
+                #         diploid_overlap_len = args.min_overlap_len
+                #     savage_command += " --diploid"
+                #     savage_command += " --diploid_contig_len %s" % args.diploid_contig_len
+                #     savage_command += " --diploid_overlap_len %s" % diploid_overlap_len
+                # if args.count_strains:
+                #     savage_command += " --count_strains --ref %s" % args.reference
+                # savage_command += " > savage.log 2>&1"
+                # subprocess.check_call(savage_command, shell=True)
+                # os.chdir('../..')
 
         # Combine contigs, rename, and update subreads
         new_subreads = open('assembly/subreads.txt', 'w')
@@ -499,77 +512,52 @@ def read_subreads(filename):
     f.close()
     return lines
 
-def run_viralquasispecies(stats, fastq, overlaps, min_overlap_len, next_min_overlap, min_clique_size, edge_threshold, min_read_len, max_tip_len, first_it, cliques, EC, branch_reduction, error_rate, threads, original_readcount, diploid, verbose, final_it, remove_tips):
-    [iteration, read_counts, overlap_counts, edge_counts, max_read_lengths] = stats
-    selfpath = sys.path[0]
-    viralquasispecies = selfpath + "/bin/ViralQuasispecies"
-    COPYFILES = False
-    if EC=="true":
-        keep_singletons = 1000
-    elif diploid=="true" and final_it:
-        max_tip_len *= 2
-        keep_singletons = max_tip_len
+def run_savage_lc(settings, chrom, region):
+    print "run_savage_lc({}, {})".format(chrom, region)
+    [region_lb, region_ub] = region
+    [args, base_path, s_seq_count, p_seq_count, original_fastq,
+                min_overlap_len_EC, average_read_len, max_tip_len] = settings
+    if args.sfo_threads:
+        threads = args.sfo_threads
     else:
-        keep_singletons = 0
-    remove_branches = "true" if cliques=="false" else "false"
-#    fno = 3 if cliques=="true" else 1
-    fno = 1
-    remove_trans = 2 if EC=="true" else 1
-    separate_tips = "true" if final_it else "false"
-    remove_inclusions = "true" if (final_it and diploid=="true") else "false"
-#    remove_tips = "true" if final_it and diploid=="true" else "false"
-    [branch_min_ev, branch_SE_c, branch_PE_c] = branch_reduction
-    if verbose == 'true':
-        print "\n*********************"
-        print "**** Iteration %d ****" %iteration
-        print "*********************"
-    shell_command = [viralquasispecies,
-        "--singles=%s" %fastq,
-        "--overlaps=%s" %overlaps,
-        "--threads=%d" %threads,
-        "--edge_threshold=%f" %edge_threshold,
-        "--first_it=%s" %first_it,
-        "--cliques=%s" %cliques,
-        "--error_correction=%s" %EC,
-        "--keep_singletons=%d" %keep_singletons,
-        "--min_clique_size=%d" %min_clique_size,
-        "--remove_branches=%s" %remove_branches,
-        "--remove_tips=%s" %remove_tips,
-        "--min_overlap_len=%d" %min_overlap_len,
-        "--merge_contigs=%f" %error_rate,
-        "--FNO=%d" %fno,
-        "--original_readcount=%d" %original_readcount,
-        "--remove_trans=%d" %remove_trans,
-        "--optimize=false",
-        "--verbose=%s" %verbose,
-        "--base_path=%s" % selfpath,
-        "--min_read_len=%s" % min_read_len,
-        "--max_tip_len=%s" % max_tip_len,
-        "--separate_tips=%s" % separate_tips,
-        "--ignore_inclusions=%s" % remove_inclusions,
-        "--diploid=%s" % diploid,
-        "--min_qual=0" # never insert N's
-    ]
-    if branch_min_ev > 0:
-        shell_command.append("--original_fastq=%s" % original_fastq)
-        shell_command.append("--branch_min_ev=%s" % branch_min_ev)
-        shell_command.append("--branch_SE_c=%s" % branch_SE_c)
-        shell_command.append("--branch_PE_c=%s" % branch_PE_c)
-    subprocess.check_call(shell_command)
-    if COPYFILES:
-        copy_files(stats[0])
-    copy_log()
-    # recompute overlaps on contigs
-    s_count = int(file_len('singles.fastq')/4)
-    if s_count > 0:
-        subprocess.check_call("%s/scripts/fastq2fasta.py singles.fastq singles.fasta" % selfpath, shell=True)
-        sfo_err = 0
-        run_sfo("singles.fasta", sfo_err, selfpath, next_min_overlap, threads, s_count, 0, "overlaps.txt")
-    # update pipeline statistics
-    stats = analyze_results(stats)
-    if verbose == 'true':
-        print "***"
-    return stats
+        threads = args.threads
+    dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
+    if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
+        return
+    os.chdir(dirname)
+    # run savage-lc
+    savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
+    savage_command += " -s assembly/s_p1_p2.fastq"
+    savage_command += " --hap_cov %s" % args.hap_cov
+    savage_command += " --insert_size %s" % args.insert_size
+    savage_command += " --stddev %s" % args.stddev
+    savage_command += " --original_SE_count %s" % s_seq_count
+    savage_command += " --original_PE_count %s" % p_seq_count
+    savage_command += " --original_fastq %s" % original_fastq
+    savage_command += " -m %s" % args.min_overlap_len
+    savage_command += " -m_EC %s" % min_overlap_len_EC
+    savage_command += " -t %s" % threads
+    savage_command += " --mismatch_rate %s" % args.merge_contigs
+    savage_command += " --min_clique_size %s" % args.min_clique_size
+    savage_command += " --sfo_err %s" % args.sfo_err
+    savage_command += " --average_read_len %s" % average_read_len
+    savage_command += " --max_tip_len %s" % max_tip_len
+    #savage_command += " --min_evidence %s" % args.min_evidence
+    if args.diploid:
+        if args.diploid_overlap_len:
+            diploid_overlap_len = args.diploid_overlap_len
+        else:
+            diploid_overlap_len = args.min_overlap_len
+        savage_command += " --diploid"
+        savage_command += " --diploid_contig_len %s" % args.diploid_contig_len
+        savage_command += " --diploid_overlap_len %s" % diploid_overlap_len
+    if args.count_strains:
+        savage_command += " --count_strains --ref %s" % args.reference
+    savage_command += " > savage.log 2>&1"
+    subprocess.check_call(savage_command, shell=True)
+    os.chdir('../..')
+    return
+
 
 if __name__ == '__main__':
     sys.exit(main())
