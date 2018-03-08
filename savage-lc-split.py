@@ -283,7 +283,7 @@ Author: %s
                     end = oldpos
                     if maxdepth > 2 and end-start > average_read_len:
                         chrom2regions[chrom].append([start, end])
-                        print chrom, start, end
+                        # print chrom, start, end
                     start = int(pos)
                     end = 0
                     maxdepth = 0
