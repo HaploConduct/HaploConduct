@@ -132,7 +132,10 @@ Author: %s
                 if l > 0:
                     ref_pieces[ID] = l
                     chrom2regions[ID] = []
-                ID = line.lstrip('>').rstrip('\n')
+                ID = line.lstrip('>').rstrip('\n').split()[0]
+                if any(c in ID for c in '|/\()}}{{[]'):
+                    print "ERROR: chromosome id contains |/\()}}{{[]; Exiting."
+                    sys.exit(1)
                 l = 0
             else:
                 l += len(line.rstrip('\n'))
@@ -297,9 +300,6 @@ Author: %s
         print "Split reads into regions of {}bp".format(args.split_size)
         chrom2finalsplit = {}
         for chrom, regions in chrom2regions.iteritems():
-            if any(c in chrom for c in '|/\()}}{{[]'):
-                print "ERROR: chromosome name contains |/\()}}{{[]; Exiting."
-                sys.exit(1)
             final_split = []
             length = ref_pieces[chrom]
             idx = 0
