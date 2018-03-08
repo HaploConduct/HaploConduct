@@ -360,7 +360,11 @@ Author: %s
         build_threshold_table(readlen, intseg, stddev, hcov, base_path)
         run_savage_assembly(EC, args.min_overlap_len, min_overlap_len_EC, args.min_clique_size, min_read_len, max_tip_len, branch_reduction, error_rate, args.threads, original_readcount, diploid, base_path, verbose)
         os.chdir('..')
-        subprocess.check_call("%s/scripts/fastq2fasta.py assembly/singles.fastq contigs.fasta" % base_path, shell=True)
+        if os.path.exists('assembly/singles.fastq'):
+            subprocess.check_call("%s/scripts/fastq2fasta.py assembly/singles.fastq contigs.fasta" % base_path, shell=True)
+        else:
+            print "Nothing assembled, please check if there are sufficiently many reads."
+            subprocess.check_call("touch assembly/singles.fastq contigs.fasta", shell=True)
         print "Done!"
         final_contig_file = "contigs.fasta"
     elif not (args.diploid or args.count_strains):
@@ -386,7 +390,7 @@ Author: %s
             sys.exit(1)
         elif os.stat("contigs.fasta").st_size == 0:
             print "Empty set of contigs from assembly stage (contigs.fasta) --> Exiting SAVAGE."
-            sys.exit(1)
+            sys.exit()
         subprocess.call(['cp', 'assembly/singles.fastq', 'diploid/s_p1_p2.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
         # find contig overlaps
