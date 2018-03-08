@@ -309,12 +309,13 @@ Author: %s
                     pos = regions[idx][0] + args.split_size
                 region_lb = max(0, pos - (args.split_size + args.split_overlap))
                 region_ub = min(length, pos)
-                final_split.append([region_lb, region_ub])
                 # select reads and write to file
                 dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
                 overwrite_dir(dirname)
                 overwrite_dir('%s/assembly' % dirname)
                 subprocess.check_call('samtools view -F4 -bh assembly/s_p1_p2.bam %s:%s-%s | samtools fastq - 1> %s/assembly/s_p1_p2.fastq' % (chrom, region_lb, region_ub, dirname), shell=True)
+                if file_len('%s/assembly/s_p1_p2.fastq' % dirname) >= 100:
+                    final_split.append([region_lb, region_ub])
                 while idx < len(regions) and regions[idx][1] < pos:
                     idx += 1
                 pos += args.split_size
@@ -522,8 +523,6 @@ def run_savage_lc(settings, chrom, region):
     else:
         threads = args.threads
     dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
-    if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
-        return
     os.chdir(dirname)
     # run savage-lc
     savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
