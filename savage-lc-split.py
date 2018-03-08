@@ -314,7 +314,7 @@ Author: %s
                 overwrite_dir(dirname)
                 overwrite_dir('%s/assembly' % dirname)
                 subprocess.check_call('samtools view -F4 -bh assembly/s_p1_p2.bam %s:%s-%s | samtools fastq - 1> %s/assembly/s_p1_p2.fastq 2>/dev/null/' % (chrom, region_lb, region_ub, dirname), shell=True)
-                if file_len('%s/assembly/s_p1_p2.fastq' % dirname) >= 100:
+                if file_len('%s/assembly/s_p1_p2.fastq' % dirname) >= 400:
                     final_split.append([region_lb, region_ub])
                 while idx < len(regions) and regions[idx][1] < pos:
                     idx += 1
