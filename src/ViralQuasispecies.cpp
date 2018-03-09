@@ -303,7 +303,7 @@ int main(int argc, char *argv[])
     overlap_graph->vertexLabellingHeuristic(conflict_count);
 //    overlap_graph->printAdjacencyLists();
     overlap_graph->checkDuplicateEdges();
-    
+
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
 

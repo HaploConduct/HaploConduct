@@ -962,12 +962,40 @@ void OverlapGraph::removeTransitiveEdges() {
         }
         transitive_count = findTransEdges(sorted_adj_in, sorted_adj_out, new_adj_in, new_adj_out, false);
     }
+    // if doing branch reduction, remove branches lacking evidence based on 3-cliques
+    std::set< node_pair_t > edges_to_be_deleted;
+    if (program_settings.remove_trans == 1
+                && program_settings.branch_reduction > 0) {
+        // for every transitive edge, check branches
+        node_id_t node1 = 0;
+        for (auto neighbors : new_adj_out) {
+            for (auto node2 : neighbors) {
+                // node1->node2 is transitive
+                int ovlen = getEdgeInfo(node1, node2, false)->get_len(0);
+                // check out-branches
+                for (auto edge_out : adj_out.at(node1)) {
+                    if (edge_out.get_len(0) <= ovlen) {
+                        node_id_t v = edge_out.get_vertex(2);
+                        edges_to_be_deleted.insert( std::make_pair(node1, v) );
+                    }
+                }
+                // check in-branches
+                for (auto v_in : adj_in.at(node2)) {
+                    if (getEdgeInfo(v_in, node2, false)->get_len(0) <= ovlen) {
+                        edges_to_be_deleted.insert( std::make_pair(v_in, node2) );
+                    }
+                }
+            }
+            node1++;
+        }
+    }
     // finally we need to remove all single/double/triple transitive edges that we found
     if (1.0*transitive_count > 0.5*edge_count) {
         // better create new adjacency lists than remove edges from current lists
         std::vector< std::list< Edge > > final_adj_out;
         unsigned int remaining_edge_count = 0;
         unsigned int current_edge_count = 0;
+        unsigned int del_count = 0;
         for (auto adj_list : adj_out) {
             std::list< Edge > final_adj_list;
             if (adj_list.size() > 0) {
@@ -992,9 +1020,18 @@ void OverlapGraph::removeTransitiveEdges() {
                     else {
                         trans_it++;
                     }
-                    final_adj_list.push_back(edge);
-                    remaining_edge_count++;
-                    current_edge_count++;
+                    // check if edge is scheduled for deletion
+                    if (edges_to_be_deleted.find(std::make_pair(node1, node2))
+                            != edges_to_be_deleted.end()) {
+                        // ignore edge
+                        del_count++;
+                    }
+                    else {
+                        // keep edge
+                        final_adj_list.push_back(edge);
+                        remaining_edge_count++;
+                        current_edge_count++;
+                    }
                 }
             }
             final_adj_out.push_back(final_adj_list);
@@ -1013,9 +1050,10 @@ void OverlapGraph::removeTransitiveEdges() {
         adj_in = final_adj_in;
         // update edge count
         assert (transitive_count <= edge_count);
-        edge_count = edge_count - transitive_count;
+        edge_count = edge_count - transitive_count - del_count;
         if (program_settings.verbose) {
             std::cout << "transitive edge count: " << transitive_count << std::endl;
+            std::cout << "deleted branching edges: " << del_count << std::endl;
             std::cout << "remaining edge count: " << remaining_edge_count << std::endl;
         }
         assert (edge_count == remaining_edge_count);
@@ -1028,6 +1066,11 @@ void OverlapGraph::removeTransitiveEdges() {
                 removeEdge(node1, node2);
             }
             node1++;
+        }
+        for (auto edge : edges_to_be_deleted) {
+            if (checkEdge(edge.first, edge.second, false) >= 0) {
+                removeEdge(edge.first, edge.second);
+            }
         }
     }
 
