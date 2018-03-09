@@ -539,9 +539,23 @@ def preprocessing_ref(min_overlap_len, reference, base_path):
 def run_sfo(fasta, sfo_err, base_path, min_overlap_len, threads, s_count, p_count, overlaps_file, reversals):
 #    print "sfo_err: ", sfo_err
     if reversals:
-        subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        try:
+            subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        except subprocess.CalledProcessError as e:
+            try:
+                subprocess.check_call("rust-overlaps -w %d -i -r %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+            except subprocess.CalledProcessError as e:
+                print "rust-overlaps error; continuing."
+                subprocess.check_call("touch sfoverlaps.out", shell=True)
     else:
-        subprocess.check_call("rust-overlaps -w %d -i %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        try:
+            subprocess.check_call("rust-overlaps -w %d -i %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+        except:
+            try:
+                subprocess.check_call("rust-overlaps -w %d -i %s sfoverlaps.out %f %d 1> /dev/null" % (threads, fasta, sfo_err, min_overlap_len), shell=True)
+            except:
+                print "rust-overlaps error; continuing."
+                subprocess.check_call("touch sfoverlaps.out", shell=True)
     subprocess.check_call("%s/scripts/sfo2overlaps.py --in sfoverlaps.out --out %s --num_singles %d --num_pairs %d 1> /dev/null" % (base_path, overlaps_file, s_count, p_count), shell=True)
     subprocess.check_call("rm sfoverlaps.out", shell=True)
     return
