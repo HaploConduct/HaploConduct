@@ -362,6 +362,8 @@ Author: %s
         os.chdir('..')
         if os.path.exists('assembly/singles.fastq'):
             subprocess.check_call("%s/scripts/fastq2fasta.py assembly/singles.fastq contigs.fasta" % base_path, shell=True)
+            # remove overlaps file
+            subprocess.check_call("rm assembly/original_overlaps.txt", shell=True)
         else:
             print "Nothing assembled, please check if there are sufficiently many reads."
             subprocess.check_call("touch assembly/singles.fastq contigs.fasta", shell=True)
