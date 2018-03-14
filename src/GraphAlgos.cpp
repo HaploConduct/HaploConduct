@@ -964,31 +964,31 @@ void OverlapGraph::removeTransitiveEdges() {
     }
     // if doing branch reduction, remove branches lacking evidence based on 3-cliques
     std::set< node_pair_t > edges_to_be_deleted;
-    if (program_settings.remove_trans == 1
-                && program_settings.branch_reduction > 0) {
-        // for every transitive edge, check branches
-        node_id_t node1 = 0;
-        for (auto neighbors : new_adj_out) {
-            for (auto node2 : neighbors) {
-                // node1->node2 is transitive
-                int ovlen = getEdgeInfo(node1, node2, false)->get_len(0);
-                // check out-branches
-                for (auto edge_out : adj_out.at(node1)) {
-                    if (edge_out.get_len(0) <= ovlen) {
-                        node_id_t v = edge_out.get_vertex(2);
-                        edges_to_be_deleted.insert( std::make_pair(node1, v) );
-                    }
-                }
-                // check in-branches
-                for (auto v_in : adj_in.at(node2)) {
-                    if (getEdgeInfo(v_in, node2, false)->get_len(0) <= ovlen) {
-                        edges_to_be_deleted.insert( std::make_pair(v_in, node2) );
-                    }
-                }
-            }
-            node1++;
-        }
-    }
+    // if (program_settings.remove_trans == 1
+    //             && program_settings.branch_reduction > 0) {
+    //     // for every transitive edge, check branches
+    //     node_id_t node1 = 0;
+    //     for (auto neighbors : new_adj_out) {
+    //         for (auto node2 : neighbors) {
+    //             // node1->node2 is transitive
+    //             int ovlen = getEdgeInfo(node1, node2, false)->get_len(0);
+    //             // check out-branches
+    //             for (auto edge_out : adj_out.at(node1)) {
+    //                 if (edge_out.get_len(0) <= ovlen) {
+    //                     node_id_t v = edge_out.get_vertex(2);
+    //                     edges_to_be_deleted.insert( std::make_pair(node1, v) );
+    //                 }
+    //             }
+    //             // check in-branches
+    //             for (auto v_in : adj_in.at(node2)) {
+    //                 if (getEdgeInfo(v_in, node2, false)->get_len(0) <= ovlen) {
+    //                     edges_to_be_deleted.insert( std::make_pair(v_in, node2) );
+    //                 }
+    //             }
+    //         }
+    //         node1++;
+    //     }
+    // }
     // finally we need to remove all single/double/triple transitive edges that we found
     if (1.0*transitive_count > 0.5*edge_count) {
         // better create new adjacency lists than remove edges from current lists
