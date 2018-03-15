@@ -393,11 +393,11 @@ Author: %s
                 dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
                 # add contigs to combined contig file
                 if args.diploid and os.path.exists('%s/diploid/singles.fastq' % dirname):
-                    print "diploid contigs from", dirname
+                    # print "diploid contigs from", dirname
                     subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
                 elif os.path.exists('%s/assembly/singles.fastq' % dirname):
-                    print "contigs from", dirname
+                    # print "contigs from", dirname
                     subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
                 else:
