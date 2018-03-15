@@ -566,8 +566,8 @@ def run_savage_lc(settings, chrom, region):
     if args.count_strains:
         savage_command += " --count_strains --ref %s" % args.reference
     savage_command += " > savage.log 2>&1"
-    try:
-        subprocess.check_call(savage_command, shell=True) # TODO: take care of space issues
+    try subprocess.CalledProcessError as e:
+        subprocess.check_call(savage_command, shell=True)
     except:
         print "%s failed" % dirname
     os.chdir('../..')
