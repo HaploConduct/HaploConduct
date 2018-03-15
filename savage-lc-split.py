@@ -347,6 +347,8 @@ Author: %s
             pool = Pool(args.pool_size)
             for chrom, final_split in chrom2finalsplit.iteritems():
                 pool.map(partial(run_savage_lc, settings, chrom), final_split)
+            pool.close()
+            pool.join()
 
             # for [region_lb, region_ub] in final_split:
                 # dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
