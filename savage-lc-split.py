@@ -527,7 +527,7 @@ def read_subreads(filename):
     return lines
 
 def run_savage_lc(settings, chrom, region):
-    print "run_savage_lc({}, {})".format(chrom, region)
+    # print "run_savage_lc({}, {})".format(chrom, region)
     [region_lb, region_ub] = region
     [args, base_path, s_seq_count, p_seq_count, original_fastq,
                 min_overlap_len_EC, average_read_len, max_tip_len] = settings
@@ -566,7 +566,10 @@ def run_savage_lc(settings, chrom, region):
     if args.count_strains:
         savage_command += " --count_strains --ref %s" % args.reference
     savage_command += " > savage.log 2>&1"
-    subprocess.check_call(savage_command, shell=True) # TODO: take care of space issues
+    try:
+        subprocess.check_call(savage_command, shell=True) # TODO: take care of space issues
+    except:
+        print "%s failed" % dirname
     os.chdir('../..')
     return
 
