@@ -294,7 +294,7 @@ Author: %s
             end = int(pos)
             if start > 0 and maxdepth > 2 and end-start > average_read_len:
                 chrom2regions[chrom].append([start, end])
-                print chrom, start, end
+                #print chrom, start, end
 
         # Split into regions of 10kb, overlapping by 1000 bp on either side, and
         # divide reads from fastq into separate input files
@@ -566,7 +566,7 @@ def run_savage_lc(settings, chrom, region):
     if args.count_strains:
         savage_command += " --count_strains --ref %s" % args.reference
     savage_command += " > savage.log 2>&1"
-    subprocess.check_call(savage_command, shell=True)
+    subprocess.check_call(savage_command, shell=True) # TODO: take care of space issues
     os.chdir('../..')
     return
 
