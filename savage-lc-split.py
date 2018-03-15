@@ -59,6 +59,7 @@ def main():
     ref_guided_split.add_argument('--ref', dest='reference', type=str, required=True, help='reference genome in fasta format')
     ref_guided_split.add_argument('--split_size', dest='split_size', type=int, default=10000, help='size of regions over which the reads are divided')
     ref_guided_split.add_argument('--split_overlap', dest='split_overlap', type=int, default=1000, help='size of overlap between regions over which the reads are divided')
+    ref_guided_split.add_argument('--split_only', dest='split_only', action='store_true', help="don't do assembly, only data splitting")
     advanced = parser.add_argument_group('advanced arguments')
 #    advanced.add_argument('--no_EC', dest='error_correction', action='store_false', help='skip error correction in initial iteration (i.e. no cliques)')
 #    advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
@@ -327,14 +328,24 @@ Author: %s
         print "\rDone!" + ' ' * 40
         sys.stdout.flush()
 
+        if args.split_only:
+            # split_only flag means we only do preprocessing, no assembly
+            sys.exit()
+
         # Run savage-lc on each region
         print "Run savage-lc per split region"
         original_fastq = cwd + "/assembly/s_p1_p2.fastq"
         settings = [args, base_path, s_seq_count, p_seq_count, original_fastq,
                         min_overlap_len_EC, average_read_len, max_tip_len]
-        pool = Pool(args.pool_size)
-        for chrom, final_split in chrom2finalsplit.iteritems():
-            pool.map(partial(run_savage_lc, settings, chrom), final_split)
+        if args.pool_size == 1:
+            for chrom, final_split in chrom2finalsplit.iteritems():
+                for region in final_split:
+                    run_savage_lc(settings, chrom, region)
+        else:
+            pool = Pool(args.pool_size)
+            for chrom, final_split in chrom2finalsplit.iteritems():
+                pool.map(partial(run_savage_lc, settings, chrom), final_split)
+
             # for [region_lb, region_ub] in final_split:
                 # dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
                 # if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
