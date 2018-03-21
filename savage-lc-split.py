@@ -387,39 +387,39 @@ Author: %s
                 # subprocess.check_call(savage_command, shell=True)
                 # os.chdir('../..')
 
-        # Combine contigs, rename, and update subreads
-        new_subreads = open('assembly/subreads.txt', 'w')
-        combined_count = 0
-        for chrom, final_split in chrom2finalsplit.iteritems():
-            for [region_lb, region_ub] in final_split:
-                dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
-                # add contigs to combined contig file
-                if args.diploid and file_len('%s/diploid/singles.fastq' % dirname) > 0:
-                    # print "diploid contigs from", dirname
-                    subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-                    subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
-                elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
-                    # print "contigs from", dirname
-                    subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-                    subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
-                else:
-                    continue
-                # process subreads
-                for line in subreads:
-                    splitline = line.split('\t')
-                    contig_id = int(splitline[0])
-                    new_contig_id = contig_id + combined_count
-                    splitline[0] = str(new_contig_id)
-                    new_subreads.write('\t'.join(splitline))
-                combined_count += len(subreads)
-        new_subreads.close()
-        # rename combined contigs
-        subprocess.check_call("%s/scripts/rename_fas.py --in assembly/tmp_contigs.fastq --out assembly/combined_contigs.fastq" % (base_path), shell=True)
-        subprocess.check_call("rm assembly/tmp_contigs.fastq", shell=True)
-        print "combined contig count:", combined_count
-        subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq > assembly/combined_contigs.sam" % (args.threads, args.reference), shell=True)
-        #subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq 2> /dev/null | samtools sort > assembly/combined_contigs.bam" % (args.threads, args.reference), shell=True)
-        #subprocess.check_call('samtools index assembly/combined_contigs.bam', shell=True)
+    # Combine contigs, rename, and update subreads
+    new_subreads = open('assembly/subreads.txt', 'w')
+    combined_count = 0
+    for chrom, final_split in chrom2finalsplit.iteritems():
+        for [region_lb, region_ub] in final_split:
+            dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
+            # add contigs to combined contig file
+            if args.diploid and file_len('%s/diploid/singles.fastq' % dirname) > 0:
+                # print "diploid contigs from", dirname
+                subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+                subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
+            elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
+                # print "contigs from", dirname
+                subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+                subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
+            else:
+                continue
+            # process subreads
+            for line in subreads:
+                splitline = line.split('\t')
+                contig_id = int(splitline[0])
+                new_contig_id = contig_id + combined_count
+                splitline[0] = str(new_contig_id)
+                new_subreads.write('\t'.join(splitline))
+            combined_count += len(subreads)
+    new_subreads.close()
+    # rename combined contigs
+    subprocess.check_call("%s/scripts/rename_fas.py --in assembly/tmp_contigs.fastq --out assembly/combined_contigs.fastq" % (base_path), shell=True)
+    subprocess.check_call("rm assembly/tmp_contigs.fastq", shell=True)
+    print "combined contig count:", combined_count
+    subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq > assembly/combined_contigs.sam" % (args.threads, args.reference), shell=True)
+    #subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq 2> /dev/null | samtools sort > assembly/combined_contigs.bam" % (args.threads, args.reference), shell=True)
+    #subprocess.check_call('samtools index assembly/combined_contigs.bam', shell=True)
 
     # continue assembly on combined contig file
     # OPTION1: compute exact overlaps for neighboring regions
