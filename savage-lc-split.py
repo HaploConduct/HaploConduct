@@ -339,79 +339,50 @@ Author: %s
         original_fastq = cwd + "/assembly/s_p1_p2.fastq"
         settings = [args, base_path, s_seq_count, p_seq_count, original_fastq,
                         min_overlap_len_EC, average_read_len, max_tip_len]
+        assembly_dirs = []
         if args.pool_size == 1:
             for chrom, final_split in chrom2finalsplit.iteritems():
                 for region in final_split:
                     run_savage_lc(settings, chrom, region)
+                    assembly_dirs.append("{}_{}_{}".format(
+                                chrom, region[0], region[1]))
         else:
             pool = Pool(args.pool_size)
             for chrom, final_split in chrom2finalsplit.iteritems():
                 pool.map(partial(run_savage_lc, settings, chrom), final_split)
+                assembly_dirs.append(["{}_{}_{}".format(chrom, region[0],
+                        region[1]) for region in final_split])
             pool.close()
             pool.join()
-
-            # for [region_lb, region_ub] in final_split:
-                # dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
-                # if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
-                #     continue
-                # os.chdir(dirname)
-                # # run savage-lc
-                # savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
-                # savage_command += " -s assembly/s_p1_p2.fastq"
-                # savage_command += " --hap_cov %s" % args.hap_cov
-                # savage_command += " --insert_size %s" % args.insert_size
-                # savage_command += " --stddev %s" % args.stddev
-                # savage_command += " --original_SE_count %s" % s_seq_count
-                # savage_command += " --original_PE_count %s" % p_seq_count
-                # savage_command += " --original_fastq %s" % original_fastq
-                # savage_command += " -m %s" % args.min_overlap_len
-                # savage_command += " -m_EC %s" % min_overlap_len_EC
-                # savage_command += " -t %s" % args.threads
-                # savage_command += " --mismatch_rate %s" % args.merge_contigs
-                # savage_command += " --min_clique_size %s" % args.min_clique_size
-                # savage_command += " --sfo_err %s" % args.sfo_err
-                # savage_command += " --average_read_len %s" % average_read_len
-                # savage_command += " --max_tip_len %s" % max_tip_len
-                # #savage_command += " --min_evidence %s" % args.min_evidence
-                # if args.diploid:
-                #     if args.diploid_overlap_len:
-                #         diploid_overlap_len = args.diploid_overlap_len
-                #     else:
-                #         diploid_overlap_len = args.min_overlap_len
-                #     savage_command += " --diploid"
-                #     savage_command += " --diploid_contig_len %s" % args.diploid_contig_len
-                #     savage_command += " --diploid_overlap_len %s" % diploid_overlap_len
-                # if args.count_strains:
-                #     savage_command += " --count_strains --ref %s" % args.reference
-                # savage_command += " > savage.log 2>&1"
-                # subprocess.check_call(savage_command, shell=True)
-                # os.chdir('../..')
+    else:
+        assembly_dirs = os.listdir("assembly") # this will also contain files
 
     # Combine contigs, rename, and update subreads
     new_subreads = open('assembly/subreads.txt', 'w')
     combined_count = 0
-    for chrom, final_split in chrom2finalsplit.iteritems():
-        for [region_lb, region_ub] in final_split:
-            dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
-            # add contigs to combined contig file
-            if args.diploid and file_len('%s/diploid/singles.fastq' % dirname) > 0:
-                # print "diploid contigs from", dirname
-                subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-                subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
-            elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
-                # print "contigs from", dirname
-                subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-                subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
-            else:
-                continue
-            # process subreads
-            for line in subreads:
-                splitline = line.split('\t')
-                contig_id = int(splitline[0])
-                new_contig_id = contig_id + combined_count
-                splitline[0] = str(new_contig_id)
-                new_subreads.write('\t'.join(splitline))
-            combined_count += len(subreads)
+    # for chrom, final_split in chrom2finalsplit.iteritems():
+    #     for [region_lb, region_ub] in final_split:
+    #         dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
+    for dirname in assembly_dirs:
+        # add contigs to combined contig file
+        if args.diploid and file_len('%s/diploid/singles.fastq' % dirname) > 0:
+            # print "diploid contigs from", dirname
+            subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+            subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
+        elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
+            # print "contigs from", dirname
+            subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+            subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
+        else:
+            continue
+        # process subreads
+        for line in subreads:
+            splitline = line.split('\t')
+            contig_id = int(splitline[0])
+            new_contig_id = contig_id + combined_count
+            splitline[0] = str(new_contig_id)
+            new_subreads.write('\t'.join(splitline))
+        combined_count += len(subreads)
     new_subreads.close()
     # rename combined contigs
     subprocess.check_call("%s/scripts/rename_fas.py --in assembly/tmp_contigs.fastq --out assembly/combined_contigs.fastq" % (base_path), shell=True)
