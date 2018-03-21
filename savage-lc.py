@@ -366,7 +366,9 @@ Author: %s
             subprocess.check_call("rm assembly/original_overlaps.txt", shell=True)
         else:
             print "Nothing assembled, please check if there are sufficiently many reads."
-            subprocess.check_call("touch assembly/singles.fastq contigs.fasta", shell=True)
+            subprocess.check_call(
+                "touch assembly/singles.fastq assembly/subreads.txt contigs.fasta",
+                shell=True)
         print "Done!"
         final_contig_file = "contigs.fasta"
     elif not (args.diploid or args.count_strains):
