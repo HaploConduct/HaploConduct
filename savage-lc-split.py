@@ -59,6 +59,7 @@ def main():
     ref_guided_split.add_argument('--ref', dest='reference', type=str, required=True, help='reference genome in fasta format')
     ref_guided_split.add_argument('--split_size', dest='split_size', type=int, default=10000, help='size of regions over which the reads are divided')
     ref_guided_split.add_argument('--split_overlap', dest='split_overlap', type=int, default=1000, help='size of overlap between regions over which the reads are divided')
+    ref_guided_split.add_argument('--split_only', dest='split_only', action='store_true', help="don't do assembly, only data splitting")
     advanced = parser.add_argument_group('advanced arguments')
 #    advanced.add_argument('--no_EC', dest='error_correction', action='store_false', help='skip error correction in initial iteration (i.e. no cliques)')
 #    advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
@@ -293,7 +294,7 @@ Author: %s
             end = int(pos)
             if start > 0 and maxdepth > 2 and end-start > average_read_len:
                 chrom2regions[chrom].append([start, end])
-                print chrom, start, end
+                #print chrom, start, end
 
         # Split into regions of 10kb, overlapping by 1000 bp on either side, and
         # divide reads from fastq into separate input files
@@ -316,6 +317,8 @@ Author: %s
                 subprocess.check_call('samtools view -F4 -bh assembly/s_p1_p2.bam %s:%s-%s | samtools fastq - 1> %s/assembly/s_p1_p2.fastq 2>/dev/null' % (chrom, region_lb, region_ub, dirname), shell=True)
                 if file_len('%s/assembly/s_p1_p2.fastq' % dirname) >= 400:
                     final_split.append([region_lb, region_ub])
+                else:
+                    subprocess.check_call('rm -rf %s' % dirname, shell=True)
                 while idx < len(regions) and regions[idx][1] < pos:
                     idx += 1
                 pos += args.split_size
@@ -327,14 +330,26 @@ Author: %s
         print "\rDone!" + ' ' * 40
         sys.stdout.flush()
 
+        if args.split_only:
+            # split_only flag means we only do preprocessing, no assembly
+            sys.exit()
+
         # Run savage-lc on each region
         print "Run savage-lc per split region"
         original_fastq = cwd + "/assembly/s_p1_p2.fastq"
         settings = [args, base_path, s_seq_count, p_seq_count, original_fastq,
                         min_overlap_len_EC, average_read_len, max_tip_len]
-        pool = Pool(args.pool_size)
-        for chrom, final_split in chrom2finalsplit.iteritems():
-            pool.map(partial(run_savage_lc, settings, chrom), final_split)
+        if args.pool_size == 1:
+            for chrom, final_split in chrom2finalsplit.iteritems():
+                for region in final_split:
+                    run_savage_lc(settings, chrom, region)
+        else:
+            pool = Pool(args.pool_size)
+            for chrom, final_split in chrom2finalsplit.iteritems():
+                pool.map(partial(run_savage_lc, settings, chrom), final_split)
+            pool.close()
+            pool.join()
+
             # for [region_lb, region_ub] in final_split:
                 # dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
                 # if file_len('%s/assembly/s_p1_p2.fastq' % dirname) < 100:
@@ -380,11 +395,11 @@ Author: %s
                 dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
                 # add contigs to combined contig file
                 if args.diploid and os.path.exists('%s/diploid/singles.fastq' % dirname):
-                    print "diploid contigs from", dirname
+                    # print "diploid contigs from", dirname
                     subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
                 elif os.path.exists('%s/assembly/singles.fastq' % dirname):
-                    print "contigs from", dirname
+                    # print "contigs from", dirname
                     subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
                 else:
@@ -514,7 +529,7 @@ def read_subreads(filename):
     return lines
 
 def run_savage_lc(settings, chrom, region):
-    print "run_savage_lc({}, {})".format(chrom, region)
+    # print "run_savage_lc({}, {})".format(chrom, region)
     [region_lb, region_ub] = region
     [args, base_path, s_seq_count, p_seq_count, original_fastq,
                 min_overlap_len_EC, average_read_len, max_tip_len] = settings
@@ -553,7 +568,10 @@ def run_savage_lc(settings, chrom, region):
     if args.count_strains:
         savage_command += " --count_strains --ref %s" % args.reference
     savage_command += " > savage.log 2>&1"
-    subprocess.check_call(savage_command, shell=True)
+    try:
+        subprocess.check_call(savage_command, shell=True)
+    except subprocess.CalledProcessError as e:
+        print "%s failed" % dirname
     os.chdir('../..')
     return
 
