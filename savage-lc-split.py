@@ -398,7 +398,7 @@ Author: %s
                     # print "diploid contigs from", dirname
                     subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
-                elif os.path.exists('%s/assembly/singles.fastq' % dirname):
+                elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
                     # print "contigs from", dirname
                     subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
                     subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
