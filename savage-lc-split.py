@@ -365,14 +365,14 @@ Author: %s
     #         dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
     for dirname in assembly_dirs:
         # add contigs to combined contig file
-        if args.diploid and file_len('%s/diploid/singles.fastq' % dirname) > 0:
+        if args.diploid and file_len('assembly/%s/diploid/singles.fastq' % dirname) > 0:
             # print "diploid contigs from", dirname
-            subprocess.check_call("cat %s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-            subreads = read_subreads("%s/diploid/subreads.txt" % dirname)
-        elif file_len('%s/assembly/singles.fastq' % dirname) > 0:
+            subprocess.check_call("cat assembly/%s/diploid/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+            subreads = read_subreads("assembly/%s/diploid/subreads.txt" % dirname)
+        elif file_len('assembly/%s/assembly/singles.fastq' % dirname) > 0:
             # print "contigs from", dirname
-            subprocess.check_call("cat %s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
-            subreads = read_subreads("%s/assembly/subreads.txt" % dirname)
+            subprocess.check_call("cat assembly/%s/assembly/singles.fastq >> assembly/tmp_contigs.fastq" % dirname, shell=True)
+            subreads = read_subreads("assembly/%s/assembly/subreads.txt" % dirname)
         else:
             continue
         # process subreads
