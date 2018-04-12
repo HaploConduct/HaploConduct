@@ -7,7 +7,8 @@
 
 HaploConduct is a package designed for reconstruction of individual haplotypes
 from next generation sequencing data, in particular Illumina. Currently,
-HaploConduct consists of two methods: SAVAGE and POLYTE.
+HaploConduct consists of two methods: [SAVAGE](https://github.com/HaploConduct/HaploConduct/tree/master/savage) and
+[POLYTE](https://github.com/HaploConduct/HaploConduct/tree/master/polyte).
 
 ### SAVAGE: Strain Aware VirAl GEnome assembly
 
