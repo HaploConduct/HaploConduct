@@ -28,7 +28,7 @@ haplotypes from this overlap graph.
 ### POLYTE: POLYploid genome fitTEr
 
 POLYTE is a method for reconstructing haplotigs for diploid and polyploid
-genomes. The principles of SAVAGE have been adjusted to a low-covereage setting,
+genomes. The principles of SAVAGE have been adjusted to a low-coverage setting,
 where the ploidy of the organism is known. POLYTE follows an iterative scheme
 where in each iteration reads or contigs are joined, based on their interplay in
 terms of an underlying haplotype-aware overlap graph. Along the iterations,
@@ -48,7 +48,7 @@ at 15-20x coverage per haplotype.
 ## Usage
 
 For SAVAGE, run `python savage.py` and for POLYTE run `python polyte.py`.
-Detailed user instruction can be found in the respective [SAVAGE](https://github.com/HaploConduct/HaploConduct/tree/master/savage) and
+Detailed user instructions can be found in the respective [SAVAGE](https://github.com/HaploConduct/HaploConduct/tree/master/savage) and
 [POLYTE](https://github.com/HaploConduct/HaploConduct/tree/master/polyte) manuals.
 
 
