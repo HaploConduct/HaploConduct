@@ -23,19 +23,17 @@ version = "0.1.0"
 releasedate = ""
 
 usage = """
-Program: SAVAGE-LC - Strain Aware Assembly on Low Coverage Data
+Program: POLYTE
 Version: %s
 Release date: %s
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
-SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
-input single- and/or paired-end Illumina sequencing reads. Please note that the
-paired-end reads are expected to be in forward-forward format, as output by
-PEAR.
+POLYTE assembles individual haplotypes from NGS data. It expects as
+input single- and/or paired-end Illumina sequencing reads.
 
-Run savage -h for a complete description of required and optional arguments.
+Run polyte.py -h for a complete description of required and optional arguments.
 
-For the complete manual, please visit https://bitbucket.org/jbaaijens/savage
+For the complete manual, please visit https://github.com/HaploConduct/HaploConduct
 """ % (version, releasedate)
 
 # ------------------------------
@@ -102,7 +100,7 @@ def main():
 
     print """
 ------------------------------------------------------
-SAVAGE-LC - Strain Aware Assembly on Low Coverage Data
+POLYTE - Haplotype-aware assembly of polyploid genomes
 ------------------------------------------------------
 Version: %s
 Author: %s
@@ -335,7 +333,7 @@ Author: %s
             sys.exit()
 
         # Run savage-lc on each region
-        print "Run savage-lc per split region"
+        print "Run polyte per split region"
         original_fastq = cwd + "/assembly/s_p1_p2.fastq"
         settings = [args, base_path, s_seq_count, p_seq_count, original_fastq,
                         min_overlap_len_EC, average_read_len, max_tip_len]
@@ -401,7 +399,7 @@ Author: %s
     os.chdir(combined_dir)
     os.mkdir("assembly")
     shutil.copyfile("../assembly/combined_contigs.fastq", "assembly/s_p1_p2.fastq")
-    savage_command = "%s/savage-lc.py" % base_path
+    savage_command = "%s/polyte.py" % base_path
     savage_command += " -s ../assembly/combined_contigs.fastq"
     savage_command += " --ref %s" % args.reference
     savage_command += " --ref_guided_mode"
@@ -428,19 +426,16 @@ Author: %s
         final_contig_file = combined_dir + "/contigs.fasta"
     if args.count_strains:
         savage_command += " --count_strains"
-    savage_command += " > savage.log 2>&1"
+    savage_command += " > polyte.log 2>&1"
     subprocess.check_call(savage_command, shell=True)
     os.chdir("..")
 
     print """**************
-SAVAGE assembly has been completed, the final contig set was written to:
+POLYTE assembly has been completed, the final contig set was written to:
 
         %s
 
-Optionally, you can now apply frequency estimation using freq-est.py. Please see
-the manual page for more information: https://bitbucket.org/jbaaijens/savage.
-
-Thank you for using SAVAGE!
+Thank you for using POLYTE!
     """ % final_contig_file
 
     FNULL.close()
@@ -511,7 +506,7 @@ def run_savage_lc(settings, chrom, region):
     dirname = 'assembly/%s_%s_%s' % (chrom, region_lb, region_ub)
     os.chdir(dirname)
     # run savage-lc
-    savage_command = "%s/savage-lc.py --no_preprocessing" % base_path
+    savage_command = "%s/polyte.py --no_preprocessing" % base_path
     savage_command += " -s assembly/s_p1_p2.fastq"
     savage_command += " --hap_cov %s" % args.hap_cov
     savage_command += " --insert_size %s" % args.insert_size
@@ -538,7 +533,7 @@ def run_savage_lc(settings, chrom, region):
         savage_command += " --diploid_overlap_len %s" % diploid_overlap_len
     if args.count_strains:
         savage_command += " --count_strains --ref %s" % args.reference
-    savage_command += " > savage.log 2>&1"
+    savage_command += " > polyte.log 2>&1"
     try:
         subprocess.check_call(savage_command, shell=True)
     except subprocess.CalledProcessError as e:

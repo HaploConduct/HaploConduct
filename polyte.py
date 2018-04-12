@@ -21,19 +21,17 @@ version = "0.1.0"
 releasedate = ""
 
 usage = """
-Program: SAVAGE-LC - Strain Aware Assembly on Low Coverage Data
+Program: POLYTE
 Version: %s
 Release date: %s
 Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
 
-SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
-input single- and/or paired-end Illumina sequencing reads. Please note that the
-paired-end reads are expected to be in forward-forward format, as output by
-PEAR.
+POLYTE assembles individual haplotypes from NGS data. It expects as
+input single- and/or paired-end Illumina sequencing reads.
 
-Run savage -h for a complete description of required and optional arguments.
+Run polyte.py -h for a complete description of required and optional arguments.
 
-For the complete manual, please visit https://bitbucket.org/jbaaijens/savage
+For the complete manual, please visit https://github.com/HaploConduct/HaploConduct
 """ % (version, releasedate)
 
 # ------------------------------
@@ -101,7 +99,7 @@ def main():
 
     print """
 ------------------------------------------------------
-SAVAGE-LC - Strain Aware Assembly on Low Coverage Data
+POLYTE: Haplotype-aware assembly for polyploid genomes
 ------------------------------------------------------
 Version: %s
 Author: %s
@@ -146,7 +144,7 @@ Author: %s
         elif os.path.exists('contigs.fasta'):
             final_contig_file = 'contigs.fasta'
         else:
-            sys.stderr.write("No contigs found for estimating strain count. Please run savage assembly first.\n")
+            sys.stderr.write("No contigs found for estimating strain count. Please run polyte assembly first.\n")
             sys.stderr.flush()
             sys.exit(1)
 
@@ -347,7 +345,7 @@ Author: %s
     # Run SAVAGE Stage a: error correction and initial contig formation
     if args.assembly:
         print "***************"
-        print "SAVAGE assembly"
+        print "POLYTE assembly"
         sys.stdout.flush()
         os.chdir('assembly')
         diploid = "false"
@@ -378,7 +376,7 @@ Author: %s
     if args.diploid:
         # final diploid contig merging
         print "**************"
-        print "SAVAGE diploid"
+        print "POLYTE diploid"
         # parameters
         if args.diploid_overlap_len:
             min_overlap_len = args.diploid_overlap_len
@@ -393,7 +391,7 @@ Author: %s
                      rerun assembly."""
             sys.exit(1)
         elif os.stat("contigs.fasta").st_size == 0:
-            print "Empty set of contigs from assembly stage (contigs.fasta) --> Exiting SAVAGE."
+            print "Empty set of contigs from assembly stage (contigs.fasta) --> Exiting."
             sys.exit()
         subprocess.call(['cp', 'assembly/singles.fastq', 'diploid/s_p1_p2.fastq'], stdout=FNULL, stderr=FNULL)
         pident = 98
@@ -445,14 +443,11 @@ current contigs, make sure to add the --no_assembly flag.
 """
 
     print """**************
-SAVAGE assembly has been completed, the final contig set was written to:
+POLYTE assembly has been completed, the final contig set was written to:
 
         %s
 
-Optionally, you can now apply frequency estimation using freq-est.py. Please see
-the manual page for more information: https://bitbucket.org/jbaaijens/savage.
-
-Thank you for using SAVAGE!
+Thank you for using POLYTE!
     """ % final_contig_file
 
     FNULL.close()
