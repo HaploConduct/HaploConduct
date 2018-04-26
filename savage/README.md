@@ -93,7 +93,8 @@ To summarize, please download and install:
 a distribution of bioinformatics software realized as a channel for the
 versatile Conda package manager.*
 
-Once all dependencies are installed, download the [latest](https://bitbucket.org/jbaaijens/savage/downloads?tab=tags) version of **SAVAGE**, enter the repository and type `make`.
+Once all dependencies are installed, download the [latest release](https://github.com/HaploConduct/HaploConduct/releases) of the HaploConduct package, enter the repository and type `make`.
+
 
 ## Manual
 
