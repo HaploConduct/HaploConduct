@@ -121,4 +121,4 @@ Will be added soon.
 ## Contact   
 
 In case of any questions or issues, please contact Jasmijn Baaijens:
-<lastname> AT cwi DOT nl
+baaijens AT cwi DOT nl

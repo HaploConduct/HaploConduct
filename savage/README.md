@@ -353,4 +353,4 @@ Genome Res. 2017. 27: 835-848,
 ## Contact   
 
 In case of any questions or issues, please contact Jasmijn Baaijens:
-<lastname> AT cwi DOT nl
+baaijens AT cwi DOT nl

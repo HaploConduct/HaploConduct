@@ -91,4 +91,4 @@ Detailed user instructions can be found in the respective [SAVAGE](https://githu
 ## Contact   
 
 In case of any questions or issues, please contact Jasmijn Baaijens:
-<lastname> AT cwi DOT nl
+baaijens AT cwi DOT nl
