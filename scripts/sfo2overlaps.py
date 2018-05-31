@@ -56,8 +56,9 @@ def main():
     # read the sorted overlaps and process line by line
     s_s_count = 0
     p_count = 0
+    tmp2_file = 'tmp_overlaps_paired.txt'
     with open(tmp_file, 'r') as f_tmp:
-        with open(args.outfile, 'w') as f_out:
+        with open(tmp2_file, 'w') as f_out:
             candidates = []
             for line in f_tmp:
                 sfo_line = line.strip('\n').split()
@@ -103,9 +104,9 @@ def main():
     print "of which single-single: %d" % s_s_count
 
     # remove duplicate overlaps from the resulting overlaps file
-    subprocess.check_call('echo "$(uniq %s)" > %s' % (args.outfile, args.outfile), shell=True)
+    subprocess.check_call("uniq %s > %s" % (tmp2_file, args.outfile), shell=True)
     # remove temporary overlaps file
-    subprocess.check_call("rm %s" % tmp_file, shell=True)
+    subprocess.check_call("rm %s %s" % (tmp_file, tmp2_file), shell=True)
 
 
 def flip_N(sfo_tup):
