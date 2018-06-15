@@ -40,6 +40,8 @@ void OverlapGraph::removeInclusions() {
     for (auto node_pair : edges_to_remove) {
 //        std::cout << "edge " << node_pair.first << " " << node_pair.second << std::endl;
         removeEdge(node_pair.first, node_pair.second);
+        // make sure that edge is truly removed
+        assert(checkEdge(node_pair.first, node_pair.second, false) == -1);
     }
 //    std::cout << "Inclusions removed = " << edges_to_remove.size() << std::endl;
 }
