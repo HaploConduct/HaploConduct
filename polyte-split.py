@@ -62,7 +62,7 @@ def main():
 #    advanced.add_argument('--no_EC', dest='error_correction', action='store_false', help='skip error correction in initial iteration (i.e. no cliques)')
 #    advanced.add_argument('--no_overlaps', dest='compute_overlaps', action='store_false', help='skip overlap computations (use existing overlaps file instead)')
 #    advanced.add_argument('--no_preprocessing', dest='preprocessing', action='store_false', help='skip preprocessing procedure')
-    advanced.add_argument('--no_assembly', dest='assembly', action='store_false', help='skip all assembly steps; only use this option when using --count_strains separate from assembly (e.g. on a denovo assembly)')
+    advanced.add_argument('--no_assembly', dest='assembly', action='store_false', help='skip all assembly steps, only run diploid mode (if specified)')
     advanced.add_argument('--count_strains', dest='count_strains', action='store_true', help='compute a lower bound on the number of strains in this sample; note: this requires a reference genome.')
     advanced.add_argument('--mismatch_rate', dest='merge_contigs', type=float, default=0.0, help='specify maximal distance between contigs for merging into master strains (stage c)')
     advanced.add_argument('--min_clique_size', dest='min_clique_size', type=int, default=3, help='minimum clique size used during error correction')
@@ -382,10 +382,10 @@ Author: %s
             new_subreads.write('\t'.join(splitline))
         combined_count += len(subreads)
     new_subreads.close()
+    print "combined contig count:", combined_count
     # rename combined contigs
     subprocess.check_call("%s/scripts/rename_fas.py --in assembly/tmp_contigs.fastq --out assembly/combined_contigs.fastq" % (base_path), shell=True)
     subprocess.check_call("rm assembly/tmp_contigs.fastq", shell=True)
-    print "combined contig count:", combined_count
     subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq > assembly/combined_contigs.sam" % (args.threads, args.reference), shell=True)
     #subprocess.check_call("bwa mem -a -t %s %s assembly/combined_contigs.fastq 2> /dev/null | samtools sort > assembly/combined_contigs.bam" % (args.threads, args.reference), shell=True)
     #subprocess.check_call('samtools index assembly/combined_contigs.bam', shell=True)
