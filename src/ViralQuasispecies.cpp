@@ -292,6 +292,8 @@ int main(int argc, char *argv[])
     else if (program_settings.verbose) {
         std::cout << overlap_graph->getEdgeCount() << " edges have been constructed in " << time_s << " seconds.\n";
     }
+
+    overlap_graph->write2GFA(program_settings.output_dir + "graph_incl.gfa");
 //    overlap_graph->getGraphStats();
     if (program_settings.ignore_inclusions) {
         overlap_graph->removeInclusions();
