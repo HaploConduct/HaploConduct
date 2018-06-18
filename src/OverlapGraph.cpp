@@ -343,7 +343,7 @@ void OverlapGraph::writeGraphToFile() {
             if (! it2->empty()) {
                 std::cout << i << " " << (it2->front()).get_vertex(1) << " " << (it2->front()).get_vertex(2) << std::endl;
             }
-            // assert( it2->empty() );
+            assert( it2->empty() );
             i++;
 	        continue;
 	    }
