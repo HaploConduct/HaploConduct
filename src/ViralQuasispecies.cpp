@@ -293,18 +293,17 @@ int main(int argc, char *argv[])
         std::cout << overlap_graph->getEdgeCount() << " edges have been constructed in " << time_s << " seconds.\n";
     }
 
-    overlap_graph->write2GFA(program_settings.output_dir + "graph_incl.gfa");
-//    overlap_graph->getGraphStats();
-    if (program_settings.ignore_inclusions) {
-        overlap_graph->removeInclusions();
-    }
-
     // Add vertex labels indicating read orientations
     overlap_graph->sortEdges(); // sort edges
     unsigned int conflict_count;
     overlap_graph->vertexLabellingHeuristic(conflict_count);
-//    overlap_graph->printAdjacencyLists();
+    // overlap_graph->printAdjacencyLists();
     overlap_graph->checkDuplicateEdges();
+
+    // overlap_graph->getGraphStats();
+    if (program_settings.ignore_inclusions) {
+        overlap_graph->removeInclusions();
+    }
 
     // Remove transitive edges as specified by program settings, if any
     overlap_graph->removeTransitiveEdges();
