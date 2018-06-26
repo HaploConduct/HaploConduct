@@ -28,7 +28,7 @@ def main():
                 continue
             elif line[0] == '*':
                 continue
-            line = line.rstrip('\n').split('\t')
+            line = line.rstrip().split('\t')
             idx = int(line[0])
             if '-' in line[1:]:# not fully phased
                 continue
@@ -68,7 +68,7 @@ def main():
                     mnv_count += 1
                     # continue
                 # check genotype field
-                line = line.rstrip('\n')
+                line = line.rstrip()
                 format = line.split('\t')[8]
                 gt_idx = format.split(':').index('GT')
                 data = line.split('\t')[9]
