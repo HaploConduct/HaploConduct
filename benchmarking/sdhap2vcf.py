@@ -4,26 +4,39 @@ import argparse
 
 """
 Transform unphased VCF (input) to phased VCF (output) using phasing results
-from SDhaP.
+from SDhaP or H-PoP.
 """
 
 def main():
     parser = argparse.ArgumentParser("build phased VCF from SDhaP output")
-    parser.add_argument('--sdhap', dest='sdhap', type=str, required=True)
+    parser.add_argument('--phased', dest='phased', type=str, required=True)
     parser.add_argument('--vcf', dest='vcf', type=str, required=True)
     parser.add_argument('-o', dest='outfile', type=str, required=True)
+    parser.add_argument('--format', dest='format', type=str, default='sdhap')
     args = parser.parse_args()
 
+    if args.format not in ['sdhap', 'hpop']:
+        print("InputError: format must be sdhap or hpop")
+        sys.exit(1)
+
     idx2phase = {}
-    with open(args.sdhap, 'r') as sdhap:
+    with open(args.phased, 'r') as phased:
         block = 0
-        for line in sdhap:
+        for line in phased:
             if line[0] == 'B':
                 block += 1
                 continue
+            elif line[0] == '*':
+                continue
             line = line.split('\t')
             idx = int(line[0])
-            haps = [str(int(line[1])-1), str(int(line[2])-1)]
+            if line[1] != '-' and line[2] != '-':
+                if args.format == 'sdhap':
+                    haps = [str(int(line[1])-1), str(int(line[2])-1)]
+                else:
+                    haps = line[1:3]
+            else:
+                continue
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
