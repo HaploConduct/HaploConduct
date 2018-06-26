@@ -44,9 +44,16 @@ def main():
     # substitute GT field by phased haplotypes
     # add phase set tag
 
-    idx = -1
+    if args.format == 'sdhap':
+        # 0-based vcf index
+        idx = -1
+    else:
+        idx = 0
     unphased = 0
     artifacts = 0
+    hom_ref = 0
+    hom_alt = 0
+    heterozygous = 0
     with open(args.vcf, 'r') as vcf_in:
         with open(args.outfile, 'w') as vcf_out:
             for line in vcf_in:
@@ -64,9 +71,17 @@ def main():
                 new_line = line.split('\t')[0:8]
                 if idx in idx2phase:
                     [phase, block] = idx2phase[idx]
-                    if set(gt.split('/')) != set(phase.split('|')):
+                    gt_set = set(gt.split('/'))
+                    if gt_set != set(phase.split('|')):
                         # print(idx, pos, gt, phase, block)
                         artifacts += 1
+                    if len(gt_set) == 1:
+                        if sum([int(x) for x in set(gt.split('/'))]) == 0:
+                            hom_ref += 1
+                        else:
+                            hom_alt += 1
+                    else:
+                        heterozygous += 1
                     data_split = data.split(':')
                     data_split[gt_idx] = phase
                     data_split.append(str(block))
@@ -81,6 +96,7 @@ def main():
     print("{} phased".format(len(idx2phase)))
     print("{} unphased".format(unphased))
     print("{} artifacts".format(artifacts))
+    print("{}-0/0\t{}-0/1\t{}-1/1".format(hom_ref, heterozygous, hom_alt))
     return
 
 if __name__ == '__main__':
