@@ -88,7 +88,7 @@ def main():
                 if idx in idx2phase:
                     [phase, block] = idx2phase[idx]
                     if gt_set != set(phase.split('|')):
-                        # print(idx, pos, gt, phase, block)
+                        print(idx, pos, gt, phase, block)
                         artifacts += 1
                     data_split = data.split(':')
                     data_split[gt_idx] = phase
