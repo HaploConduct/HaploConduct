@@ -54,6 +54,7 @@ def main():
     hom_ref = 0
     hom_alt = 0
     heterozygous = 0
+    mnv_count = 0
     with open(args.vcf, 'r') as vcf_in:
         with open(args.outfile, 'w') as vcf_out:
             for line in vcf_in:
@@ -61,7 +62,9 @@ def main():
                     # copy header
                     vcf_out.write(line)
                     continue
-                idx += 1
+                elif len(line.split('\t')[3]) > 1 or len(line.split('\t')[4]) > 1:
+                    mnv_count += 1
+                    continue
                 # check genotype field
                 format = line.split('\t')[8]
                 gt_idx = format.split(':').index('GT')
@@ -73,10 +76,12 @@ def main():
                 if len(gt_set) == 1:
                     if sum([int(x) for x in set(gt.split('/'))]) == 0:
                         hom_ref += 1
+                        continue
                     else:
                         hom_alt += 1
                 else:
                     heterozygous += 1
+                idx += 1
                 if idx in idx2phase:
                     [phase, block] = idx2phase[idx]
                     if gt_set != set(phase.split('|')):
@@ -96,7 +101,8 @@ def main():
     print("{} phased".format(len(idx2phase)))
     print("{} unphased".format(unphased))
     print("{} artifacts".format(artifacts))
-    print("{}-0/0\t{}-0/1\t{}-1/1".format(hom_ref, heterozygous, hom_alt))
+    print("{}-0/0\t{}-0/1\t{}-1/1\t{}-mnv".format(
+                    hom_ref, heterozygous, hom_alt, mnv_count))
     return
 
 if __name__ == '__main__':
