@@ -69,19 +69,19 @@ def main():
                 gt = data.split(':')[gt_idx]
                 pos = line.split('\t')[1]
                 new_line = line.split('\t')[0:8]
+                gt_set = set(gt.split('/'))
+                if len(gt_set) == 1:
+                    if sum([int(x) for x in set(gt.split('/'))]) == 0:
+                        hom_ref += 1
+                    else:
+                        hom_alt += 1
+                else:
+                    heterozygous += 1
                 if idx in idx2phase:
                     [phase, block] = idx2phase[idx]
-                    gt_set = set(gt.split('/'))
                     if gt_set != set(phase.split('|')):
                         # print(idx, pos, gt, phase, block)
                         artifacts += 1
-                    if len(gt_set) == 1:
-                        if sum([int(x) for x in set(gt.split('/'))]) == 0:
-                            hom_ref += 1
-                        else:
-                            hom_alt += 1
-                    else:
-                        heterozygous += 1
                     data_split = data.split(':')
                     data_split[gt_idx] = phase
                     data_split.append(str(block))
