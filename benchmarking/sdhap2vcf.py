@@ -28,7 +28,7 @@ def main():
                 continue
             elif line[0] == '*':
                 continue
-            line = line.split('\t')
+            line = line.rstrip('\n').split('\t')
             idx = int(line[0])
             if args.format == 'sdhap':
                 haps = [str(int(x)-1) if x != '-' else '.' for x in line[1:]]
