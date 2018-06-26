@@ -61,7 +61,9 @@ def main():
         with open(args.outfile, 'w') as vcf_out:
             for line in vcf_in:
                 if line[0] == '#':
-                    # copy header
+                    # copy header and add PS field description
+                    if line[1] != '#':
+                        vcf_out.write('##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">\n')
                     vcf_out.write(line)
                     continue
                 elif len(line.split('\t')[3]) > 1 or len(line.split('\t')[4]) > 1:
