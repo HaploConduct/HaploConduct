@@ -33,7 +33,7 @@ def main():
             if args.format == 'sdhap':
                 haps = [str(int(x)-1) if x != '-' else '.' for x in line[1:]]
             else:
-                haps = line[1:]
+                haps = [x if x != '-' else '.' for x in line[1:]]
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
