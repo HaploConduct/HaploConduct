@@ -78,7 +78,7 @@ def main():
                 if len(gt_set) == 1:
                     if sum([int(x) for x in set(gt.split('/'))]) == 0:
                         hom_ref += 1
-                        # continue
+                        continue
                     else:
                         hom_alt += 1
                 else:
