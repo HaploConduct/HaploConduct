@@ -30,13 +30,10 @@ def main():
                 continue
             line = line.split('\t')
             idx = int(line[0])
-            if line[1] != '-' and line[2] != '-':
-                if args.format == 'sdhap':
-                    haps = [str(int(line[1])-1), str(int(line[2])-1)]
-                else:
-                    haps = line[1:3]
+            if args.format == 'sdhap':
+                haps = [str(int(x)-1) if x != '-' else '.' for x in line[1:]]
             else:
-                continue
+                haps = line[1:]
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
