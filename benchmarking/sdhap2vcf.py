@@ -68,9 +68,10 @@ def main():
                     mnv_count += 1
                     # continue
                 # check genotype field
+                line = line.rstrip('\n')
                 format = line.split('\t')[8]
                 gt_idx = format.split(':').index('GT')
-                data = line.rstrip('\n').split('\t')[9]
+                data = line.split('\t')[9]
                 gt = data.split(':')[gt_idx]
                 pos = line.split('\t')[1]
                 new_line = line.split('\t')[0:8]
