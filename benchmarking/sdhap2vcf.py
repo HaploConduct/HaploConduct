@@ -30,13 +30,13 @@ def main():
                 continue
             line = line.rstrip('\n').split('\t')
             idx = int(line[0])
-            if '-' in line[1:]:
+            if '-' in line[1:]:# not fully phased
+                continue
+            else:
                 if args.format == 'sdhap':
                     haps = [str(int(x)-1) if x != '-' else '.' for x in line[1:]]
                 else:
                     haps = [x if x != '-' else '.' for x in line[1:]]
-            else: # not fully phased
-                continue
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
