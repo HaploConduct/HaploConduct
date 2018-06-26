@@ -40,6 +40,8 @@ def main():
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
+    print("{} largest index".format(max(idx2phase.keys())))
+
     # parse through VCF
     # substitute GT field by phased haplotypes
     # add phase set tag
@@ -64,7 +66,7 @@ def main():
                     continue
                 elif len(line.split('\t')[3]) > 1 or len(line.split('\t')[4]) > 1:
                     mnv_count += 1
-                    continue
+                    # continue
                 # check genotype field
                 format = line.split('\t')[8]
                 gt_idx = format.split(':').index('GT')
@@ -76,7 +78,7 @@ def main():
                 if len(gt_set) == 1:
                     if sum([int(x) for x in set(gt.split('/'))]) == 0:
                         hom_ref += 1
-                        continue
+                        # continue
                     else:
                         hom_alt += 1
                 else:
