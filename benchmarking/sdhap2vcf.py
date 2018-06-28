@@ -30,16 +30,25 @@ def main():
                 continue
             line = line.rstrip().split('\t')
             idx = int(line[0])
-            if '-' in line[1:]:# not fully phased
+            if '-' in line[1:]:
+                # not fully phased
                 continue
             else:
                 if args.format == 'sdhap':
                     haps = [str(int(x)-1) if x != '-' else '.' for x in line[1:]]
                 else:
                     haps = [x if x != '-' else '.' for x in line[1:]]
+            if max([int(x) for x in haps]) >= len(haps):
+                # remove unusable output
+                continue
             phase = "|".join(haps)
             idx2phase[idx] = [phase, block]
 
+    ploidy = len(haps)
+    print("ploidy = {}".format(ploidy))
+    if ploidy > 4:
+        print("ploidy > 4, need extra output VCF ---> extend script. Exiting.")
+        sys.exit(1)
     print("{} largest index".format(max(idx2phase.keys())))
 
     # parse through VCF
@@ -57,6 +66,8 @@ def main():
     hom_alt = 0
     heterozygous = 0
     mnv_count = 0
+    if ploidy > 2:
+        vcf2 = open(args.outfile + ".2", 'w')
     with open(args.vcf, 'r') as vcf_in:
         with open(args.outfile, 'w') as vcf_out:
             for line in vcf_in:
@@ -64,7 +75,11 @@ def main():
                     # copy header and add PS field description
                     if line[1] != '#':
                         vcf_out.write('##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">\n')
+                        if ploidy > 2:
+                            vcf2.write('##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Phase set identifier">\n')
                     vcf_out.write(line)
+                    if ploidy > 2:
+                        vcf2.write(line)
                     continue
                 elif len(line.split('\t')[3]) > 1 or len(line.split('\t')[4]) > 1:
                     mnv_count += 1
@@ -77,6 +92,7 @@ def main():
                 gt = data.split(':')[gt_idx]
                 pos = line.split('\t')[1]
                 new_line = line.split('\t')[0:8]
+                new_line2 = line.split('\t')[0:8]
                 gt_set = set(gt.split('/'))
                 if len(gt_set) == 1:
                     if sum([int(x) for x in set(gt.split('/'))]) == 0:
@@ -87,21 +103,45 @@ def main():
                 else:
                     heterozygous += 1
                 idx += 1
+                data_split = data.split(':')
+                data_split2 = data.split(':')
                 if idx in idx2phase:
                     [phase, block] = idx2phase[idx]
                     if gt_set != set(phase.split('|')):
                         print(idx, pos, gt, phase, block)
                         artifacts += 1
-                    data_split = data.split(':')
-                    data_split[gt_idx] = phase
+                    if ploidy == 2:
+                        data_split[gt_idx] = phase
+                    elif ploidy == 3:
+                        data_split[gt_idx] = phase[:3]
+                        data_split2[gt_idx] = phase[2:]
+                    else:
+                        data_split[gt_idx] = phase[:3]
+                        data_split2[gt_idx] = phase[4:]
                     data_split.append(str(block))
+                    data_split2.append(str(block))
                     format += ":PS"
-                    data = ":".join(data_split)
                 else:
                     unphased += 1
+                    if ploidy == 2:
+                        data_split[gt_idx] = gt
+                    elif ploidy == 3:
+                        data_split[gt_idx] = gt[:3]
+                        data_split2[gt_idx] = gt[2:]
+                    else:
+                        data_split[gt_idx] = gt[:3]
+                        data_split2[gt_idx] = gt[4:]
+                data = ":".join(data_split)
                 new_line.append(format)
                 new_line.append(data)
+                data2 = ":".join(data_split2)
+                new_line2.append(format)
+                new_line2.append(data2)
                 vcf_out.write('\t'.join(new_line) + '\n')
+                if ploidy > 2:
+                    vcf2.write('\t'.join(new_line2) + '\n')
+    if ploidy > 2:
+        vcf2.close()
     print("{} variants considered".format(idx+1))
     print("{} phased".format(len(idx2phase)))
     print("{} unphased".format(unphased))
