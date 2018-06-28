@@ -18,6 +18,9 @@
 #include "OverlapGraph.h"
 
 void OverlapGraph::removeInclusions() {
+    if (program_settings.verbose) {
+        std::cout << "removeInclusions...\n";
+    }
     // remove all in- and outgoing edges from nodes marked as inclusions
     std::set< std::pair< node_id_t, node_id_t > > edges_to_remove;
     for (node_id_t v=0; v < vertex_count; v++) {
