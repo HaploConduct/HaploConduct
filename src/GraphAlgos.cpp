@@ -538,7 +538,6 @@ void OverlapGraph::cycleRemovalHeuristic(bool remove_edges) {
 }
 
 void OverlapGraph::removeTips() {
-    std::cout << "removeTips..." << std::endl;
     if (program_settings.verbose) {
         std::cout << "removeTips..." << std::endl;
     }

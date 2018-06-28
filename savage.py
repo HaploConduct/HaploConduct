@@ -413,9 +413,9 @@ Author: %s
         subprocess.check_call(["cp", overlaps, "original_overlaps.txt"])
         if args.use_subreads:
             subprocess.check_call("cp ../stage_a/subreads.txt subreads.txt", shell=True)
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --verbose --stage b --fastq ../stage_b --overlaps %s --use_subreads --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True)
         else:
-            subprocess.check_call("%s/scripts/pipeline_per_stage.py --stage b --fastq ../stage_b --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True) # note: not using stage a subreads
+            subprocess.check_call("%s/scripts/pipeline_per_stage.py --verbose --stage b --fastq ../stage_b --overlaps %s --min_overlap_len %d --num_threads %d --remove_branches %s --max_tip_len %s" % (base_path, overlaps, min_overlap_len, args.threads, remove_branches, max_tip_len), shell=True) # note: not using stage a subreads
         os.remove(overlaps)
         os.chdir('..')
         subprocess.check_call("%s/scripts/fastq2fasta.py stage_b/singles.fastq contigs_stage_b.fasta" % base_path, shell=True)
