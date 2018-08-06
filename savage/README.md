@@ -320,19 +320,6 @@ In case of (ultra-)deep sequencing data, exceeding a coverage of
 
 Make sure to choose the number of patches in which to split your data such that `500 < read_coverage/patch_num < 1000`. Then set `--split=patch_num` and SAVAGE will take care of the rest.
 
-### Snakemake workflow
-The earliest versions of SAVAGE provided a **Snakefile** to run experiments with [Snakemake](https://bitbucket.org/snakemake/snakemake/wiki/Home). *However, this
-approach is no longer maintained*; the complete SAVAGE workflow is now taken care of by `savage.py`. It is therefore recommended to run SAVAGE directly instead of using the Snakefile.
-
-If you do wish to use the Snakefile, make sure that all SAVAGE parameters are specified in the config file `savage_config.yaml`.
-Please edit the config file and copy it to the directory where you wish to store
-all SAVAGE output, then run
-```
-snakemake -s /path/to/SAVAGE_ROOT/Snakefile
-```
-where /path/to/SAVAGE_ROOT/ specifies the path to the SAVAGE root directory.
-Note that the most recent options of SAVAGE are not supported by the Snakefile.
-
 
 ## General remarks
 
