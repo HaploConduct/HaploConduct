@@ -62,10 +62,13 @@ To summarize, please **download and install the following dependencies**:
 
 * [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
 * [bwa mem](http://bio-bwa.sourceforge.net/)
+* python2.7 + scipy
 
 *Each of these tools can also be installed using [Bioconda](https://bioconda.github.io/),
 a distribution of bioinformatics software realized as a channel for the
-versatile Conda package manager.*
+versatile Conda package manager. This comes down to one simple command, creating a conda environment that has all required dependencies:
+`conda install --name haploconduct-deps python=2.7 scipy bwa rust-overlaps`
+Then activate the environment with `source activate haploconduct-deps` and you're ready to go!*
 
 Once all dependencies are installed, download the [latest release](https://github.com/HaploConduct/HaploConduct/releases) of the HaploConduct package, enter the repository and type `make`.
 
