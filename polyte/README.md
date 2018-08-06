@@ -13,7 +13,7 @@ reconstruction values at extremely low error rates.
 
 ## Installation and dependencies
 
-POLYTE uses a core algorithm implemented in C++11, managed by several workflow scripts implemented in Python2.
+POLYTE uses a core algorithm implemented in C++11, managed by several workflow scripts implemented in Python2 (using scipy libraries).
 The C++ part requires several boost libraries (boost::timer,
 boost::system, and boost::program_options) and it needs a compiler
 that supports [OpenMP](http://openmp.org/wp/) (such as `g++`).
@@ -29,10 +29,13 @@ To summarize, please **download and install the following dependencies**:
 
 * [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
 * [bwa mem](http://bio-bwa.sourceforge.net/)
+* python2.7 + scipy
 
 *Each of these tools can also be installed using [Bioconda](https://bioconda.github.io/),
 a distribution of bioinformatics software realized as a channel for the
-versatile Conda package manager.*
+versatile Conda package manager. This comes down to one simple command, creating a conda environment that has all required dependencies:
+`conda install --name polyte-deps python=2.7 scipy bwa rust-overlaps`
+Then activate the environment with `source activate polyte-deps` and you're ready to go!*
 
 Once all dependencies are installed, download the [latest release](https://github.com/HaploConduct/HaploConduct/releases) of the HaploConduct package, enter the repository and type `make`.
 
@@ -58,7 +61,7 @@ the input data:
 * `--hap_cov` **(required)**
 The average per-haplotype coverage (i.e. sequencing depth). POLYTE needs at least 10x per-haplotype coverage to perform assembly, best results are obtained with 15-20x per-haplotype coverage.
 * `--insert_size` **(required)**
-The average insert size for the paired-end Illumina reads.
+The average insert size for the paired-end Illumina reads (i.e. 2 x read length + internal segment size).
 * `--stddev` **(required)**
 The standard deviation corresponding to the insert size distribution.
 
@@ -115,7 +118,21 @@ Size of the overlap between regions over which the reads are divided, default=10
 
 
 ### Example
-Will be added soon.
+
+The directory `example/` contains a small working example. To give POLYTE a
+test-run, cd into `example/` and execute:
+
+```
+python ../../polyte.py -p1 input/forward.fastq -p2 input/reverse.fastq --diploid --hap_cov 14 --insert_size 486.6 --stddev 146.7
+```
+
+
+### Citation
+
+If you are using POLYTE, please cite our paper: *Overlap graph-based generation of haplotigs for diploids and polyploids*,  
+**J.A. Baaijens and A. Schoenhuth**,  
+BioRxiv,
+[doi:10.1101/378356](https://doi.org/10.1101/378356).
 
 
 ## Contact   
