@@ -348,8 +348,8 @@ Author: %s
             pool = Pool(args.pool_size)
             for chrom, final_split in chrom2finalsplit.iteritems():
                 pool.map(partial(run_savage_lc, settings, chrom), final_split)
-                assembly_dirs.append(["{}_{}_{}".format(chrom, region[0],
-                        region[1]) for region in final_split])
+                assembly_dirs += ["{}_{}_{}".format(chrom, region[0],
+                        region[1]) for region in final_split]
             pool.close()
             pool.join()
     else:
