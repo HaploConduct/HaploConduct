@@ -30,7 +30,7 @@ def main():
 
     if args.ub >= 0:
         assert args.lb <= args.ub
-        
+
     mut_rate = args.sub_rate + args.ins_rate + args.del_rate
     if not (args.infile and args.outfile and mut_rate > 0):
         print "Specify input and output files, as well as the desired mutation rates."
@@ -48,6 +48,7 @@ def main():
                         new_seq = introduce_deletions(new_seq, args.del_rate)
                         new_seq = introduce_substitutions(new_seq, args.sub_rate)
                         new_seq = introduce_insertions(new_seq, args.ins_rate)
+                        print "Output sequence length: {}".format(len(new_seq))
                         f2.write(seq[:args.lb] + new_seq + seq[args.ub:] + '\n')
                         i += 1
                     seq = ""
@@ -60,6 +61,7 @@ def main():
                 new_seq = introduce_deletions(new_seq, args.del_rate)
                 new_seq = introduce_substitutions(new_seq, args.sub_rate)
                 new_seq = introduce_insertions(new_seq, args.ins_rate)
+                print "Output sequence length: {}".format(len(new_seq))
                 f2.write(seq[:args.lb] + new_seq + seq[args.ub:] + '\n')
                 i += 1
             print "Number of sequences processed: {}".format(i)
@@ -113,7 +115,9 @@ def introduce_insertions(genome, mut_rate):
         size = mut_positions[k]
         mut_genome += genome[old_k:k] + random_seq(size)
         old_k = k
+    mut_genome += genome[old_k:]
     print "{} insertions done".format(mut_count)
+    assert len(mut_genome) >= genome_len
     return mut_genome
 
 
