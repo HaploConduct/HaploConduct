@@ -5,6 +5,7 @@ import os
 import sys
 import random
 import math
+import re
 
 
 __author__ = "Jasmijn Baaijens"
@@ -78,7 +79,17 @@ def main():
                     tup.append(line)
 
                 if len(tup) == 4:
-                    rand_set = ID_to_set[ID]
+                    try:
+                        rand_set = ID_to_set[ID]
+                    except KeyError:
+                        mate_ID = re.sub(r"/2$", "/1", ID)
+                        try:
+                            rand_set = ID_to_set[mate_ID]
+                        except KeyError:
+                            print "ERROR: can't find matching identifier for read pair"
+                            print ID
+                            print mate_ID
+                            sys.exit(1)
                     split_lines2[rand_set].append(tup)
                 i += 1
 
