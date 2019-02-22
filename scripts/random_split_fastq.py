@@ -26,6 +26,7 @@ def main():
     fastq = args.input
 
     # read input file and randomly assign output files to read IDs
+    random.seed(0) # ensure deterministic behaviour
     ID_to_set = {}
     with open(fastq, 'r') as f:
         i = 0
