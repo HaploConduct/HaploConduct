@@ -49,6 +49,7 @@ def main():
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--split', dest='split_num', type=int, required=True, help='split the data set into patches s.t. 500 < coverage/split_num < 1000')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
+    basic.add_argument('-o', '--outdir', dest='outdir', type=str, help='specify output directory')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
 #    ref_guided.add_argument('--singles', dest='singles', type=str, help='single-end read alignments in SAM format')
@@ -105,6 +106,9 @@ Author: %s
     print "Command used:"
     print ' '.join(sys.argv)
     print
+
+    # store start dir
+    start_dir = os.getcwd()
 
     FNULL = open(os.devnull, 'w')
     remove_branches = 'true' if args.remove_branches else 'false'
@@ -275,12 +279,15 @@ Author: %s
     if preprocessing:
         print "*******************"
         print "Preprocessing input"
-        overwrite_dir('stage_a')
+        overwrite_dir(args.outdir + '/stage_a')
         # split fastq into patches
         if args.input_s:
-            subprocess.check_call("%s/scripts/random_split_fastq.py --input %s --output stage_a/singles --split_num %s" % (base_path, args.input_s, args.split_num), shell=True)
+            subprocess.check_call("%s/scripts/random_split_fastq.py --input %s --output %s/stage_a/singles --split_num %s" % (base_path, args.input_s, args.outdir, args.split_num), shell=True)
         if args.input_p1 and args.input_p2:
-            subprocess.check_call("%s/scripts/random_split_fastq.py --input %s --input2 %s --output stage_a/paired --split_num %s" % (base_path, args.input_p1, args.input_p2, args.split_num), shell=True)
+            subprocess.check_call("%s/scripts/random_split_fastq.py --input %s --input2 %s --output %s/stage_a/paired --split_num %s" % (base_path, args.input_p1, args.input_p2, args.outdir, args.split_num), shell=True)
+        # move to output directory
+        if args.outdir not in [None, '.', './']:
+            os.chdir(args.outdir)
         for patch_num in range(args.split_num):
             print "\rpatch %d" % patch_num,
             sys.stdout.flush()
@@ -571,6 +578,9 @@ the manual page for more information: https://bitbucket.org/jbaaijens/savage.
 
 Thank you for using SAVAGE!
     """ % final_contig_file
+
+    # return to start directory
+    os.chdir(start_dir)
 
     FNULL.close()
     return
