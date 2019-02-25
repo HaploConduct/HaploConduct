@@ -46,7 +46,11 @@ def combine_contigs(split_num, paired_to_single, paired_to_paired):
     current_SE_contigs = 0
     current_PE_contigs = 0
     # count the total number of single-end contigs
-    subprocess.check_call("cat stage_a/patch*/stage_a/singles.fastq > stage_a/tmp_singles.fastq", shell=True)
+    try:
+        subprocess.check_call("cat stage_a/patch*/stage_a/singles.fastq > stage_a/tmp_singles.fastq", shell=True)
+    except subprocess.CalledProcessError as e:
+        subprocess.check_call("touch stage_a/combined_singles.fastq", shell=True)
+        return [0, 0]
     final_SE_contigs = round(file_len('stage_a/tmp_singles.fastq')/4)
     subprocess.check_call("rm stage_a/tmp_singles.fastq", shell=True)
     if os.path.exists("stage_a/combined_singles.fastq"):
@@ -56,19 +60,23 @@ def combine_contigs(split_num, paired_to_single, paired_to_paired):
     with open('stage_a/subreads.txt', 'w') as new_subreads_file:
         s_id = 0
         for patch_num in range(split_num):
-            # build combined fastq files
-            if paired_to_single:
-                # concatenate all contigs to combined singles file
-                subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
-                subprocess.check_call("cat stage_a/patch%d/stage_a/paired1.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
-                subprocess.check_call("cat stage_a/patch%d/stage_a/paired2.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
-            elif paired_to_paired:
-                # concatenate contigs per type to combined fastq files
-                subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
-                subprocess.check_call("cat stage_a/patch%d/stage_a/paired1.fastq >> stage_a/combined_paired1.fastq" % patch_num, shell=True)
-                subprocess.check_call("cat stage_a/patch%d/stage_a/paired2.fastq >> stage_a/combined_paired2.fastq" % patch_num, shell=True)
-            else:
-                subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+            try:
+                # build combined fastq files
+                if paired_to_single:
+                    # concatenate all contigs to combined singles file
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/paired1.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/paired2.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+                elif paired_to_paired:
+                    # concatenate contigs per type to combined fastq files
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/paired1.fastq >> stage_a/combined_paired1.fastq" % patch_num, shell=True)
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/paired2.fastq >> stage_a/combined_paired2.fastq" % patch_num, shell=True)
+                else:
+                    subprocess.check_call("cat stage_a/patch%d/stage_a/singles.fastq >> stage_a/combined_singles.fastq" % patch_num, shell=True)
+            except subprocess.CalledProcessError as e:
+                # no contigs found
+                continue
             # count number of contigs in this patch
             singles_count = int(file_len('stage_a/patch%d/stage_a/singles.fastq' % patch_num)/4)
             paired_count = int(file_len('stage_a/patch%d/stage_a/paired1.fastq' % patch_num)/4)
