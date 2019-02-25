@@ -122,7 +122,12 @@ Author: %s
             sys.exit(1)
         if not os.path.exists(args.reference + ".bwt"):
             print "Building index for reference genome...",
-            subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
+            try:
+                message = subprocess.check_output("bwa index %s 2>&1" % args.reference, shell=True)
+            except subprocess.CalledProcessError as e:
+                print "ERROR running bwa index:"
+                print e.output
+                sys.exit(1)
             print "done!\n"
     else:
         denovo = True
@@ -318,12 +323,15 @@ Author: %s
                 # Run BWA to get alignments
                 fastq_path = "stage_a/patch%d/input_fas" % patch_num
                 try:
-                    subprocess.check_call("bwa mem %s %s/singles.fastq 1> %s/singles.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path), shell=True)
-                    subprocess.check_call("bwa mem %s %s/paired1.fastq %s/paired2.fastq 1> %s/paired.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path, fastq_path), shell=True)
+                    message1 = subprocess.check_call("bwa mem %s %s/singles.fastq 1> %s/singles.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path), shell=True)
+                    message2 = subprocess.check_call("bwa mem %s %s/paired1.fastq %s/paired2.fastq 1> %s/paired.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path, fastq_path), shell=True)
                 except subprocess.CalledProcessError as e:
-                    subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
-                    subprocess.check_call("bwa mem %s %s/singles.fastq 1> %s/singles.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path), shell=True)
-                    subprocess.check_call("bwa mem %s %s/paired1.fastq %s/paired2.fastq 1> %s/paired.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path, fastq_path), shell=True)
+                    print "ERROR running bwa mem:"
+                    print e.output
+                    sys.exit(1)
+                    # subprocess.check_call("bwa index %s 1>/dev/null 2>&1" % args.reference, shell=True)
+                    # subprocess.check_call("bwa mem %s %s/singles.fastq 1> %s/singles.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path), shell=True)
+                    # subprocess.check_call("bwa mem %s %s/paired1.fastq %s/paired2.fastq 1> %s/paired.sam 2> /dev/null" % (args.reference, fastq_path, fastq_path, fastq_path), shell=True)
 
         # move original reads to separate directory
         overwrite_dir('stage_a/original_reads')

@@ -115,9 +115,9 @@ def main():
     if total_aln_count == 0:
         print "\n\nERROR: No reads could be aligned to reference. Exiting."
         sys.exit(1)
-    elif total_overlap_count == 0:
-        print "\n\nERROR: No overlaps found. Exiting."
-        sys.exit(1)
+    # elif total_overlap_count == 0:
+    #     print "\n\nERROR: No overlaps found. Exiting."
+    #     sys.exit(1)
     return
 
 
