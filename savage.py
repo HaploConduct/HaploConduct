@@ -16,7 +16,7 @@ from collections import namedtuple
 __author__ = "Jasmijn Baaijens"
 __license__ = "GPL"
 
-version = "0.4.0"
+version = "0.4.1"
 releasedate = "July 17, 2017"
 
 usage = """
