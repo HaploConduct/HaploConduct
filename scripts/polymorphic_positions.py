@@ -22,7 +22,8 @@ def main():
     # read SNPs and store by index in both haplotypes
     hap2snplist = read_snps(args.snps_file, skip_indels)
     # map contigs to haplotypes (bwa mem)
-    sam_file = "contigs_to_truth.sam"
+    sam_file = "{}.truth.sam".format(args.contig_file)
+    # print(sam_file)
     if not os.path.exists(sam_file):
         print("\nAligning contigs against ground truth...")
         if not os.path.exists(args.truth_file + ".bwt"):
