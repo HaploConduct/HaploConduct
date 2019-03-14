@@ -67,6 +67,8 @@ def main():
     ncontigs = len(contigs)
     for contig, aln in contigs2aln.items():
         progress += 1
+        if len(aln) == 0:
+            continue
         # select alignment with smallest number of error positions in case of
         # multiple alignments
         best_aln = min(aln, key = lambda x: len(x[0]))
