@@ -153,12 +153,11 @@ def check_alignment(aln, contig, truth, skip_indels):
             local_error_indices = find_SNPs(
                 contig_part, truth_part, truth_pos-clipped_truth)
         elif aln_type == "I":
-            if not skip_indels and aln_len == 1:
-                local_error_indices.append(truth_pos)
+            local_error_indices.append(truth_pos)
             contig_pos += aln_len
         elif aln_type == "D":
-            if not skip_indels and aln_len == 1:
-                local_error_indices.append(truth_pos+1)
+            for j in range(aln_len):
+                local_error_indices.append(truth_pos+1+j)
             truth_pos += aln_len
         elif aln_type == "M":
             if contig_pos + aln_len > len(contig):
