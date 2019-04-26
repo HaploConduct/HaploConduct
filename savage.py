@@ -49,7 +49,7 @@ def main():
     basic.add_argument('-t', '--num_threads', dest='threads', type=int, default=1, help='allowed number of cores')
     basic.add_argument('--split', dest='split_num', type=int, required=True, help='split the data set into patches s.t. 500 < coverage/split_num < 1000')
     basic.add_argument('--revcomp', dest='revcomp', action='store_true', help='use this option when paired-end input reads are in forward-reverse orientation;\nthis option will take reverse complements of /2 reads (specified with -p2)\nplease see the SAVAGE manual for more information about input read orientations')
-    basic.add_argument('-o', '--outdir', dest='outdir', type=str, help='specify output directory')
+    basic.add_argument('-o', '--outdir', dest='outdir', type=str, default='.', help='specify output directory')
     ref_guided = parser.add_argument_group('reference-guided mode')
     ref_guided.add_argument('--ref', dest='reference', type=str, help='reference genome in fasta format')
 #    ref_guided.add_argument('--singles', dest='singles', type=str, help='single-end read alignments in SAM format')
