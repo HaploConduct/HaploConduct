@@ -1,5 +1,11 @@
 # Change log
 
+## [0.4.1] - 2019‑03‑15
+### Added
+- Command line argument -o/--outdir
+### Changed
+Minor bugfixes, improved error handling.
+
 ## [0.4.0] - 2017-07-17
 ### Added
 - Frequency-based filtering using Kallisto
