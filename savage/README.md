@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-GPL%20v3.0-blue.svg)](http://www.gnu.org/licenses/)
 
-Current version: 0.4.0
+Current version: 0.4.1
 
 ## Synopsis
 
@@ -135,6 +135,11 @@ Fasta file containing the reference genome to be used for reference-guided mode.
 The algorithm has a built-in error correction step, but it does assume the input
 data to be cleaned (i.e., adapter sequences should be removed and low quality
 bases should be trimmed). This can be done using [cutadapt](https://pypi.python.org/pypi/cutadapt).
+
+
+### Output
+
+The contigs produced in the different stages of the algorithm are stored in fasta files named `contigs_stage_a.fasta`, `contigs_stage_b.fasta` and `contigs_stage_c.fasta`. These are stored in the current working directory, unless specified otherwise using the `-o` (or `--outdir`) parameter.
 
 
 ### Assembly parameters
