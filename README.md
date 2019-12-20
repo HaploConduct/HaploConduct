@@ -25,6 +25,12 @@ is based on the enumeration of statistically well-calibrated groups
 of reads/contigs then efficiently reconstructs the individual
 haplotypes from this overlap graph.
 
+*If you are using SAVAGE, please cite our paper:*
+De novo assembly of viral quasispecies using overlap graphs,
+**J. Baaijens, A. Zine El Aabidine, E. Rivals, and A. Schoenhuth**,  
+Genome Res. 2017; 27: 835-848,
+[doi:10.1101/gr.215038.116](https://doi.org/10.1101/gr.215038.116).
+
 
 ### POLYTE: POLYploid genome fitTEr
 
@@ -36,6 +42,12 @@ an underlying haplotype-aware overlap graph. Along the iterations,
 contigs grow while preserving their haplotype identity. POLYTE has been shown
 to produce very accurate and complete assemblies, reaching high target genome
 reconstruction values at extremely low error rates.
+
+*If you are using POLYTE, please cite our paper:*
+Overlap graph-based generation of haplotigs for diploids and polyploids,  
+**J.A. Baaijens and A. Schoenhuth**,  
+Bioinformatics 2019; 35(21): 4281--4289,
+[doi:10.1101/378356](https://doi.org/10.1101/378356).
 
 
 ## Installation and dependencies
@@ -56,10 +68,11 @@ For maximal clique enumeration, HaploConduct depends on the [quick-cliques packa
 For suffix-prefix overlap computations, HaploConduct uses the [rust-overlaps package](https://github.com/jbaaijens/rust-overlaps) for
 computing suffix-prefix overlaps in de novo mode.
 
-For reference-guided assembly, SAVAGE depends on the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
+For reference-guided assembly, HaploConduct needs the[bwa mem](http://bio-bwa.sourceforge.net/) aligner.
 
 To summarize, please **download and install the following dependencies**:
 
+* g++ with boost libraries
 * [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
 * [bwa mem](http://bio-bwa.sourceforge.net/)
 * python2.7 + scipy
@@ -67,7 +80,7 @@ To summarize, please **download and install the following dependencies**:
 *Each of these tools can also be installed using [Bioconda](https://bioconda.github.io/),
 a distribution of bioinformatics software realized as a channel for the
 versatile Conda package manager. This comes down to one simple command, creating a conda environment that has all required dependencies:
-`conda install --name haploconduct-deps python=2.7 scipy bwa rust-overlaps`
+`conda create --name haploconduct-deps python=2.7 scipy bwa rust-overlaps`
 Then activate the environment with `source activate haploconduct-deps` and you're ready to go!*
 
 Once all dependencies are installed, download the [latest release](https://github.com/HaploConduct/HaploConduct/releases) of the HaploConduct package, enter the repository and type `make`.
@@ -84,7 +97,7 @@ at 15-20x coverage per haplotype.
 ## Usage
 
 *Note: the HaploConduct workflows are currently implemented in Python2, we plan
-to move to Python3 in the very near future.*
+to move to Python3 in the future.*
 
 For SAVAGE, run `python savage.py` and for POLYTE run `python polyte.py`.
 Detailed user instructions can be found in the respective [SAVAGE](https://github.com/HaploConduct/HaploConduct/tree/master/savage) and

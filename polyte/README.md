@@ -131,7 +131,7 @@ python ../../polyte.py -p1 input/forward.fastq -p2 input/reverse.fastq --diploid
 
 If you are using POLYTE, please cite our paper: *Overlap graph-based generation of haplotigs for diploids and polyploids*,  
 **J.A. Baaijens and A. Schoenhuth**,  
-BioRxiv,
+Bioinformatics 2019; 35(21): 4281--4289,
 [doi:10.1101/378356](https://doi.org/10.1101/378356).
 
 
