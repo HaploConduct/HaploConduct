@@ -37,7 +37,7 @@ For the complete manual, please visit https://bitbucket.org/jbaaijens/savage
 
 # ------------------------------
 
-InputStruct = namedtuple("InputStruct", "input_s input_p1 input_p2 read_len fragmentsize stddev")
+InputStruct = namedtuple("InputStruct", "start_dir input_s input_p1 input_p2 read_len fragmentsize stddev")
 
 def main():
     parser = ArgumentParser(description=usage, formatter_class=RawTextHelpFormatter)
@@ -252,7 +252,9 @@ Author: %s
 #    stddev = args.stddev if args.stddev else 20
     fragmentsize = average_read_len
     stddev = 20
-    input_info = InputStruct(args.input_s, args.input_p1, args.input_p2, average_read_len, fragmentsize, stddev)
+    input_info = InputStruct(start_dir, args.input_s, args.input_p1, \
+                             args.input_p2, average_read_len, fragmentsize, \
+                             stddev)
 
     if args.max_tip_len is None:
         max_tip_len = int(round(average_read_len)) # average input read length
@@ -439,7 +441,9 @@ Author: %s
         # apply frequency-based filtering
         if args.filtering:
             try:
-                freq_filtering("contigs_stage_b.fasta", "stage_b/singles.fastq", 0, input_info)
+                freq_filtering("contigs_stage_b.fasta",
+                               "stage_b/singles.fastq",
+                               0, input_info)
             except subprocess.CalledProcessError as e:
                 print "\nKallisto not found - skipping this filtering step.\n"
     elif final_contig_file != "":
@@ -786,15 +790,28 @@ def run_kallisto(contigs, input_info): #fragmentsize, stddev, forward, reverse="
     # estimate abundances
     print "Kallisto abundance quantification... "
     kallisto_out = 'frequencies/' + contigs_name
+    input_s = "{}/{}".format(input_info.start_dir, input_info.input_s)
+    input_p1 = "{}/{}".format(input_info.start_dir, input_info.input_p1)
+    input_p2 = "{}/{}".format(input_info.start_dir, input_info.input_p2)
     if input_info.input_s:
         fragmentsize = str(input_info.fragmentsize)
         stddev = str(input_info.stddev)
         if input_info.input_p1 and input_info.input_p2:
-            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s, input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
+            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o',
+                                   kallisto_out, '-b', '100', '-l',
+                                   fragmentsize, '-s', stddev, '--single',
+                                   input_s, input_p1, input_p2],
+                                   stdout=FNULL, stderr=FNULL)
         else:
-            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, '--single', input_info.input_s], stdout=FNULL, stderr=FNULL)
+            subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o',
+                                   kallisto_out, '-b', '100', '-l',
+                                   fragmentsize, '-s', stddev, '--single',
+                                   input_s])#, stdout=FNULL, stderr=FNULL)
     else:
-        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', input_info.input_p1, input_info.input_p2], stdout=FNULL, stderr=FNULL)
+        subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o',
+                               kallisto_out, '-b', '100', input_info.input_p1,
+                               input_info.input_p2],
+                               stdout=FNULL, stderr=FNULL)
     # if reverse:
     #     subprocess.check_call([kallisto, 'quant', '-i', index_file, '-o', kallisto_out, '-b', '100', '-l', fragmentsize, '-s', stddev, forward, reverse])
     # else:
