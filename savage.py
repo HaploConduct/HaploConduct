@@ -16,14 +16,14 @@ from collections import namedtuple
 __author__ = "Jasmijn Baaijens"
 __license__ = "GPL"
 
-version = "0.4.1"
-releasedate = "July 17, 2017"
+version = "0.4.2"
+releasedate = "December 23, 2019"
 
 usage = """
 Program: SAVAGE - Strain Aware VirAl GEnome assembly
 Version: %s
 Release date: %s
-Contact: Jasmijn Baaijens - j.a.baaijens@cwi.nl
+Contact: Jasmijn Baaijens
 
 SAVAGE assembles individual (viral) haplotypes from NGS data. It expects as
 input single- and/or paired-end Illumina sequencing reads. Please note that the
