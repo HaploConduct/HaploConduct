@@ -11,7 +11,7 @@ __license__ = "GPL"
 
 usage = """
 Program: HaploConduct
-Version: 0.1
+Version: 0.2
 Release date: December 23, 2019
 GitHub: https://github.com/HaploConduct/HaploConduct
 
