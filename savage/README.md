@@ -2,7 +2,7 @@
 
 [![license](https://img.shields.io/badge/license-GPL%20v3.0-blue.svg)](http://www.gnu.org/licenses/)
 
-Current version: 0.4.1
+Current version: 0.4.2
 
 ## Synopsis
 
@@ -20,6 +20,9 @@ of reads/contigs then efficiently reconstructs the individual
 haplotypes from this overlap graph.
 
 For a more detailed description, please see our [Genome Research  paper](http://genome.cshlp.org/content/early/2017/04/10/gr.215038.116) or the [preprint](http://biorxiv.org/content/early/2017/01/21/080341) on BioRxiv.
+
+SAVAGE assemblies can be further extended using [VG-Flow](https://bitbucket.org/jbaaijens/vg-flow/src/master/).
+
 
 ## Motivation
 
@@ -333,6 +336,12 @@ paired-end reads, it assumes they are stored both on the same strand
 (hence resulting in F-F alignments) as output by [PEAR](http://sco.h-its.org/exelixis/web/software/pear/), unless specified otherwise. If your reads are
 stored in forward-reverse orientations, make sure to use the option `--revcomp` when calling SAVAGE.
 
+In general, SAVAGE produces highly accurate contigs, but the assemblies tend to
+remain fragmented on mixtures of low diversity. In this case, we recommend using
+VG-flow, a reference-genome-independent solution to combine contigs into
+haplotypes. In addition, VG-Flow computes frequency estimates for the reconstructed haplotypes. Please see the VG-Flow [repository](https://bitbucket.org/jbaaijens/vg-flow/src/master/) and [manuscript](https://www.biorxiv.org/content/10.1101/645721v2.full)
+for more information.
+
 
 ## Citation
 
@@ -344,5 +353,4 @@ Genome Res. 2017. 27: 835-848,
 
 ## Contact   
 
-In case of any questions or issues, please contact Jasmijn Baaijens:
-baaijens AT cwi DOT nl
+Please report any questions or issues [here](https://github.com/HaploConduct/HaploConduct/issues).

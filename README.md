@@ -89,7 +89,7 @@ Once all dependencies are installed, download the [latest release](https://githu
 ## Input
 
 Both methods are designed for Illumina paired-end sequencing reads. SAVAGE
-assumes typical viral sequencing data consisting of at least 10.000x coverage;
+assumes typical viral sequencing data consisting of at least 10.000x total coverage;
 POLYTE requires only 10x coverage per haplotype and achieves optimal performance
 at 15-20x coverage per haplotype.
 
@@ -99,12 +99,11 @@ at 15-20x coverage per haplotype.
 *Note: the HaploConduct workflows are currently implemented in Python2, we plan
 to move to Python3 in the future.*
 
-For SAVAGE, run `python savage.py` and for POLYTE run `python polyte.py`.
+For SAVAGE, run `haploconduct savage` and for POLYTE run `haploconduct polyte`.
 Detailed user instructions can be found in the respective [SAVAGE](https://github.com/HaploConduct/HaploConduct/tree/master/savage) and
 [POLYTE](https://github.com/HaploConduct/HaploConduct/tree/master/polyte) manuals.
 
 
-## Contact   
+## Contact
 
-In case of any questions or issues, please contact Jasmijn Baaijens:
-baaijens AT cwi DOT nl
+Please report any questions or issues [here](https://github.com/HaploConduct/HaploConduct/issues).

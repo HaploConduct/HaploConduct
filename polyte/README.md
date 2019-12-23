@@ -23,24 +23,30 @@ For maximal clique enumeration, HaploConduct depends on the [quick-cliques packa
 For suffix-prefix overlap computations, HaploConduct uses the [rust-overlaps package](https://github.com/jbaaijens/rust-overlaps) for
 computing suffix-prefix overlaps in de novo mode.
 
-For reference-guided assembly, SAVAGE depends on the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
+For reference-guided assembly, SAVAGE depends on [samtools](http://samtools.sourceforge.net) and the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
 
 To summarize, please **download and install the following dependencies**:
 
 * [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
 * [bwa mem](http://bio-bwa.sourceforge.net/)
+* [samtools](http://samtools.sourceforge.net)
 * python2.7 + scipy
 
 *Each of these tools can also be installed using [Bioconda](https://bioconda.github.io/),
 a distribution of bioinformatics software realized as a channel for the
 versatile Conda package manager. This comes down to one simple command, creating a conda environment that has all required dependencies:
-`conda install --name haploconduct-deps python=2.7 scipy bwa rust-overlaps`
+`conda install --name haploconduct-deps python=2.7 scipy bwa samtools rust-overlaps`
 Then activate the environment with `source activate haploconduct-deps` and you're ready to go!*
 
 Once all dependencies are installed, download the [latest release](https://github.com/HaploConduct/HaploConduct/releases) of the HaploConduct package, enter the repository and type `make`.
 
 
 ## Manual
+
+Start POLYTE by calling `haploconduct` in `polyte` mode:
+```
+haploconduct polyte
+```
 
 ### Input
 
@@ -108,7 +114,7 @@ The output contigs are stored in `contigs.fasta` and, when using diploid mode (o
 
 Large regions, such as whole human chromosomes, require an approach that divides read set into bins, such that each bin can be processed individually. Currently, this binning is done based on alignments to a reference genome.
 
-To process genomic regions larger than 100kb, call `polyte-split.py` instead of `polyte.py`. This pipeline takes the same input and parameters, along with three additional parameters:
+To process genomic regions larger than 100kb, call haploconduct in `polyte-split` mode instead of `polyte`. This pipeline takes the same input and parameters, along with three additional parameters:
 * `--ref` **(required)**
 Reference genome in fasta format, used for binning the reads')
 * `--split_size`
@@ -123,7 +129,7 @@ The directory `example/` contains a small working example. To give POLYTE a
 test-run, cd into `example/` and execute:
 
 ```
-python ../../polyte.py -p1 input/forward.fastq -p2 input/reverse.fastq --diploid --hap_cov 14 --insert_size 486.6 --stddev 146.7
+../../haploconduct polyte -p1 input/forward.fastq -p2 input/reverse.fastq --diploid --hap_cov 14 --insert_size 486.6 --stddev 146.7
 ```
 
 
@@ -137,5 +143,4 @@ Bioinformatics 2019; 35(21): 4281--4289,
 
 ## Contact   
 
-In case of any questions or issues, please contact Jasmijn Baaijens:
-baaijens AT cwi DOT nl
+Please report any questions or issues [here](https://github.com/HaploConduct/HaploConduct/issues).
