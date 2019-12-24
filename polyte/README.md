@@ -23,7 +23,7 @@ For maximal clique enumeration, HaploConduct depends on the [quick-cliques packa
 For suffix-prefix overlap computations, HaploConduct uses the [rust-overlaps package](https://github.com/jbaaijens/rust-overlaps) for
 computing suffix-prefix overlaps in de novo mode.
 
-For reference-guided assembly, SAVAGE depends on [samtools](http://samtools.sourceforge.net) and the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
+For reference-guided assembly, HaploConduct depends on [samtools](http://samtools.sourceforge.net) and the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
 
 To summarize, please **download and install the following dependencies**:
 
