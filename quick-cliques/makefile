@@ -3,6 +3,7 @@ BUILD_DIR = build
 SRC_DIR   = src
 BIN_DIR   = bin
 
+CC = g++
 CFLAGS = -Winline -O2 -std=c++0x -g
 #CFLAGS = -Winline -DDEBUG_MESSAGE -O0 -std=c++0x -g
 
@@ -39,7 +40,7 @@ DEFINE += -DPRINT_CLIQUES_ONE_BY_ONE   #print cliques, one per line
 #DEFINE += -DPRINT_CLIQUES_TOMITA_STYLE # used by Eppstein and Strash (2011)
 
 #some systems handle malloc and calloc with 0 bytes strangely.
-DEFINE += -DALLOW_ALLOC_ZERO_BYTES      # used by Eppstein and Strash (2011) 
+DEFINE += -DALLOW_ALLOC_ZERO_BYTES      # used by Eppstein and Strash (2011)
 
 VPATH = src
 
@@ -49,27 +50,26 @@ all: $(EXECS)
 
 .PHONY : clean
 
-clean: 
+clean:
 	rm -rf $(EXECS) $(BUILD_DIR) $(BIN_DIR)
 
 $(BIN_DIR)/printnm: printnm.cpp ${OBJECTS} | ${BIN_DIR}
-	g++ ${DEFINE} ${OBJECTS} $(SRC_DIR)/printnm.cpp -o $@
+	$(CC) ${DEFINE} ${OBJECTS} $(SRC_DIR)/printnm.cpp -o $@
 
 $(BIN_DIR)/compdegen: compdegen.cpp ${OBJECTS} | ${BIN_DIR}
-	g++ $(CFLAGS) ${DEFINE} ${OBJECTS} $(SRC_DIR)/compdegen.cpp -o $@
+	$(CC) $(CFLAGS) ${DEFINE} ${OBJECTS} $(SRC_DIR)/compdegen.cpp -o $@
 
 $(BIN_DIR)/qc: main.cpp ${OBJECTS} | ${BIN_DIR}
-	g++ $(CFLAGS) ${DEFINE} ${OBJECTS} $(SRC_DIR)/main.cpp -o $@
+	$(CC) $(CFLAGS) ${DEFINE} ${OBJECTS} $(SRC_DIR)/main.cpp -o $@
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp $(SRC_DIR)/%.h $(BUILD_DIR)/%.d | $(BUILD_DIR)
-	g++ $(CFLAGS) ${DEFINE} -c $< -o $@
+	$(CC) $(CFLAGS) ${DEFINE} -c $< -o $@
 
 $(BUILD_DIR)/%.d: $(SRC_DIR)/%.cpp | $(BUILD_DIR)
-	g++ $(CFLAGS) -MM -MT '$(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$<)' $< -MF $@
+	$(CC) $(CFLAGS) -MM -MT '$(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$<)' $< -MF $@
 
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
-
