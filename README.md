@@ -52,16 +52,16 @@ Bioinformatics 2019; 35(21): 4281--4289,
 
 ## Installation and dependencies
 
+*Please note that HaploConduct is built for linux-based systems only.*
+
 **The easiest and recommended way to install HaploConduct is through Conda, 
 using the [Bioconda](https://bioconda.github.io/) channel:**
 - First, install [miniconda](https://conda.io/miniconda.html)
 - Setup your channels as described [here](https://bioconda.github.io/user/install.html#install-conda)
 - Now install HaploConduct with one simple command: `conda install haploconduct`
 
-**Installation with Conda takes care of all dependencies and allows you to
+**Installation through Conda (see above) takes care of all dependencies and allows you to
 skip the steps below.**
-
-*Please note that HaploConduct is built for linux-based systems only.*
 
 SAVAGE and POLYTE make use of the same C++ codebase but have completely
 different workflows (implemented in Python2).
