@@ -52,10 +52,15 @@ Bioinformatics 2019; 35(21): 4281--4289,
 
 ## Installation and dependencies
 
-*Note: the easiest and recommended way to install SAVAGE is through bioconda,
-see also the [SAVAGE manual](https://github.com/HaploConduct/HaploConduct/tree/master/savage).
-Installation through bioconda takes care of all dependencies and allows you to
-skip the steps below. We hope to make POLYTE available on bioconda soon.*
+**The easiest and recommended way to install HaploConduct is through Conda, 
+using the [Bioconda](https://bioconda.github.io/) channel:**
+- First, install [miniconda](https://conda.io/miniconda.html)
+- Setup your channels as described [here](https://bioconda.github.io/user/install.html#install-conda)
+- Now install HaploConduct with one simple command: `conda install haploconduct`
+**Installation with Conda takes care of all dependencies and allows you to
+skip the steps below.**
+
+*Please note that HaploConduct is built for linux-based systems only.*
 
 SAVAGE and POLYTE make use of the same C++ codebase but have completely
 different workflows (implemented in Python2).
@@ -70,7 +75,7 @@ computing suffix-prefix overlaps in de novo mode.
 
 For reference-guided assembly, HaploConduct depends on [samtools](http://samtools.sourceforge.net) and the [bwa mem](http://bio-bwa.sourceforge.net/) aligner.
 
-To summarize, please **download and install the following dependencies**:
+To summarize, please download and install the following dependencies:
 
 * g++ with boost libraries
 * [rust-overlaps](https://github.com/jbaaijens/rust-overlaps)
