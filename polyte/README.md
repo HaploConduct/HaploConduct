@@ -13,6 +13,15 @@ reconstruction values at extremely low error rates.
 
 ## Installation and dependencies
 
+**The easiest and recommended way to install POLYTE is through the Conda package manager:**
+
+- Install [miniconda](https://conda.io/miniconda.html)
+- Setup your [Bioconda](https://bioconda.github.io/) channel as described [here](https://bioconda.github.io/user/install.html#set-up-channels)
+- Install HaploConduct and all its dependencies through **one simple command**:
+```
+conda install haploconduct
+```
+
 POLYTE uses a core algorithm implemented in C++11, managed by several workflow scripts implemented in Python2 (using scipy libraries).
 The C++ part requires several boost libraries (boost::timer,
 boost::system, and boost::program_options) and it needs a compiler
