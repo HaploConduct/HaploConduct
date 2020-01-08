@@ -43,21 +43,11 @@ The easiest and recommended way to install SAVAGE is through Conda, using the [B
 *Please note that SAVAGE is built for linux-based systems only.*
 
 ### Installation via Conda
-This is the easiest and recommended way to install SAVAGE. The Conda package manager allows you to install packages without needing any root privileges. First make sure to setup Bioconda by following the steps below:
+This is the easiest and recommended way to install SAVAGE. The Conda package manager allows you to install packages without needing any root privileges:
 
-- Install the **Miniconda Python2** distribution, see [here](https://conda.io/miniconda.html).
-- Make sure that the miniconda2 bin directory is added to your PATH.
-- Setup the bioconda channel as well as the other channels bioconda depends on; it is important to add them in this order:
-```
-conda config --add channels r
-conda config --add channels defaults
-conda config --add channels conda-forge
-conda config --add channels bioconda
-```
-
-More information about installing Bioconda can be found [here](https://bioconda.github.io/).
-
-Once Bioconda is properly setup, SAVAGE and all its dependencies can be installed through **one simple command**:
+- Install [miniconda](https://conda.io/miniconda.html)
+- Setup your [Bioconda](https://bioconda.github.io/) channel as described [here](https://bioconda.github.io/user/install.html#set-up-channels)
+- Install SAVAGE and all its dependencies through **one simple command**:
 ```
 conda install savage
 ```
