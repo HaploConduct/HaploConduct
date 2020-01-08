@@ -21,6 +21,7 @@ reconstruction values at extremely low error rates.
 ```
 conda install haploconduct
 ```
+**After installation through Conda all steps below can be skipped**
 
 POLYTE uses a core algorithm implemented in C++11, managed by several workflow scripts implemented in Python2 (using scipy libraries).
 The C++ part requires several boost libraries (boost::timer,
